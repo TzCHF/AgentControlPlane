@@ -1,96 +1,110 @@
 # AgentControlPlane
 
-AgentControlPlane lets a ChatGPT conversation act as the control-plane agent while
-Codex acts as the engineering execution plane.
+AgentControlPlane runs a local MCP server that lets a ChatGPT conversation
+dispatch compact engineering tasks to a persistent Codex project thread, then
+read back a compact report with measured token usage.
 
-The main conversation performs requirement clarification, planning, task
-decomposition, model-policy selection, and acceptance. It sends only a compact
-engineering brief to a persistent Codex project thread. Codex may delegate
-independent work to subagents according to the selected profile.
+## What it does
 
-## Why
+- The ChatGPT conversation acts as the control plane: it clarifies requirements,
+  plans, decomposes work, and selects a model policy.
+- A local Codex thread acts as the execution plane: it edits files, runs
+  commands, verifies results, and delegates independent work to subagents.
+- Each dispatch carries one compact engineering brief: objective, constraints,
+  acceptance criteria, context, and requested evidence.
+- Each completion returns one compact engineering report: summary, changed
+  files, test evidence, blockers, and measured token usage.
 
-The project does **not** convert ChatGPT messages into Codex quota and does not
-bypass product limits. It reduces waste inside engineering runs by:
+## Quickstart
 
-- sending only a compact engineering brief to Codex;
-- preserving repository context in a persistent project thread;
-- selecting model, reasoning effort, budget, and subagent concurrency per task;
-- returning summaries, diffs, test evidence, blockers, and measured token usage;
-- keeping long command logs out of the main conversation unless requested.
+Prerequisites: Node.js 22 or newer, the Codex CLI, and an OpenAI account for the
+ChatGPT connection.
 
-## Architecture
-
-```text
-ChatGPT conversation
-  -> MCP dispatch/status/follow-up tools
-  -> local AgentControlPlane
-  -> Codex app-server
-  -> persistent project main agent
-  -> optional Codex subagents
-  -> compact result + token usage
-  -> ChatGPT acceptance/next decision
-```
-
-## Local development
+### 1. Run the service
 
 ```powershell
+git clone https://github.com/TzCHF/AgentControlPlane.git
+cd AgentControlPlane
 npm.cmd install
 npm.cmd test
-npm.cmd run sandbox:setup
 npm.cmd run doctor
-npm.cmd run smoke
 npm.cmd start
 ```
 
-The service binds to `127.0.0.1:4318` by default.
+The service binds to `http://127.0.0.1:4318`. `GET /health` returns service
+status.
 
-Endpoints:
+### 2. Connect ChatGPT
 
-- `GET /health`
-- `GET /v1/diagnostics` (authenticated when a token is configured)
-- `GET /v1/profiles`
-- `GET /v1/models`
-- `GET /v1/tasks`
-- `POST /v1/tasks`
-- `GET /v1/tasks/{taskId}`
-- `POST /v1/tasks/{taskId}/follow-up`
-- `POST /v1/tasks/{taskId}/cancel`
-- `POST /mcp`
+Connect through an OpenAI Secure MCP Tunnel so the server stays on loopback.
+Follow [docs/CHATGPT-CONNECTION.md](docs/CHATGPT-CONNECTION.md).
 
-State and audit records are stored outside configured workspace roots (under the
-user's local application-state directory by default) so engineering tasks cannot
-modify control-plane persistence.
+### 3. Dispatch a task
+
+Enable the connection in a ChatGPT conversation and send:
+
+```text
+Use the balanced profile. Ask the engineering agent to inspect the workspace,
+make no changes, and return the repository title plus test command.
+```
+
+ChatGPT sends the brief through `dispatch_project`, and the local Codex thread
+runs it.
+
+### 4. Control spend
+
+Each dispatch picks a profile. The control plane measures token usage from the
+Codex thread goal and interrupts the turn when the budget is reached.
+
+| Profile | Use | Model | Effort | Subagents | Budget |
+|---|---|---|---|---:|---:|
+| economy | Small, well-defined edits | gpt-5.6-luna | low | 0 | 30k |
+| balanced | Normal feature and fix work | gpt-5.6-terra | high | up to 2 | 90k |
+| deep | Architecture and broad refactor | gpt-5.6-sol | ultra | up to 4 | 220k |
+
+Override the model, effort, subagent count, or budget per task within local
+policy. `usage_report` returns measured totals across tasks.
+
+## MCP tools
+
+- `dispatch_project` — queue a compact engineering brief
+- `task_status` — read task state and result
+- `continue_project` — queue a follow-up on the same thread
+- `cancel_task` — stop an active task
+- `list_tasks` — list recent tasks
+- `list_profiles` — list execution profiles
+- `list_models` — list models Codex advertises
+- `usage_report` — read measured token usage
 
 ## Safety defaults
 
-- Workspace paths must stay under configured roots.
-- Codex runs in `workspace-write`.
-- Network access is disabled by default.
-- On Windows, task dispatch is refused until the Codex sandbox reports `ready`.
-- On Windows, the launcher automatically prefers the newest standalone Codex
-  binary that has its matching sandbox resources, avoiding PATH shims that lose
-  resource-directory resolution.
-- Approval prompts receive explicit denial responses from the control plane.
-- Token usage is measured from Codex thread goals even when the runtime does not
-  emit token-usage notifications. Active turns are interrupted when measured
-  usage reaches the configured task budget. Enforcement polls once per second by
-  default, so a provider may consume additional tokens during one polling
-  interval.
-- The HTTP server listens on loopback only.
-- Optional bearer authentication is enabled with `AGENT_CONTROL_TOKEN`.
-- Direct non-loopback binding is refused; remote access must use a secure tunnel
-  or a TLS authentication gateway.
-- MCP sessions have configurable count and idle-time limits.
-- Do not expose this development server directly to the public Internet. Use an
-  authenticated gateway or a secure private MCP tunnel.
+- Workspace paths resolve only under configured roots.
+- Codex runs with the `workspace-write` sandbox and network access disabled.
+- Task dispatch waits for the Codex sandbox to report ready on Windows.
+- Token usage is measured from Codex thread goals and enforced with a hard
+  budget interrupt, polled once per second by default.
+- The HTTP server binds to loopback only; non-loopback binding is refused.
+- Optional bearer authentication via `AGENT_CONTROL_TOKEN`.
+- Approval prompts receive explicit denials from the control plane.
 
-See [docs/CHATGPT-CONNECTION.md](docs/CHATGPT-CONNECTION.md),
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
-[docs/PROTOCOL.md](docs/PROTOCOL.md),
-[docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md), and
-[SECURITY.md](SECURITY.md).
+Do not expose this server directly to the public Internet. Use an authenticated
+gateway or a secure private MCP tunnel.
+
+## Project boundary
+
+This project does not convert ChatGPT messages into Codex quota and does not
+bypass product limits. Codex engineering work consumes the applicable
+engineering or agent usage allowance.
+
+## Docs
+
+- [docs/CHATGPT-CONNECTION.md](docs/CHATGPT-CONNECTION.md)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/PROTOCOL.md](docs/PROTOCOL.md)
+- [docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md)
+- [SECURITY.md](SECURITY.md)
+- [CHANGELOG.md](CHANGELOG.md)
 
 The default workspace allowlist is the parent directory of this repository.
-Override it with a local configuration file referenced by
-`AGENT_CONTROL_CONFIG`; do not commit machine-specific paths.
+Override it with a local configuration file referenced by `AGENT_CONTROL_CONFIG`;
+do not commit machine-specific paths.

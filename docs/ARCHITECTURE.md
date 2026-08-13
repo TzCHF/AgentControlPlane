@@ -45,7 +45,7 @@ User
 
 | Profile | Use | Effort | Subagents | Default budget |
 |---|---|---:|---:|---:|
-| economy | Small, well-defined edits | medium | 0 | 30k |
+| economy | Small, well-defined edits | low | 0 | 30k |
 | balanced | Normal feature/fix work | high | up to 2 | 90k |
 | deep | Architecture, broad refactor, difficult debugging | ultra | up to 4 | 220k |
 
@@ -58,4 +58,3 @@ must remain within the supplied concurrency and budget instructions.
 `.agent-control/state.json` stores tasks and project-to-thread associations.
 `.agent-control/audit.jsonl` stores append-only events. State writes use a
 temporary file followed by an atomic rename.
-
