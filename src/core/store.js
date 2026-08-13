@@ -21,6 +21,7 @@ export class TaskStore {
     maxEvents = 500,
     maxTasks = 2000,
     maxAuditBytes = 10 * 1024 * 1024,
+    integrityKey = null,
   ) {
     this.stateDir = stateDir;
     this.statePath = path.join(stateDir, "state.json");
@@ -29,10 +30,17 @@ export class TaskStore {
     this.maxEvents = maxEvents;
     this.maxTasks = maxTasks;
     this.maxAuditBytes = maxAuditBytes;
+    this.integrityKey =
+      typeof integrityKey === "string" && integrityKey.length > 0
+        ? integrityKey
+        : null;
+    this.auditSeq = 1;
+    this.auditPrev = null;
     fs.mkdirSync(stateDir, { recursive: true });
     this.state = fs.existsSync(this.statePath)
       ? JSON.parse(fs.readFileSync(this.statePath, "utf8"))
       : emptyState();
+    this.#restoreAuditChain();
   }
 
   persist() {
@@ -49,11 +57,56 @@ export class TaskStore {
       fs.rmSync(this.auditArchivePath, { force: true });
       fs.renameSync(this.auditPath, this.auditArchivePath);
     }
+    const entry = {
+      at: now(),
+      type,
+      ...payload,
+      seq: this.auditSeq,
+      prev: this.auditPrev,
+    };
+    const digest = this.#auditDigest(JSON.stringify(entry));
+    entry.h = digest;
     fs.appendFileSync(
       this.auditPath,
-      `${JSON.stringify({ at: now(), type, ...payload })}\n`,
+      `${JSON.stringify(entry)}\n`,
       "utf8",
     );
+    this.auditSeq += 1;
+    this.auditPrev = digest;
+  }
+
+  #auditDigest(value) {
+    if (this.integrityKey) {
+      return crypto.createHmac("sha256", this.integrityKey).update(value).digest("hex");
+    }
+    return crypto.createHash("sha256").update(value).digest("hex");
+  }
+
+  #restoreAuditChain() {
+    const last =
+      this.#readLastAuditLine(this.auditPath) ??
+      this.#readLastAuditLine(this.auditArchivePath);
+    if (!last) return;
+    try {
+      const entry = JSON.parse(last);
+      if (entry && typeof entry.seq === "number") {
+        this.auditSeq = entry.seq + 1;
+        this.auditPrev = typeof entry.h === "string" ? entry.h : null;
+      }
+    } catch {
+      // An unreadable tail line leaves the chain at its initial state.
+    }
+  }
+
+  #readLastAuditLine(filePath) {
+    if (!fs.existsSync(filePath)) return null;
+    const content = fs.readFileSync(filePath, "utf8");
+    const lines = content.split("\n");
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+      const line = lines[index].trim();
+      if (line) return line;
+    }
+    return null;
   }
 
   createTask({ workspace, brief, policy, parentTaskId = null }) {

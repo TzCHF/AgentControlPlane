@@ -6,6 +6,7 @@ import { CodexAppServerClient } from "./core/codex-client.js";
 import { sendError, sendJson, readJson, routeParts } from "./core/http.js";
 import { Orchestrator } from "./core/orchestrator.js";
 import { publicModels, publicProfiles } from "./core/profiles.js";
+import { RateLimiter } from "./core/rate-limit.js";
 import { TaskStore } from "./core/store.js";
 import { createMcpHandler } from "./mcp/server.js";
 
@@ -19,7 +20,14 @@ export async function createApplication(overrides = {}) {
       config.limits.maxStoredEventsPerTask,
       config.limits.maxStoredTasks,
       config.limits.maxAuditBytes,
+      config.audit?.integrityKey,
     );
+  const rateLimiter = config.limits?.rateLimit?.enabled
+    ? new RateLimiter({
+        windowMs: config.limits.rateLimit.windowMs,
+        max: config.limits.rateLimit.max,
+      })
+    : null;
   const codex =
     overrides.codex ??
     new CodexAppServerClient({
@@ -65,6 +73,24 @@ export async function createApplication(overrides = {}) {
       }
 
       const isHealth = request.method === "GET" && url.pathname === "/health";
+      if (!isHealth && rateLimiter) {
+        const key = request.socket.remoteAddress ?? "unknown";
+        const decision = rateLimiter.consume(key);
+        if (!decision.allowed) {
+          sendJson(
+            response,
+            429,
+            {
+              error: {
+                code: "rate_limited",
+                message: "Too many requests",
+              },
+            },
+            { "retry-after": String(decision.retryAfterSeconds) },
+          );
+          return;
+        }
+      }
       if (!isHealth && !tokenMatches(request)) {
         sendJson(
           response,

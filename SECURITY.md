@@ -21,6 +21,14 @@ approved for direct public-Internet exposure or untrusted multi-tenant use.
 - The Codex executable is resolved to an absolute path outside workspace roots.
 - Approval requests that cannot be safely handled are denied.
 - Task mutations and execution events are written to an append-only audit log.
+- Rate limiting applies to every authenticated endpoint with a configurable
+  per-window ceiling; requests past the ceiling receive `429` with a
+  `Retry-After` header.
+- Audit entries carry a sequence number and a chained hash. Setting
+  `AGENT_CONTROL_AUDIT_KEY` switches the chain from SHA-256 to HMAC-SHA256.
+  Verify the chain with `npm run verify:audit`.
+- JSON responses set `X-Content-Type-Options: nosniff`, `Referrer-Policy:
+  no-referrer`, and `X-Frame-Options: DENY`.
 
 ## Before commercial deployment
 

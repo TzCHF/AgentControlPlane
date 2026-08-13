@@ -25,6 +25,9 @@ export function sendJson(response, statusCode, payload, headers = {}) {
     "content-type": "application/json; charset=utf-8",
     "content-length": Buffer.byteLength(body),
     "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "no-referrer",
+    "x-frame-options": "DENY",
     ...headers,
   });
   response.end(body);
@@ -48,4 +51,3 @@ export function routeParts(request) {
     parts: url.pathname.split("/").filter(Boolean),
   };
 }
-

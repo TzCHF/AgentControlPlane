@@ -197,6 +197,31 @@ export function loadConfig(configPath = process.env.AGENT_CONTROL_CONFIG) {
       "limits.tokenUsagePollIntervalMs must be an integer of at least 250",
     );
   }
+  const rateLimit = config.limits.rateLimit ?? { enabled: false };
+  if (typeof rateLimit.enabled !== "boolean") {
+    throw new ControlPlaneError(
+      "invalid_config",
+      "limits.rateLimit.enabled must be a boolean",
+    );
+  }
+  if (
+    rateLimit.enabled &&
+    (!Number.isInteger(rateLimit.windowMs) || rateLimit.windowMs < 1000)
+  ) {
+    throw new ControlPlaneError(
+      "invalid_config",
+      "limits.rateLimit.windowMs must be an integer of at least 1000",
+    );
+  }
+  if (
+    rateLimit.enabled &&
+    (!Number.isInteger(rateLimit.max) || rateLimit.max < 1)
+  ) {
+    throw new ControlPlaneError(
+      "invalid_config",
+      "limits.rateLimit.max must be an integer of at least 1",
+    );
+  }
   const loopbackHosts = new Set(["127.0.0.1", "::1", "localhost"]);
   if (!loopbackHosts.has(config.server.host)) {
     throw new ControlPlaneError(
@@ -206,6 +231,10 @@ export function loadConfig(configPath = process.env.AGENT_CONTROL_CONFIG) {
   }
 
   config.projectRoot = projectRoot;
+  config.audit = {
+    integrityKey:
+      process.env.AGENT_CONTROL_AUDIT_KEY ?? config.audit?.integrityKey ?? null,
+  };
   config.codex.command = resolveCodexCommand(config.codex.command);
   if (!Array.isArray(config.workspaceRoots) || config.workspaceRoots.length === 0) {
     config.workspaceRoots = [path.dirname(projectRoot)];

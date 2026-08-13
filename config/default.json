@@ -53,6 +53,14 @@
     "maxStoredEventsPerTask": 500,
     "maxAuditBytes": 10485760,
     "maxTaskRuntimeMinutes": 240,
-    "tokenUsagePollIntervalMs": 1000
+    "tokenUsagePollIntervalMs": 1000,
+    "rateLimit": {
+      "enabled": true,
+      "windowMs": 60000,
+      "max": 120
+    }
+  },
+  "audit": {
+    "integrityKey": null
   }
 }
