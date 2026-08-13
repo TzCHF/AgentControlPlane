@@ -1,7 +1,10 @@
 {
   "server": {
     "host": "127.0.0.1",
-    "port": 4318
+    "port": 4318,
+    "allowedOrigins": [],
+    "maxMcpSessions": 32,
+    "mcpSessionIdleMinutes": 30
   },
   "workspaceRoots": [],
   "codex": {
@@ -9,7 +12,14 @@
     "defaultModel": null,
     "approvalPolicy": "never",
     "sandbox": "workspace-write",
-    "networkAccess": false
+    "networkAccess": false,
+    "disabledFeatures": [
+      "apps",
+      "plugins",
+      "browser_use",
+      "computer_use",
+      "image_generation"
+    ]
   },
   "profiles": {
     "economy": {
@@ -37,7 +47,11 @@
   "limits": {
     "maxBriefCharacters": 24000,
     "maxConcurrentTasks": 2,
+    "maxQueuedTasks": 100,
+    "maxTokenBudget": 250000,
+    "maxStoredTasks": 2000,
     "maxStoredEventsPerTask": 500,
+    "maxAuditBytes": 10485760,
     "maxTaskRuntimeMinutes": 240
   }
 }

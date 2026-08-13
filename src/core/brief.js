@@ -67,6 +67,8 @@ ${section("CONSTRAINTS", brief.constraints)}${section(
   )}
 EXECUTION POLICY:
 - Work autonomously inside the provided workspace.
+- Do not read files outside the provided workspace.
+- Never include credentials, tokens, private keys, or unrelated personal data in the final report.
 - Inspect before editing; preserve unrelated user changes.
 - Run proportionate tests or checks before declaring completion.
 - ${delegation}
@@ -105,7 +107,7 @@ export const finalReportSchema = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["command", "status"],
+        required: ["command", "status", "detail"],
         properties: {
           command: { type: "string" },
           status: {
@@ -123,4 +125,3 @@ export const finalReportSchema = {
     next_action: { type: ["string", "null"] },
   },
 };
-

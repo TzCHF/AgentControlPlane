@@ -1,4 +1,5 @@
 import http from "node:http";
+import crypto from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { loadConfig } from "./core/config.js";
 import { CodexAppServerClient } from "./core/codex-client.js";
@@ -16,10 +17,15 @@ export async function createApplication(overrides = {}) {
     new TaskStore(
       config.stateDir,
       config.limits.maxStoredEventsPerTask,
+      config.limits.maxStoredTasks,
+      config.limits.maxAuditBytes,
     );
   const codex =
     overrides.codex ??
-    new CodexAppServerClient({ command: config.codex.command });
+    new CodexAppServerClient({
+      command: config.codex.command,
+      disabledFeatures: config.codex.disabledFeatures,
+    });
   const orchestrator =
     overrides.orchestrator ?? new Orchestrator({ config, store, codex });
   if (overrides.startCodex !== false) {
@@ -27,16 +33,67 @@ export async function createApplication(overrides = {}) {
   }
   const handleMcp = createMcpHandler({ orchestrator, store, config });
 
+  function tokenMatches(request) {
+    if (!config.server.authToken) return true;
+    const authorization = request.headers.authorization ?? "";
+    const supplied = authorization.startsWith("Bearer ")
+      ? authorization.slice(7)
+      : "";
+    const expected = Buffer.from(config.server.authToken);
+    const actual = Buffer.from(supplied);
+    return (
+      expected.length === actual.length &&
+      crypto.timingSafeEqual(expected, actual)
+    );
+  }
+
+  function originAllowed(request) {
+    const origin = request.headers.origin;
+    if (!origin) return true;
+    return config.server.allowedOrigins.includes(origin);
+  }
+
   const server = http.createServer(async (request, response) => {
     try {
       const { url, parts } = routeParts(request);
 
-      if (request.method === "GET" && url.pathname === "/health") {
+      if (!originAllowed(request)) {
+        sendJson(response, 403, {
+          error: { code: "origin_denied", message: "Origin is not allowed" },
+        });
+        return;
+      }
+
+      const isHealth = request.method === "GET" && url.pathname === "/health";
+      if (!isHealth && !tokenMatches(request)) {
+        sendJson(
+          response,
+          401,
+          {
+            error: {
+              code: "unauthorized",
+              message: "A valid bearer token is required",
+            },
+          },
+          { "www-authenticate": 'Bearer realm="AgentControlPlane"' },
+        );
+        return;
+      }
+
+      if (isHealth) {
         sendJson(response, 200, {
           status: "ok",
           service: "agent-control-plane",
           version: "0.1.0",
           codex_ready: Boolean(codex.ready),
+        });
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === "/v1/diagnostics") {
+        sendJson(response, 200, {
+          codex_ready: Boolean(codex.ready),
+          codex_command: config.codex?.command ?? null,
           runtime: orchestrator.getRuntimeHealth(),
         });
         return;
@@ -117,8 +174,14 @@ export async function createApplication(overrides = {}) {
         return;
       }
 
-      if (url.pathname === "/mcp" && request.method === "POST") {
-        const body = await readJson(request, 1024 * 1024);
+      if (
+        url.pathname === "/mcp" &&
+        ["POST", "GET", "DELETE"].includes(request.method)
+      ) {
+        const body =
+          request.method === "POST"
+            ? await readJson(request, 1024 * 1024)
+            : undefined;
         await handleMcp(request, response, body);
         return;
       }
@@ -138,7 +201,7 @@ export async function createApplication(overrides = {}) {
     orchestrator,
     server,
     async close() {
-      codex.stop();
+      await Promise.resolve(codex.stop());
       if (server.listening) {
         await new Promise((resolve, reject) =>
           server.close((error) => (error ? reject(error) : resolve())),

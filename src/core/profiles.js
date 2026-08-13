@@ -30,6 +30,13 @@ export function resolveProfile(config, request, modelCatalog = []) {
       "token_budget must be an integer of at least 1000",
     );
   }
+  const maxTokenBudget = config.limits?.maxTokenBudget ?? 250000;
+  if (tokenBudget > maxTokenBudget) {
+    throw new ControlPlaneError(
+      "invalid_token_budget",
+      `token_budget must not exceed ${maxTokenBudget}`,
+    );
+  }
 
   const resolved = {
     name: profileName,

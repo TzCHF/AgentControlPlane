@@ -17,7 +17,7 @@ const briefFields = {
   model: z.string().nullable().optional(),
   reasoning_effort: z.string().nullable().optional(),
   max_subagents: z.number().int().min(0).max(8).nullable().optional(),
-  token_budget: z.number().int().min(1000).nullable().optional(),
+  token_budget: z.number().int().min(1000).max(250000).nullable().optional(),
 };
 
 function result(payload, message) {
@@ -38,6 +38,23 @@ function failure(error) {
 
 export function createMcpHandler({ orchestrator, store, config }) {
   const transports = new Map();
+  const idleTimeoutMs = config.server.mcpSessionIdleMinutes * 60 * 1000;
+
+  function closeSession(id) {
+    const entry = transports.get(id);
+    if (!entry) return;
+    clearTimeout(entry.timer);
+    transports.delete(id);
+    entry.transport.close().catch(() => {});
+  }
+
+  function touchSession(id, transport) {
+    const existing = transports.get(id);
+    if (existing?.timer) clearTimeout(existing.timer);
+    const timer = setTimeout(() => closeSession(id), idleTimeoutMs);
+    timer.unref?.();
+    transports.set(id, { transport, timer });
+  }
 
   function buildServer() {
     const server = new McpServer({
@@ -54,8 +71,8 @@ export function createMcpHandler({ orchestrator, store, config }) {
         inputSchema: briefFields,
         annotations: {
           readOnlyHint: false,
-          destructiveHint: false,
-          openWorldHint: false,
+          destructiveHint: true,
+          openWorldHint: Boolean(config.codex.networkAccess),
           idempotentHint: false,
         },
       },
@@ -113,12 +130,12 @@ export function createMcpHandler({ orchestrator, store, config }) {
           model: z.string().nullable().optional(),
           reasoning_effort: z.string().nullable().optional(),
           max_subagents: z.number().int().min(0).max(8).nullable().optional(),
-          token_budget: z.number().int().min(1000).nullable().optional(),
+          token_budget: z.number().int().min(1000).max(250000).nullable().optional(),
         },
         annotations: {
           readOnlyHint: false,
-          destructiveHint: false,
-          openWorldHint: false,
+          destructiveHint: true,
+          openWorldHint: Boolean(config.codex.networkAccess),
           idempotentHint: false,
         },
       },
@@ -238,15 +255,34 @@ export function createMcpHandler({ orchestrator, store, config }) {
 
   return async function handleMcp(request, response, parsedBody) {
     const sessionId = request.headers["mcp-session-id"];
-    let transport = sessionId ? transports.get(sessionId) : null;
+    let transport = sessionId ? transports.get(sessionId)?.transport : null;
+    if (sessionId && transport) touchSession(sessionId, transport);
 
-    if (!transport && isInitializeRequest(parsedBody)) {
+    if (!transport && request.method === "POST" && isInitializeRequest(parsedBody)) {
+      if (transports.size >= config.server.maxMcpSessions) {
+        response.writeHead(503, {
+          "content-type": "application/json",
+          "retry-after": "30",
+        });
+        response.end(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            error: { code: -32001, message: "MCP session limit reached" },
+            id: parsedBody?.id ?? null,
+          }),
+        );
+        return;
+      }
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
-        onsessioninitialized: (id) => transports.set(id, transport),
+        onsessioninitialized: (id) => touchSession(id, transport),
       });
       transport.onclose = () => {
-        if (transport.sessionId) transports.delete(transport.sessionId);
+        if (transport.sessionId) {
+          const entry = transports.get(transport.sessionId);
+          if (entry?.timer) clearTimeout(entry.timer);
+          transports.delete(transport.sessionId);
+        }
       };
       const server = buildServer();
       await server.connect(transport);

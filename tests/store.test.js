@@ -31,5 +31,6 @@ test("persists tasks, projects, events, and usage totals", () => {
   assert.equal(reloaded.getProject("C:\\workspace").threadId, "thread-1");
   assert.equal(reloaded.getTask(task.id, true).events.length, 2);
   assert.equal(reloaded.usageReport().total_tokens, 15);
+  assert.equal(reloaded.usageReport().uncached_input_tokens, 6);
   assert.equal(reloaded.listByStatus(["queued"]).length, 1);
 });

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { ControlPlaneError } from "./errors.js";
 
 function now() {
   return new Date().toISOString();
@@ -15,11 +16,19 @@ function emptyState() {
 }
 
 export class TaskStore {
-  constructor(stateDir, maxEvents = 500) {
+  constructor(
+    stateDir,
+    maxEvents = 500,
+    maxTasks = 2000,
+    maxAuditBytes = 10 * 1024 * 1024,
+  ) {
     this.stateDir = stateDir;
     this.statePath = path.join(stateDir, "state.json");
     this.auditPath = path.join(stateDir, "audit.jsonl");
+    this.auditArchivePath = path.join(stateDir, "audit.jsonl.1");
     this.maxEvents = maxEvents;
+    this.maxTasks = maxTasks;
+    this.maxAuditBytes = maxAuditBytes;
     fs.mkdirSync(stateDir, { recursive: true });
     this.state = fs.existsSync(this.statePath)
       ? JSON.parse(fs.readFileSync(this.statePath, "utf8"))
@@ -33,6 +42,13 @@ export class TaskStore {
   }
 
   audit(type, payload) {
+    if (
+      fs.existsSync(this.auditPath) &&
+      fs.statSync(this.auditPath).size >= this.maxAuditBytes
+    ) {
+      fs.rmSync(this.auditArchivePath, { force: true });
+      fs.renameSync(this.auditPath, this.auditArchivePath);
+    }
     fs.appendFileSync(
       this.auditPath,
       `${JSON.stringify({ at: now(), type, ...payload })}\n`,
@@ -41,6 +57,7 @@ export class TaskStore {
   }
 
   createTask({ workspace, brief, policy, parentTaskId = null }) {
+    this.#pruneTasks();
     const id = crypto.randomUUID();
     const task = {
       id,
@@ -143,6 +160,7 @@ export class TaskStore {
     const total = {
       input_tokens: 0,
       cached_input_tokens: 0,
+      uncached_input_tokens: 0,
       output_tokens: 0,
       reasoning_output_tokens: 0,
       total_tokens: 0,
@@ -153,9 +171,44 @@ export class TaskStore {
       total.tasks_with_usage += 1;
       for (const key of Object.keys(total)) {
         if (key === "tasks_with_usage") continue;
-        total[key] += Number(task.usage[key] ?? 0);
+        if (key === "uncached_input_tokens") {
+          total[key] += Math.max(
+            0,
+            Number(task.usage.input_tokens ?? 0) -
+              Number(task.usage.cached_input_tokens ?? 0),
+          );
+        } else {
+          total[key] += Number(task.usage[key] ?? 0);
+        }
       }
     }
     return total;
+  }
+
+  #pruneTasks() {
+    const tasks = Object.values(this.state.tasks);
+    if (tasks.length < this.maxTasks) return;
+    const terminal = new Set([
+      "completed",
+      "partial",
+      "blocked",
+      "failed",
+      "cancelled",
+      "interrupted",
+    ]);
+    const removable = tasks
+      .filter((task) => terminal.has(task.status))
+      .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
+    const removeCount = tasks.length - this.maxTasks + 1;
+    if (removable.length < removeCount) {
+      throw new ControlPlaneError(
+        "task_capacity_reached",
+        "Stored task capacity is full of active work",
+      );
+    }
+    for (const task of removable.slice(0, removeCount)) {
+      delete this.state.tasks[task.id];
+    }
+    this.persist();
   }
 }

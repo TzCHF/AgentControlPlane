@@ -4,6 +4,7 @@ import { resolveProfile } from "../src/core/profiles.js";
 
 const config = {
   codex: { defaultModel: null },
+  limits: { maxTokenBudget: 250000 },
   profiles: {
     economy: {
       model: "fast-model",
@@ -45,3 +46,14 @@ test("rejects a model not advertised by Codex", () => {
   );
 });
 
+test("rejects token budgets above the server maximum", () => {
+  assert.throws(
+    () =>
+      resolveProfile(
+        config,
+        { profile: "economy", token_budget: 250001 },
+        catalog,
+      ),
+    (error) => error.code === "invalid_token_budget",
+  );
+});

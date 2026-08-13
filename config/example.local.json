@@ -4,6 +4,9 @@
   ],
   "server": {
     "host": "127.0.0.1",
-    "port": 4318
+    "port": 4318,
+    "allowedOrigins": [],
+    "maxMcpSessions": 32,
+    "mcpSessionIdleMinutes": 30
   }
 }

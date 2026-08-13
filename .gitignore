@@ -6,3 +6,4 @@ dist/
 *.log
 docs/app-server-schema/
 .live-smoke-state*/
+.smoke-workspace*/

@@ -1,13 +1,19 @@
 import { EventEmitter } from "node:events";
 import { spawn } from "node:child_process";
+import os from "node:os";
 import readline from "node:readline";
 import { ControlPlaneError } from "./errors.js";
 
 export class CodexAppServerClient extends EventEmitter {
-  constructor({ command = "codex", requestTimeoutMs = 30000 } = {}) {
+  constructor({
+    command = "codex",
+    requestTimeoutMs = 30000,
+    disabledFeatures = [],
+  } = {}) {
     super();
     this.command = command;
     this.requestTimeoutMs = requestTimeoutMs;
+    this.disabledFeatures = disabledFeatures;
     this.process = null;
     this.nextId = 1;
     this.pending = new Map();
@@ -18,12 +24,28 @@ export class CodexAppServerClient extends EventEmitter {
     if (this.ready) return;
     if (this.process) throw new Error("Codex app-server is already starting");
 
+    const args = ["app-server", "--stdio", "--enable", "multi_agent"];
+    for (const feature of this.disabledFeatures) {
+      args.push("--disable", feature);
+    }
     this.process = spawn(
       this.command,
-      ["app-server", "--stdio", "--enable", "multi_agent"],
+      args,
       {
         stdio: ["pipe", "pipe", "pipe"],
         windowsHide: true,
+        env: {
+          PATH: process.env.PATH ?? "",
+          SystemRoot: process.env.SystemRoot ?? "",
+          WINDIR: process.env.WINDIR ?? "",
+          TEMP: process.env.TEMP ?? os.tmpdir(),
+          TMP: process.env.TMP ?? os.tmpdir(),
+          USERPROFILE: process.env.USERPROFILE ?? os.homedir(),
+          HOME: process.env.HOME ?? os.homedir(),
+          LOCALAPPDATA: process.env.LOCALAPPDATA ?? "",
+          APPDATA: process.env.APPDATA ?? "",
+          CODEX_HOME: process.env.CODEX_HOME ?? "",
+        },
       },
     );
 
@@ -69,8 +91,17 @@ export class CodexAppServerClient extends EventEmitter {
   }
 
   stop() {
-    if (!this.process) return;
-    this.process.kill();
+    if (!this.process) return Promise.resolve();
+    const child = this.process;
+    return new Promise((resolve) => {
+      const timer = setTimeout(resolve, 5000);
+      timer.unref?.();
+      child.once("exit", () => {
+        clearTimeout(timer);
+        resolve();
+      });
+      child.kill();
+    });
   }
 
   request(method, params = null, timeoutMs = this.requestTimeoutMs) {
@@ -148,4 +179,3 @@ export class CodexAppServerClient extends EventEmitter {
     }
   }
 }
-

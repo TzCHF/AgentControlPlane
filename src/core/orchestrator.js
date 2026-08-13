@@ -12,6 +12,7 @@ function zeroUsage() {
   return {
     input_tokens: 0,
     cached_input_tokens: 0,
+    uncached_input_tokens: 0,
     output_tokens: 0,
     reasoning_output_tokens: 0,
     total_tokens: 0,
@@ -19,11 +20,15 @@ function zeroUsage() {
 }
 
 function mapUsage(tokenUsage) {
-  const source = tokenUsage?.total ?? tokenUsage?.last;
+  const source = tokenUsage?.last ?? tokenUsage?.total;
   if (!source) return zeroUsage();
   return {
     input_tokens: Number(source.inputTokens ?? 0),
     cached_input_tokens: Number(source.cachedInputTokens ?? 0),
+    uncached_input_tokens: Math.max(
+      0,
+      Number(source.inputTokens ?? 0) - Number(source.cachedInputTokens ?? 0),
+    ),
     output_tokens: Number(source.outputTokens ?? 0),
     reasoning_output_tokens: Number(source.reasoningOutputTokens ?? 0),
     total_tokens: Number(source.totalTokens ?? 0),
@@ -48,7 +53,18 @@ function extractReport(turn, cachedFinalMessage = null) {
     };
   }
   try {
-    return JSON.parse(finalText);
+    const parsed = JSON.parse(finalText);
+    const normalizedSummary = String(parsed.summary ?? "").toLowerCase();
+    if (
+      parsed.status === "completed" &&
+      (normalizedSummary.includes("status: blocked") ||
+        normalizedSummary.includes("could not") ||
+        normalizedSummary.includes("unable to") ||
+        (Array.isArray(parsed.blockers) && parsed.blockers.length > 0))
+    ) {
+      parsed.status = "blocked";
+    }
+    return parsed;
   } catch {
     const normalized = finalText.toLowerCase();
     const status = normalized.includes("status: blocked")
@@ -121,6 +137,7 @@ export class Orchestrator extends EventEmitter {
   }
 
   dispatch(request) {
+    this.#assertQueueCapacity();
     const workspace = resolveWorkspace(
       request.workspace,
       this.config.workspaceRoots,
@@ -147,6 +164,7 @@ export class Orchestrator extends EventEmitter {
   }
 
   continueTask(taskId, request) {
+    this.#assertQueueCapacity();
     const parent = this.store.getTask(taskId);
     if (!parent) {
       throw new ControlPlaneError("task_not_found", `Unknown task: ${taskId}`);
@@ -191,24 +209,57 @@ export class Orchestrator extends EventEmitter {
     if (!task) {
       throw new ControlPlaneError("task_not_found", `Unknown task: ${taskId}`);
     }
-    if (task.threadId && task.turnId && task.status === "running") {
-      await this.codex.request("turn/interrupt", {
-        threadId: task.threadId,
-        turnId: task.turnId,
-      });
+    if (["completed", "partial", "blocked", "failed", "cancelled"].includes(task.status)) {
+      return task;
+    }
+    this.queue = this.queue.filter((entry) => entry.taskId !== taskId);
+    const active = this.running.get(taskId);
+    if (task.threadId && task.turnId && active) {
+      try {
+        await this.codex.request("turn/interrupt", {
+          threadId: task.threadId,
+          turnId: task.turnId,
+        });
+      } catch (error) {
+        this.store.addEvent(taskId, {
+          type: "task.cancel_interrupt_failed",
+          error: asErrorPayload(error),
+        });
+      }
     }
     this.store.updateTask(taskId, {
       status: "cancelled",
       completedAt: new Date().toISOString(),
     });
+    this.store.audit("task.cancelled", {
+      taskId,
+      previousStatus: task.status,
+      threadId: task.threadId,
+      turnId: task.turnId,
+    });
+    this.#finishActiveTask(taskId);
     return this.store.getTask(taskId);
   }
 
   async #drain() {
     const limit = this.config.limits.maxConcurrentTasks;
     while (this.running.size < limit && this.queue.length) {
-      const queued = this.queue.shift();
-      this.running.set(queued.taskId, { ...queued, turnId: null });
+      const activeWorkspaces = new Set(
+        [...this.running.values()].map((entry) => entry.workspace),
+      );
+      const index = this.queue.findIndex((entry) => {
+        const task = this.store.getTask(entry.taskId);
+        return task && !activeWorkspaces.has(task.workspace);
+      });
+      if (index === -1) break;
+      const [queued] = this.queue.splice(index, 1);
+      const task = this.store.getTask(queued.taskId);
+      if (!task || task.status !== "queued") continue;
+      this.running.set(queued.taskId, {
+        ...queued,
+        workspace: task.workspace,
+        turnId: null,
+      });
       this.#run(queued.taskId, queued.followUp).finally(() => {
         this.running.delete(queued.taskId);
         queueMicrotask(() => this.#drain());
@@ -218,7 +269,11 @@ export class Orchestrator extends EventEmitter {
 
   async #run(taskId, followUp) {
     const task = this.store.getTask(taskId, true);
-    if (!task) return;
+    if (!task || task.status !== "queued") return;
+    const workspace = resolveWorkspace(
+      task.workspace,
+      this.config.workspaceRoots,
+    );
     this.store.updateTask(taskId, {
       status: "running",
       startedAt: new Date().toISOString(),
@@ -245,12 +300,12 @@ export class Orchestrator extends EventEmitter {
 
       if (!threadId) {
         const started = await this.codex.request("thread/start", {
-          cwd: task.workspace,
+          cwd: workspace,
           model: task.policy.model,
           approvalPolicy: this.config.codex.approvalPolicy,
           approvalsReviewer: "user",
           sandbox: this.config.codex.sandbox,
-          runtimeWorkspaceRoots: [task.workspace],
+          runtimeWorkspaceRoots: [workspace],
           historyMode: "paginated",
           baseInstructions:
             "You are a secure software engineering execution agent. Work only inside the provided workspace. Use tools efficiently, verify changes, and return a concise final report.",
@@ -266,7 +321,7 @@ export class Orchestrator extends EventEmitter {
           },
         });
         threadId = started.thread.id;
-        this.store.setProject(task.workspace, { threadId });
+        this.store.setProject(workspace, { threadId });
       }
 
       this.store.updateTask(taskId, { threadId });
@@ -288,11 +343,11 @@ export class Orchestrator extends EventEmitter {
         model: task.policy.model,
         effort: task.policy.effort,
         summary: task.policy.summary,
-        cwd: task.workspace,
-        runtimeWorkspaceRoots: [task.workspace],
+        cwd: workspace,
+        runtimeWorkspaceRoots: [workspace],
         sandboxPolicy: {
           type: "workspaceWrite",
-          writableRoots: [task.workspace],
+          writableRoots: [workspace],
           networkAccess: Boolean(this.config.codex.networkAccess),
         },
         approvalPolicy: this.config.codex.approvalPolicy,
@@ -305,8 +360,23 @@ export class Orchestrator extends EventEmitter {
       });
 
       const turnId = response.turn.id;
+      const latestTask = this.store.getTask(taskId);
+      if (latestTask?.status === "cancelled") {
+        await this.codex.request("turn/interrupt", {
+          threadId,
+          turnId,
+        });
+        return;
+      }
       const active = this.running.get(taskId);
-      if (active) active.turnId = turnId;
+      if (active) {
+        active.turnId = turnId;
+        const pendingUsage = active.pendingUsage?.get(turnId);
+        if (pendingUsage) {
+          this.store.updateTask(taskId, { usage: mapUsage(pendingUsage) });
+        }
+        active.pendingUsage = null;
+      }
       this.store.updateTask(taskId, { turnId });
       this.store.addEvent(taskId, {
         method: "turn/started",
@@ -338,17 +408,37 @@ export class Orchestrator extends EventEmitter {
       Number(this.config.limits.maxTaskRuntimeMinutes ?? 240) * 60 * 1000;
     return new Promise((resolve) => {
       active.resolve = resolve;
-      active.timer = setTimeout(() => {
+      active.timer = setTimeout(async () => {
         const task = this.store.getTask(taskId);
         if (task?.status === "running") {
+          let interruptionError = null;
+          try {
+            await this.codex.request(
+              "turn/interrupt",
+              {
+                threadId: task.threadId,
+                turnId: task.turnId,
+              },
+              10000,
+            );
+          } catch (error) {
+            interruptionError = asErrorPayload(error);
+          }
           this.store.updateTask(taskId, {
             status: "interrupted",
             error: {
               code: "task_runtime_exceeded",
               message: `Task exceeded the configured runtime limit of ${this.config.limits.maxTaskRuntimeMinutes ?? 240} minutes.`,
-              details: null,
+              details: interruptionError,
             },
             completedAt: new Date().toISOString(),
+          });
+          this.store.audit("task.interrupted", {
+            taskId,
+            reason: "task_runtime_exceeded",
+            threadId: task.threadId,
+            turnId: task.turnId,
+            interruptionError,
           });
         }
         resolve();
@@ -429,13 +519,29 @@ export class Orchestrator extends EventEmitter {
   }
 
   #taskForNotification(params) {
+    const turnId = params.turnId ?? params.turn?.id;
+    if (turnId) {
+      for (const [taskId, active] of this.running.entries()) {
+        if (active.turnId === turnId) return taskId;
+      }
+      const threadMatches = [];
+      for (const [taskId, active] of this.running.entries()) {
+        const task = this.store.getTask(taskId);
+        if (task && params.threadId && task.threadId === params.threadId) {
+          threadMatches.push(taskId);
+        }
+      }
+      return threadMatches.length === 1 ? threadMatches[0] : null;
+    }
+    const matches = [];
     for (const [taskId, active] of this.running.entries()) {
       const task = this.store.getTask(taskId);
       if (!task) continue;
-      if (params.turnId && active.turnId === params.turnId) return taskId;
-      if (params.threadId && task.threadId === params.threadId) return taskId;
+      if (params.threadId && task.threadId === params.threadId) {
+        matches.push(taskId);
+      }
     }
-    return null;
+    return matches.length === 1 ? matches[0] : null;
   }
 
   #onNotification(message) {
@@ -444,7 +550,41 @@ export class Orchestrator extends EventEmitter {
     if (!taskId) return;
 
     if (message.method === "thread/tokenUsage/updated") {
-      this.store.updateTask(taskId, { usage: mapUsage(params.tokenUsage) });
+      const active = this.running.get(taskId);
+      if (!active) return;
+      if (!active.turnId) {
+        active.pendingUsage ??= new Map();
+        active.pendingUsage.set(params.turnId, params.tokenUsage);
+        return;
+      }
+      if (params.turnId !== active.turnId) {
+        return;
+      }
+      const usage = mapUsage(params.tokenUsage);
+      this.store.updateTask(taskId, { usage });
+      const task = this.store.getTask(taskId);
+      if (
+        !active.budgetInterruptRequested &&
+        usage.total_tokens > task.policy.tokenBudget
+      ) {
+        active.budgetInterruptRequested = true;
+        this.store.addEvent(taskId, {
+          type: "task.token_budget_exceeded",
+          budget: task.policy.tokenBudget,
+          measured: usage.total_tokens,
+        });
+        this.codex
+          .request("turn/interrupt", {
+            threadId: task.threadId,
+            turnId: active.turnId,
+          })
+          .catch((error) => {
+            this.store.addEvent(taskId, {
+              type: "task.budget_interrupt_failed",
+              error: asErrorPayload(error),
+            });
+          });
+      }
       return;
     }
 
@@ -479,15 +619,20 @@ export class Orchestrator extends EventEmitter {
     }
 
     if (message.method === "turn/completed") {
+      const current = this.store.getTask(taskId);
+      if (!current || current.status !== "running") {
+        this.#finishActiveTask(taskId);
+        return;
+      }
       const report = extractReport(
         params.turn,
         this.running.get(taskId)?.finalMessage ?? null,
       );
       const finalStatus =
-        params.turn.status === "completed"
-          ? report.status === "blocked"
-            ? "blocked"
-            : "completed"
+        this.running.get(taskId)?.budgetInterruptRequested
+          ? "interrupted"
+          : params.turn.status === "completed"
+          ? report.status
           : params.turn.status;
       this.store.updateTask(taskId, {
         status: finalStatus,
@@ -579,5 +724,15 @@ export class Orchestrator extends EventEmitter {
       id: item.id ?? null,
       status: item.status ?? null,
     };
+  }
+
+  #assertQueueCapacity() {
+    const limit = this.config.limits.maxQueuedTasks ?? 100;
+    if (this.queue.length >= limit) {
+      throw new ControlPlaneError(
+        "queue_full",
+        `Task queue limit reached (${limit})`,
+      );
+    }
   }
 }
