@@ -109,7 +109,7 @@ export class TaskStore {
     return null;
   }
 
-  createTask({ workspace, brief, policy, parentTaskId = null }) {
+  createTask({ workspace, brief, policy, parentTaskId = null, executor = null }) {
     this.#pruneTasks();
     const id = crypto.randomUUID();
     const task = {
@@ -118,6 +118,7 @@ export class TaskStore {
       workspace,
       brief,
       policy,
+      executor,
       status: "queued",
       createdAt: now(),
       updatedAt: now(),

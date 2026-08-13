@@ -15,8 +15,8 @@ import { assertExecutor } from "./executors/executor.js";
 import { assertLifecycle } from "./executors/lifecycle.js";
 import { createMcpHandler } from "./mcp/server.js";
 
-function buildExecutor(config) {
-  if (config.executor?.provider === "openai-compatible") {
+function buildExecutor(config, provider) {
+  if (provider === "openai-compatible") {
     const options = config.executor.openaiCompat ?? {};
     return new OpenAICompatibleExecutor({
       baseUrl: options.baseUrl,
@@ -29,7 +29,7 @@ function buildExecutor(config) {
       workspaceRoots: config.workspaceRoots,
     });
   }
-  if (config.executor?.provider === "deepseek") {
+  if (provider === "deepseek") {
     const options = config.executor.deepseek ?? {};
     return new OpenAICompatibleExecutor({
       baseUrl: options.baseUrl,
@@ -39,7 +39,7 @@ function buildExecutor(config) {
       workspaceRoots: config.workspaceRoots,
     });
   }
-  if (config.executor?.provider === "claude") {
+  if (provider === "claude") {
     const options = config.executor.claude ?? {};
     return new ClaudeCodeExecutor({
       command: options.command,
@@ -50,7 +50,7 @@ function buildExecutor(config) {
       workspaceRoots: config.workspaceRoots,
     });
   }
-  if (config.executor?.provider === "opencode") {
+  if (provider === "opencode") {
     const options = config.executor.opencode ?? {};
     return new OpenCodeExecutor({
       command: options.command,
@@ -64,6 +64,21 @@ function buildExecutor(config) {
     command: config.codex.command,
     disabledFeatures: config.codex.disabledFeatures,
   });
+}
+
+function buildExecutors(config) {
+  const providers = [
+    "codex",
+    "openai-compatible",
+    "deepseek",
+    "claude",
+    "opencode",
+  ];
+  const executors = new Map();
+  for (const provider of providers) {
+    executors.set(provider, buildExecutor(config, provider));
+  }
+  return executors;
 }
 
 export async function createApplication(overrides = {}) {
@@ -84,16 +99,34 @@ export async function createApplication(overrides = {}) {
         max: config.limits.rateLimit.max,
       })
     : null;
-  const codex = assertExecutor(
-    overrides.executor ??
-      overrides.codex ??
-      buildExecutor(config),
-    { execution: overrides.startCodex !== false },
-  );
+  let executors;
+  let defaultProvider;
+  if (overrides.executor || overrides.codex) {
+    const codex = assertExecutor(
+      overrides.executor ?? overrides.codex,
+      { execution: overrides.startCodex !== false },
+    );
+    executors = new Map([["codex", codex]]);
+    defaultProvider = "codex";
+  } else {
+    executors = buildExecutors(config);
+    defaultProvider = config.executor?.provider ?? "codex";
+    for (const executor of executors.values()) {
+      assertLifecycle(executor);
+    }
+    assertExecutor(executors.get(defaultProvider), {
+      execution: overrides.startCodex !== false,
+    });
+  }
+  const codex = executors.get(defaultProvider);
   let orchestrator = overrides.orchestrator;
   if (!orchestrator) {
-    assertLifecycle(codex);
-    orchestrator = new Orchestrator({ config, store, codex });
+    orchestrator = new Orchestrator({
+      config,
+      store,
+      executors,
+      defaultProvider,
+    });
   }
   if (overrides.startCodex !== false) {
     await orchestrator.start();
@@ -286,7 +319,9 @@ export async function createApplication(overrides = {}) {
     orchestrator,
     server,
     async close() {
-      await Promise.resolve(codex.stop());
+      for (const executor of executors.values()) {
+        await Promise.resolve(executor.stop()).catch(() => {});
+      }
       if (server.listening) {
         await new Promise((resolve, reject) =>
           server.close((error) => (error ? reject(error) : resolve())),

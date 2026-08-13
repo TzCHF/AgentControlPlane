@@ -42,6 +42,13 @@ const briefFields = {
   reasoning_effort: z.string().nullable().optional(),
   max_subagents: z.number().int().min(0).max(8).nullable().optional(),
   token_budget: z.number().int().min(1000).max(250000).nullable().optional(),
+  executor: z
+    .string()
+    .describe(
+      "Execution backend: codex, openai-compatible, deepseek, claude, or opencode. Defaults to the configured provider.",
+    )
+    .nullable()
+    .optional(),
 };
 
 function result(payload, message) {

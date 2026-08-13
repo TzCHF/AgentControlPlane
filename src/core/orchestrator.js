@@ -99,34 +99,62 @@ function extractReport(turn, cachedFinalMessage = null) {
 }
 
 export class Orchestrator extends EventEmitter {
-  constructor({ config, store, codex }) {
+  constructor({
+    config,
+    store,
+    codex = null,
+    executors = null,
+    defaultProvider = null,
+  }) {
     super();
     this.config = config;
     this.store = store;
-    this.codex = codex;
+    this.executors =
+      executors ?? new Map([[defaultProvider ?? "codex", codex]]);
+    this.defaultProvider = defaultProvider ?? config?.executor?.provider ?? "codex";
     this.running = new Map();
     this.queue = [];
     this.modelCatalog = [];
     this.runtimeHealth = {
       windowsSandbox: process.platform === "win32" ? "unknown" : "not_applicable",
     };
-    this.codex.on("notification", (message) => this.#onNotification(message));
-    this.codex.on("serverRequest", (message) => this.#onServerRequest(message));
-    this.codex.on("stderr", (text) =>
-      this.emit("diagnostic", { source: "codex", text }),
-    );
+    for (const executor of this.executors.values()) {
+      executor.on("notification", (message) =>
+        this.#onNotification(message, executor),
+      );
+      executor.on("serverRequest", (message) =>
+        this.#onServerRequest(message, executor),
+      );
+      executor.on("stderr", (text) =>
+        this.emit("diagnostic", { source: executor.id ?? "executor", text }),
+      );
+    }
+  }
+
+  #executorFor(task) {
+    const provider = task?.executor ?? this.defaultProvider;
+    const executor = this.executors.get(provider);
+    if (!executor) {
+      throw new ControlPlaneError(
+        "unknown_executor",
+        `Unknown executor: ${provider}`,
+        { available: [...this.executors.keys()] },
+      );
+    }
+    return executor;
   }
 
   async start() {
-    await this.codex.start();
-    const models = await this.codex.listModels({
+    const primary = this.#executorFor({});
+    await primary.start();
+    const models = await primary.listModels({
       limit: 100,
       includeHidden: false,
     });
     this.modelCatalog = models.data ?? [];
     if (process.platform === "win32") {
       try {
-        const readiness = await this.codex.getSandboxReadiness({});
+        const readiness = await primary.getSandboxReadiness({});
         this.runtimeHealth.windowsSandbox = readiness.status;
       } catch (error) {
         this.runtimeHealth.windowsSandbox = "unknown";
@@ -153,23 +181,21 @@ export class Orchestrator extends EventEmitter {
       request.workspace,
       this.config.workspaceRoots,
     );
-    if (
-      this.codex.requiresWindowsSandbox &&
-      process.platform === "win32" &&
-      this.runtimeHealth.windowsSandbox !== "ready"
-    ) {
-      throw new ControlPlaneError(
-        "windows_sandbox_not_ready",
-        "Codex Windows sandbox is not configured. Run npm run sandbox:setup before dispatching engineering work.",
-        { status: this.runtimeHealth.windowsSandbox },
-      );
-    }
+    const provider = request.executor ?? this.defaultProvider;
+    this.#executorFor({ executor: provider });
     const brief = normalizeBrief(
       request,
       this.config.limits.maxBriefCharacters,
     );
-    const policy = resolveProfile(this.config, request, this.modelCatalog);
-    const task = this.store.createTask({ workspace, brief, policy });
+    const catalog =
+      provider === this.defaultProvider ? this.modelCatalog : [];
+    const policy = resolveProfile(this.config, request, catalog);
+    const task = this.store.createTask({
+      workspace,
+      brief,
+      policy,
+      executor: provider,
+    });
     this.queue.push({ taskId: task.id, followUp: false });
     queueMicrotask(() => this.#drain());
     return task;
@@ -209,6 +235,7 @@ export class Orchestrator extends EventEmitter {
       brief,
       policy,
       parentTaskId: parent.id,
+      executor: parent.executor ?? this.defaultProvider,
     });
     this.store.updateTask(task.id, { threadId: parent.threadId });
     this.queue.push({ taskId: task.id, followUp: true });
@@ -228,7 +255,7 @@ export class Orchestrator extends EventEmitter {
     const active = this.running.get(taskId);
     if (task.threadId && task.turnId && active) {
       try {
-        await this.codex.interruptTurn({
+        await this.#executorFor(task).interruptTurn({
           threadId: task.threadId,
           turnId: task.turnId,
         });
@@ -287,18 +314,32 @@ export class Orchestrator extends EventEmitter {
       task.workspace,
       this.config.workspaceRoots,
     );
+    const executor = this.#executorFor(task);
     this.store.updateTask(taskId, {
       status: "running",
       startedAt: new Date().toISOString(),
     });
 
     try {
+      if (!executor.ready) {
+        await executor.start();
+      }
+      if (executor.requiresWindowsSandbox && process.platform === "win32") {
+        const readiness = await executor.getSandboxReadiness({});
+        if (readiness.status !== "ready") {
+          throw new ControlPlaneError(
+            "windows_sandbox_not_ready",
+            "Codex Windows sandbox is not configured. Run npm run sandbox:setup before dispatching engineering work.",
+            { status: readiness.status },
+          );
+        }
+      }
       const project = this.store.getProject(task.workspace);
       let threadId = task.threadId ?? project?.threadId ?? null;
 
       if (threadId) {
         try {
-          await this.codex.resumeThread({
+          await executor.resumeThread({
             threadId,
             historyMode: "paginated",
           });
@@ -312,7 +353,7 @@ export class Orchestrator extends EventEmitter {
       }
 
       if (!threadId) {
-        const started = await this.codex.startThread({
+        const started = await executor.startThread({
           cwd: workspace,
           model: task.policy.model,
           approvalPolicy: this.config.codex.approvalPolicy,
@@ -338,14 +379,14 @@ export class Orchestrator extends EventEmitter {
       }
 
       this.store.updateTask(taskId, { threadId });
-      await this.codex.setGoal({
+      await executor.setGoal({
         threadId,
         objective: task.brief.objective,
         status: "active",
         tokenBudget: task.policy.tokenBudget,
       });
 
-      const response = await this.codex.startTurn({
+      const response = await executor.startTurn({
         threadId,
         input: [
           {
@@ -375,7 +416,7 @@ export class Orchestrator extends EventEmitter {
       const turnId = response.turn.id;
       const latestTask = this.store.getTask(taskId);
       if (latestTask?.status === "cancelled") {
-        await this.codex.interruptTurn({
+        await executor.interruptTurn({
           threadId,
           turnId,
         });
@@ -427,7 +468,7 @@ export class Orchestrator extends EventEmitter {
         if (task?.status === "running") {
           let interruptionError = null;
           try {
-            await this.codex.interruptTurn(
+            await this.#executorFor(task).interruptTurn(
               {
                 threadId: task.threadId,
                 turnId: task.turnId,
@@ -498,7 +539,8 @@ export class Orchestrator extends EventEmitter {
       return active.goalUsagePollPromise;
     }
     const pollPromise = (async () => {
-      const response = await this.codex.getGoal(
+      const executor = this.#executorFor(task);
+      const response = await executor.getGoal(
         { threadId: task.threadId },
         10000,
       );
@@ -533,7 +575,7 @@ export class Orchestrator extends EventEmitter {
           source: "thread_goal",
         });
         try {
-          await this.codex.interruptTurn(
+          await executor.interruptTurn(
             {
               threadId: latest.threadId,
               turnId: active.turnId,
@@ -573,7 +615,7 @@ export class Orchestrator extends EventEmitter {
       let recovered = false;
       if (task.threadId) {
         try {
-          const resumed = await this.codex.resumeThread({
+          const resumed = await this.#executorFor(task).resumeThread({
             threadId: task.threadId,
             historyMode: "paginated",
           });
@@ -650,7 +692,7 @@ export class Orchestrator extends EventEmitter {
     return matches.length === 1 ? matches[0] : null;
   }
 
-  #onNotification(message) {
+  #onNotification(message, executor) {
     const params = message.params ?? {};
     const taskId = this.#taskForNotification(params);
     if (!taskId) return;
@@ -681,7 +723,7 @@ export class Orchestrator extends EventEmitter {
           measured: usage.total_tokens,
           source: "token_usage_notification",
         });
-        this.codex
+        executor
           .interruptTurn({
             threadId: task.threadId,
             turnId: active.turnId,
@@ -798,7 +840,7 @@ export class Orchestrator extends EventEmitter {
     this.#finishActiveTask(taskId);
   }
 
-  #onServerRequest(message) {
+  #onServerRequest(message, executor) {
     const params = message.params ?? {};
     const taskId = this.#taskForNotification(params);
     if (taskId) {
@@ -809,7 +851,7 @@ export class Orchestrator extends EventEmitter {
     }
 
     if (message.method === "item/commandExecution/requestApproval") {
-      this.codex.respond(message.id, {
+      executor.respond(message.id, {
         decision: {
           denied: {
             rejection:
@@ -820,22 +862,22 @@ export class Orchestrator extends EventEmitter {
       return;
     }
     if (message.method === "item/fileChange/requestApproval") {
-      this.codex.respond(message.id, { decision: "decline" });
+      executor.respond(message.id, { decision: "decline" });
       return;
     }
     if (message.method === "item/tool/requestUserInput") {
-      this.codex.respond(message.id, { answers: {} });
+      executor.respond(message.id, { answers: {} });
       return;
     }
     if (message.method === "item/permissions/requestApproval") {
-      this.codex.respond(message.id, {
+      executor.respond(message.id, {
         permissions: {},
         scope: "turn",
         strictAutoReview: true,
       });
       return;
     }
-    this.codex.respond(message.id, {});
+    executor.respond(message.id, {});
   }
 
   #compactItem(item) {
