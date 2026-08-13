@@ -21,6 +21,14 @@
       "image_generation"
     ]
   },
+  "executor": {
+    "provider": "codex",
+    "openaiCompat": {
+      "baseUrl": "http://127.0.0.1:10100/v1",
+      "apiKey": null,
+      "model": "deepseek/deepseek-v4-pro"
+    }
+  },
   "profiles": {
     "economy": {
       "model": "gpt-5.6-luna",

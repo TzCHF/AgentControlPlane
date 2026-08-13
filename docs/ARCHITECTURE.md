@@ -65,6 +65,12 @@ The orchestrator depends on a semantic agent lifecycle contract
 (`src/executors/lifecycle.js`) rather than any one agent protocol. The contract
 covers model listing, sandbox readiness, and the thread/goal/turn lifecycle.
 `CodexExecutor` is the reference implementation and maps that contract to the
-Codex app-server RPC. A second backend (for example, Claude Code) can implement
-the same methods against its own transport, leaving the MCP surface and the
-orchestrator unchanged.
+Codex app-server RPC. `OpenAICompatibleExecutor` implements the same contract
+against any OpenAI-compatible responses endpoint (for example, OpenCodex on
+`127.0.0.1:10100`), running a bounded tool loop with `read_file`, `write_file`,
+and `shell` tools. Select the executor with `executor.provider` in
+`config/default.json` (`codex` or `openai-compatible`).
+
+The OpenAI-compatible executor is intended for a single-user local setup. Its
+`shell` tool runs commands with the host user's privileges and does not inherit
+the Codex sandbox, so it should only be used with a workspace you fully trust.

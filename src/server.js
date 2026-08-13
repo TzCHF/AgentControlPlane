@@ -8,9 +8,28 @@ import { publicModels, publicProfiles } from "./core/profiles.js";
 import { RateLimiter } from "./core/rate-limit.js";
 import { TaskStore } from "./core/store.js";
 import { CodexExecutor } from "./executors/codex-executor.js";
+import { OpenAICompatibleExecutor } from "./executors/openai-compatible-executor.js";
 import { assertExecutor } from "./executors/executor.js";
 import { assertLifecycle } from "./executors/lifecycle.js";
 import { createMcpHandler } from "./mcp/server.js";
+
+function buildExecutor(config) {
+  if (config.executor?.provider === "openai-compatible") {
+    return new OpenAICompatibleExecutor({
+      baseUrl: config.executor.openaiCompat?.baseUrl,
+      apiKey:
+        process.env.AGENT_CONTROL_OPENAI_KEY ??
+        config.executor.openaiCompat?.apiKey ??
+        null,
+      model: config.executor.openaiCompat?.model,
+      workspaceRoots: config.workspaceRoots,
+    });
+  }
+  return new CodexExecutor({
+    command: config.codex.command,
+    disabledFeatures: config.codex.disabledFeatures,
+  });
+}
 
 export async function createApplication(overrides = {}) {
   const config = overrides.config ?? loadConfig();
@@ -33,10 +52,7 @@ export async function createApplication(overrides = {}) {
   const codex = assertExecutor(
     overrides.executor ??
       overrides.codex ??
-      new CodexExecutor({
-      command: config.codex.command,
-      disabledFeatures: config.codex.disabledFeatures,
-      }),
+      buildExecutor(config),
     { execution: overrides.startCodex !== false },
   );
   let orchestrator = overrides.orchestrator;
