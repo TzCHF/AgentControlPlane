@@ -41,6 +41,12 @@
       "allowedTools": ["Read", "Write", "Edit", "Bash"],
       "permissionMode": "acceptEdits",
       "maxTurns": 30
+    },
+    "opencode": {
+      "command": "opencode",
+      "model": null,
+      "agent": null,
+      "autoApprove": true
     }
   },
   "profiles": {

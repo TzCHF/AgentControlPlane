@@ -9,6 +9,7 @@ import { RateLimiter } from "./core/rate-limit.js";
 import { TaskStore } from "./core/store.js";
 import { CodexExecutor } from "./executors/codex-executor.js";
 import { ClaudeCodeExecutor } from "./executors/claude-code-executor.js";
+import { OpenCodeExecutor } from "./executors/opencode-executor.js";
 import { OpenAICompatibleExecutor } from "./executors/openai-compatible-executor.js";
 import { assertExecutor } from "./executors/executor.js";
 import { assertLifecycle } from "./executors/lifecycle.js";
@@ -46,6 +47,16 @@ function buildExecutor(config) {
       allowedTools: options.allowedTools,
       permissionMode: options.permissionMode,
       maxTurns: options.maxTurns,
+      workspaceRoots: config.workspaceRoots,
+    });
+  }
+  if (config.executor?.provider === "opencode") {
+    const options = config.executor.opencode ?? {};
+    return new OpenCodeExecutor({
+      command: options.command,
+      model: options.model ?? null,
+      agent: options.agent ?? null,
+      autoApprove: options.autoApprove,
       workspaceRoots: config.workspaceRoots,
     });
   }
