@@ -114,7 +114,7 @@ export async function createApplication(overrides = {}) {
         sendJson(response, 200, {
           status: "ok",
           service: "agent-control-plane",
-          version: "0.1.0",
+          version: "0.2.0",
           codex_ready: Boolean(codex.ready),
         });
         return;

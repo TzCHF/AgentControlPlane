@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.2.0 — 2026-08-13
+
+Security hardening and the multi-executor foundation.
+
+### Added
+
+- A generic `ExecutorAdapter` contract (`src/executors/`) with a `CodexExecutor`
+  implementation, so the control plane can target other coding agents without
+  changing the MCP surface.
+- Benchmark reporting that compares `direct` versus `controlled` execution and
+  reports token, elapsed-time, and success metrics (`src/benchmark/`,
+  `docs/BENCHMARKING.md`).
+- Per-request rate limiting with `Retry-After` signalling.
+- An append-only audit hash chain for tamper-evident logs.
+- Security response headers on the HTTP surface.
+- A GitHub Actions CI workflow that runs the test suite on every push and pull
+  request.
+
+### Changed
+
+- `main` is protected: required status checks, linear history, and no force
+  pushes.
+
 ## v0.1.0 — 2026-08-13
 
 Initial public release.

@@ -73,7 +73,7 @@ test("server/discover is served statelessly without an MCP session", async () =>
     assert.equal(body.jsonrpc, "2.0");
     assert.equal(body.id, 7);
     assert.equal(body.result.serverInfo.name, "agent-control-plane");
-    assert.equal(body.result.serverInfo.version, "0.1.0");
+    assert.equal(body.result.serverInfo.version, "0.2.0");
     assert.equal(typeof body.result.protocolVersion, "string");
     assert.ok(body.result.capabilities?.tools);
     assert.ok(Array.isArray(body.result.tools));
