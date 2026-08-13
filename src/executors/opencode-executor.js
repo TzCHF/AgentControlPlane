@@ -4,50 +4,27 @@ import readline from "node:readline";
 import { ControlPlaneError } from "../core/errors.js";
 import { ExecutorAdapter } from "./executor.js";
 
-function extractText(value) {
-  if (typeof value === "string") return value;
-  if (Array.isArray(value)) {
-    return value
-      .map((part) => {
-        if (typeof part === "string") return part;
-        if (part && typeof part === "object") {
-          return part.text ?? part.content ?? part.value ?? "";
-        }
-        return "";
-      })
-      .filter(Boolean)
-      .join("");
-  }
-  return "";
-}
-
-// NOTE: The exact event schema of `opencode run --format json` is version
-// specific. This normalizer is intentionally tolerant and reads the common
-// shapes; adjust it against a real sample if the field names differ.
+// Matches `opencode run --format json`: newline-delimited JSON events with a
+// top-level `type` and a `part` object. Text parts carry `part.text`; the
+// final `step_finish` part carries the cumulative `part.tokens`.
 export function normalizeOpenCodeEvents(events) {
   let finalText = "";
   let inputTokens = 0;
   let outputTokens = 0;
+  let reasoningTokens = 0;
+  let totalTokens = 0;
 
   for (const event of events) {
     if (!event || typeof event !== "object") continue;
-    const data = event.data ?? event;
-    const role = event.role ?? data.role ?? null;
-    const type = event.type ?? data.type ?? null;
-
-    if (role === "assistant" || type === "message" || type === "assistant") {
-      const text =
-        extractText(data.content) ||
-        extractText(data.parts) ||
-        extractText(data.text) ||
-        extractText(event.message);
-      if (text) finalText = text;
+    const part = event.part ?? {};
+    if (event.type === "text" || part.type === "text") {
+      if (typeof part.text === "string" && part.text) finalText = part.text;
     }
-
-    const usage = data.usage ?? event.usage ?? null;
-    if (usage && typeof usage === "object") {
-      inputTokens += Number(usage.input_tokens ?? usage.inputTokens ?? 0);
-      outputTokens += Number(usage.output_tokens ?? usage.outputTokens ?? 0);
+    if (part.tokens && typeof part.tokens === "object") {
+      inputTokens = Number(part.tokens.input ?? 0);
+      outputTokens = Number(part.tokens.output ?? 0);
+      reasoningTokens = Number(part.tokens.reasoning ?? 0);
+      totalTokens = Number(part.tokens.total ?? inputTokens + outputTokens);
     }
   }
 
@@ -56,7 +33,8 @@ export function normalizeOpenCodeEvents(events) {
     usage: {
       input_tokens: inputTokens,
       output_tokens: outputTokens,
-      total_tokens: inputTokens + outputTokens,
+      reasoning_output_tokens: reasoningTokens,
+      total_tokens: totalTokens,
     },
   };
 }
@@ -371,7 +349,7 @@ export class OpenCodeExecutor extends ExecutorAdapter {
       inputTokens: usage.input_tokens,
       cachedInputTokens: 0,
       outputTokens: usage.output_tokens,
-      reasoningOutputTokens: 0,
+      reasoningOutputTokens: usage.reasoning_output_tokens ?? 0,
       totalTokens: usage.total_tokens,
     };
   }
@@ -380,6 +358,7 @@ export class OpenCodeExecutor extends ExecutorAdapter {
     return {
       input_tokens: 0,
       output_tokens: 0,
+      reasoning_output_tokens: 0,
       total_tokens: 0,
     };
   }

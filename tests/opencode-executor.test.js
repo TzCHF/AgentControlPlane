@@ -14,32 +14,47 @@ test("OpenCodeExecutor satisfies the agent lifecycle contract", () => {
 test("normalizes opencode json events into text and usage", () => {
   const events = [
     {
-      type: "message",
-      data: { role: "user", content: [{ type: "text", text: "hi" }] },
+      type: "step_start",
+      sessionID: "ses_1",
+      part: { id: "p1", type: "step-start" },
     },
     {
-      type: "message",
-      data: {
-        role: "assistant",
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              status: "completed",
-              summary: "Done",
-              changed_files: ["a.js"],
-              tests: [],
-              blockers: [],
-              next_action: null,
-            }),
-          },
-        ],
+      type: "text",
+      sessionID: "ses_1",
+      part: {
+        id: "p2",
+        type: "text",
+        text: JSON.stringify({
+          status: "completed",
+          summary: "Done",
+          changed_files: ["a.js"],
+          tests: [],
+          blockers: [],
+          next_action: null,
+        }),
       },
-      usage: { input_tokens: 120, output_tokens: 80 },
+    },
+    {
+      type: "step_finish",
+      sessionID: "ses_1",
+      part: {
+        id: "p3",
+        type: "step-finish",
+        tokens: {
+          total: 200,
+          input: 120,
+          output: 80,
+          reasoning: 0,
+          cache: { write: 0, read: 0 },
+        },
+        cost: 0.001,
+      },
     },
   ];
   const normalized = normalizeOpenCodeEvents(events);
   assert.equal(normalized.usage.total_tokens, 200);
+  assert.equal(normalized.usage.input_tokens, 120);
+  assert.equal(normalized.usage.output_tokens, 80);
   assert.match(normalized.finalText, /"summary":"Done"/);
 });
 
