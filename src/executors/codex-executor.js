@@ -1,0 +1,39 @@
+import { CodexAppServerClient } from "../core/codex-client.js";
+import { ExecutorAdapter } from "./executor.js";
+
+export class CodexExecutor extends ExecutorAdapter {
+  constructor(options) {
+    super({
+      id: "codex",
+      displayName: "Codex App Server",
+      capabilities: {
+        persistentThreads: true,
+        tokenUsage: true,
+        hardInterrupt: true,
+        subagents: true,
+      },
+    });
+    this.client = new CodexAppServerClient(options);
+    for (const event of ["notification", "serverRequest", "stderr"] ) {
+      this.client.on(event, (payload) => this.emit(event, payload));
+    }
+  }
+
+  async start() {
+    await this.client.start();
+    this.ready = Boolean(this.client.ready);
+  }
+
+  async stop() {
+    await this.client.stop();
+    this.ready = false;
+  }
+
+  request(...args) {
+    return this.client.request(...args);
+  }
+
+  respond(...args) {
+    return this.client.respond(...args);
+  }
+}

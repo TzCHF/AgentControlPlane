@@ -1,5 +1,7 @@
 # AgentControlPlane
 
+> Experimental local-first software for single-user evaluation.
+
 AgentControlPlane runs a local MCP server that lets a ChatGPT conversation
 dispatch compact engineering tasks to a persistent Codex project thread, then
 read back a compact report with measured token usage.
@@ -56,14 +58,42 @@ runs it.
 Each dispatch picks a profile. The control plane measures token usage from the
 Codex thread goal and interrupts the turn when the budget is reached.
 
-| Profile | Use | Model | Effort | Subagents | Budget |
-|---|---|---|---|---:|---:|
-| economy | Small, well-defined edits | gpt-5.6-luna | low | 0 | 30k |
-| balanced | Normal feature and fix work | gpt-5.6-terra | high | up to 2 | 90k |
-| deep | Architecture and broad refactor | gpt-5.6-sol | ultra | up to 4 | 220k |
+| Profile | Use | Effort | Subagents | Budget |
+|---|---|---|---:|---:|
+| economy | Small, well-defined edits | low | 0 | 30k |
+| balanced | Normal feature and fix work | high | up to 2 | 90k |
+| deep | Architecture and broad refactor | ultra | up to 4 | 220k |
 
 Override the model, effort, subagent count, or budget per task within local
-policy. `usage_report` returns measured totals across tasks.
+policy. Model names come from the connected executor at runtime.
+`usage_report` returns measured totals across tasks.
+
+## Executor and controller adapters
+
+The current release includes a Codex App Server executor and a ChatGPT MCP
+controller. Stable adapter contracts live under `src/executors` and
+`src/controllers` so later releases can add Claude Code, Gemini CLI, OpenCode,
+API controllers, and other MCP controllers while the existing task persistence
+and policy enforcement remain in place.
+
+## Benchmark reports
+
+Benchmark input records two runs of the same task:
+
+- direct: the original request goes to the executor;
+- controlled: a controller clarifies the request and sends a compact brief to
+  the executor.
+
+Generate a report from the included example:
+
+```powershell
+npm.cmd run benchmark:report -- benchmark/example-results.json
+```
+
+The report separates executor-token savings from total-token savings and
+includes completion rates and elapsed time. Published savings claims require
+repeated runs of the same task, model, repository revision, and acceptance
+criteria.
 
 ## MCP tools
 
@@ -101,6 +131,7 @@ engineering or agent usage allowance.
 - [docs/CHATGPT-CONNECTION.md](docs/CHATGPT-CONNECTION.md)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/PROTOCOL.md](docs/PROTOCOL.md)
+- [docs/BENCHMARKING.md](docs/BENCHMARKING.md)
 - [docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md)
 - [SECURITY.md](SECURITY.md)
 - [CHANGELOG.md](CHANGELOG.md)

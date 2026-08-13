@@ -2,12 +2,13 @@ import http from "node:http";
 import crypto from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { loadConfig } from "./core/config.js";
-import { CodexAppServerClient } from "./core/codex-client.js";
 import { sendError, sendJson, readJson, routeParts } from "./core/http.js";
 import { Orchestrator } from "./core/orchestrator.js";
 import { publicModels, publicProfiles } from "./core/profiles.js";
 import { RateLimiter } from "./core/rate-limit.js";
 import { TaskStore } from "./core/store.js";
+import { CodexExecutor } from "./executors/codex-executor.js";
+import { assertExecutor } from "./executors/executor.js";
 import { createMcpHandler } from "./mcp/server.js";
 
 export async function createApplication(overrides = {}) {
@@ -28,12 +29,15 @@ export async function createApplication(overrides = {}) {
         max: config.limits.rateLimit.max,
       })
     : null;
-  const codex =
-    overrides.codex ??
-    new CodexAppServerClient({
+  const codex = assertExecutor(
+    overrides.executor ??
+      overrides.codex ??
+      new CodexExecutor({
       command: config.codex.command,
       disabledFeatures: config.codex.disabledFeatures,
-    });
+      }),
+    { execution: overrides.startCodex !== false },
+  );
   const orchestrator =
     overrides.orchestrator ?? new Orchestrator({ config, store, codex });
   if (overrides.startCodex !== false) {

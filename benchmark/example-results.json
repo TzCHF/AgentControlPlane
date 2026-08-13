@@ -1,0 +1,19 @@
+{
+  "cases": [
+    {
+      "id": "example-small-1",
+      "category": "small",
+      "direct": {
+        "success": true,
+        "duration_ms": 1000,
+        "executor_usage": { "total_tokens": 1000 }
+      },
+      "controlled": {
+        "success": true,
+        "duration_ms": 1200,
+        "controller_usage": { "total_tokens": 100 },
+        "executor_usage": { "total_tokens": 700 }
+      }
+    }
+  ]
+}

@@ -2,8 +2,9 @@
 
 ## Supported scope
 
-The current version is a local, single-user development service. It is not yet
-approved for direct public-Internet exposure or untrusted multi-tenant use.
+The current version is a local, single-user development service. Direct
+public-Internet exposure and untrusted multi-tenant use require the controls
+listed under "Before commercial deployment."
 
 ## Security invariants
 
