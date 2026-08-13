@@ -13,6 +13,7 @@ export class CodexExecutor extends ExecutorAdapter {
         subagents: true,
       },
     });
+    this.requiresWindowsSandbox = true;
     this.client = new CodexAppServerClient(options);
     for (const event of ["notification", "serverRequest", "stderr"] ) {
       this.client.on(event, (payload) => this.emit(event, payload));

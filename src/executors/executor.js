@@ -35,6 +35,7 @@ export class ExecutorAdapter extends EventEmitter {
       ...capabilities,
     };
     this.ready = false;
+    this.requiresWindowsSandbox = false;
   }
 
   async start() {

@@ -154,6 +154,7 @@ export class Orchestrator extends EventEmitter {
       this.config.workspaceRoots,
     );
     if (
+      this.codex.requiresWindowsSandbox &&
       process.platform === "win32" &&
       this.runtimeHealth.windowsSandbox !== "ready"
     ) {
