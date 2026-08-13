@@ -1,0 +1,21 @@
+{
+  "name": "agent-control-plane",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A local control plane that lets ChatGPT dispatch compact engineering briefs to persistent Codex agent threads.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test",
+    "check": "node --check src/server.js",
+    "sandbox:setup": "node scripts/setup-windows-sandbox.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "zod": "^3.25.0"
+  }
+}

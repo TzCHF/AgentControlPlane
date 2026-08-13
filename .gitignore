@@ -1,0 +1,8 @@
+node_modules/
+.agent-control/
+.env
+coverage/
+dist/
+*.log
+docs/app-server-schema/
+.live-smoke-state*/

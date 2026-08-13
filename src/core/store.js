@@ -1,0 +1,161 @@
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+
+function now() {
+  return new Date().toISOString();
+}
+
+function emptyState() {
+  return {
+    version: 1,
+    projects: {},
+    tasks: {},
+  };
+}
+
+export class TaskStore {
+  constructor(stateDir, maxEvents = 500) {
+    this.stateDir = stateDir;
+    this.statePath = path.join(stateDir, "state.json");
+    this.auditPath = path.join(stateDir, "audit.jsonl");
+    this.maxEvents = maxEvents;
+    fs.mkdirSync(stateDir, { recursive: true });
+    this.state = fs.existsSync(this.statePath)
+      ? JSON.parse(fs.readFileSync(this.statePath, "utf8"))
+      : emptyState();
+  }
+
+  persist() {
+    const temporary = `${this.statePath}.${process.pid}.tmp`;
+    fs.writeFileSync(temporary, JSON.stringify(this.state, null, 2), "utf8");
+    fs.renameSync(temporary, this.statePath);
+  }
+
+  audit(type, payload) {
+    fs.appendFileSync(
+      this.auditPath,
+      `${JSON.stringify({ at: now(), type, ...payload })}\n`,
+      "utf8",
+    );
+  }
+
+  createTask({ workspace, brief, policy, parentTaskId = null }) {
+    const id = crypto.randomUUID();
+    const task = {
+      id,
+      parentTaskId,
+      workspace,
+      brief,
+      policy,
+      status: "queued",
+      createdAt: now(),
+      updatedAt: now(),
+      startedAt: null,
+      completedAt: null,
+      threadId: null,
+      turnId: null,
+      result: null,
+      error: null,
+      usage: null,
+      subagents: [],
+      events: [],
+    };
+    this.state.tasks[id] = task;
+    this.persist();
+    this.audit("task.created", {
+      taskId: id,
+      workspace,
+      policy: policy.name,
+    });
+    return structuredClone(task);
+  }
+
+  updateTask(id, patch) {
+    const task = this.state.tasks[id];
+    if (!task) return null;
+    Object.assign(task, patch, { updatedAt: now() });
+    this.persist();
+    return structuredClone(task);
+  }
+
+  addEvent(id, event) {
+    const task = this.state.tasks[id];
+    if (!task) return;
+    task.events.push({ at: now(), ...event });
+    if (task.events.length > this.maxEvents) {
+      task.events.splice(0, task.events.length - this.maxEvents);
+    }
+    task.updatedAt = now();
+    this.persist();
+    this.audit("task.event", {
+      taskId: id,
+      method: event.method ?? event.type ?? "event",
+    });
+  }
+
+  getTask(id, includeEvents = false) {
+    const task = this.state.tasks[id];
+    if (!task) return null;
+    const copy = structuredClone(task);
+    if (!includeEvents) delete copy.events;
+    return copy;
+  }
+
+  listTasks(limit = 20) {
+    return Object.values(this.state.tasks)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, limit)
+      .map((task) => {
+        const copy = structuredClone(task);
+        delete copy.events;
+        return copy;
+      });
+  }
+
+  listByStatus(statuses) {
+    const wanted = new Set(statuses);
+    return Object.values(this.state.tasks)
+      .filter((task) => wanted.has(task.status))
+      .map((task) => structuredClone(task));
+  }
+
+  getProject(workspace) {
+    return structuredClone(this.state.projects[workspace] ?? null);
+  }
+
+  setProject(workspace, patch) {
+    const current = this.state.projects[workspace] ?? {
+      workspace,
+      threadId: null,
+      createdAt: now(),
+    };
+    this.state.projects[workspace] = {
+      ...current,
+      ...patch,
+      updatedAt: now(),
+    };
+    this.persist();
+    return structuredClone(this.state.projects[workspace]);
+  }
+
+  usageReport() {
+    const total = {
+      input_tokens: 0,
+      cached_input_tokens: 0,
+      output_tokens: 0,
+      reasoning_output_tokens: 0,
+      total_tokens: 0,
+      tasks_with_usage: 0,
+    };
+    for (const task of Object.values(this.state.tasks)) {
+      if (!task.usage) continue;
+      total.tasks_with_usage += 1;
+      for (const key of Object.keys(total)) {
+        if (key === "tasks_with_usage") continue;
+        total[key] += Number(task.usage[key] ?? 0);
+      }
+    }
+    return total;
+  }
+}

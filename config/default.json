@@ -1,0 +1,43 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 4318
+  },
+  "workspaceRoots": [],
+  "codex": {
+    "command": "codex",
+    "defaultModel": null,
+    "approvalPolicy": "never",
+    "sandbox": "workspace-write",
+    "networkAccess": false
+  },
+  "profiles": {
+    "economy": {
+      "model": "gpt-5.6-luna",
+      "effort": "low",
+      "maxSubagents": 0,
+      "tokenBudget": 30000,
+      "summary": "concise"
+    },
+    "balanced": {
+      "model": "gpt-5.6-terra",
+      "effort": "high",
+      "maxSubagents": 2,
+      "tokenBudget": 90000,
+      "summary": "concise"
+    },
+    "deep": {
+      "model": "gpt-5.6-sol",
+      "effort": "ultra",
+      "maxSubagents": 4,
+      "tokenBudget": 220000,
+      "summary": "detailed"
+    }
+  },
+  "limits": {
+    "maxBriefCharacters": 24000,
+    "maxConcurrentTasks": 2,
+    "maxStoredEventsPerTask": 500,
+    "maxTaskRuntimeMinutes": 240
+  }
+}

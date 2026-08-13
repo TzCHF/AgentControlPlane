@@ -1,0 +1,105 @@
+import { ControlPlaneError } from "./errors.js";
+
+export function resolveProfile(config, request, modelCatalog = []) {
+  const profileName = request.profile ?? "balanced";
+  const profile = config.profiles[profileName];
+  if (!profile) {
+    throw new ControlPlaneError(
+      "unknown_profile",
+      `Unknown profile: ${profileName}`,
+      { available: Object.keys(config.profiles) },
+    );
+  }
+
+  const maxSubagents =
+    request.max_subagents ?? request.maxSubagents ?? profile.maxSubagents;
+  const tokenBudget =
+    request.token_budget ?? request.tokenBudget ?? profile.tokenBudget;
+  const effort =
+    request.reasoning_effort ?? request.reasoningEffort ?? profile.effort;
+
+  if (!Number.isInteger(maxSubagents) || maxSubagents < 0 || maxSubagents > 8) {
+    throw new ControlPlaneError(
+      "invalid_subagent_limit",
+      "max_subagents must be an integer from 0 to 8",
+    );
+  }
+  if (!Number.isInteger(tokenBudget) || tokenBudget < 1000) {
+    throw new ControlPlaneError(
+      "invalid_token_budget",
+      "token_budget must be an integer of at least 1000",
+    );
+  }
+
+  const resolved = {
+    name: profileName,
+    model: request.model ?? profile.model ?? config.codex.defaultModel,
+    effort,
+    maxSubagents,
+    tokenBudget,
+    summary: profile.summary ?? "concise",
+  };
+
+  if (!resolved.model) {
+    const defaultModel = modelCatalog.find((model) => model.isDefault);
+    resolved.model = defaultModel?.model ?? defaultModel?.id ?? null;
+  }
+  if (!resolved.model) {
+    throw new ControlPlaneError(
+      "model_required",
+      "No engineering model is configured and Codex did not advertise a default",
+    );
+  }
+
+  if (modelCatalog.length) {
+    const selected = modelCatalog.find(
+      (model) => model.id === resolved.model || model.model === resolved.model,
+    );
+    if (!selected) {
+      throw new ControlPlaneError(
+        "unknown_model",
+        `Codex does not advertise the requested model: ${resolved.model}`,
+        { available: modelCatalog.map((model) => model.model ?? model.id) },
+      );
+    }
+    const efforts = selected.supportedReasoningEfforts?.map(
+      (entry) => entry.reasoningEffort,
+    );
+    if (efforts?.length && !efforts.includes(resolved.effort)) {
+      throw new ControlPlaneError(
+        "unsupported_reasoning_effort",
+        `${resolved.model} does not advertise reasoning effort ${resolved.effort}`,
+        { available: efforts },
+      );
+    }
+  }
+  return resolved;
+}
+
+export function publicProfiles(config) {
+  return Object.fromEntries(
+    Object.entries(config.profiles).map(([name, profile]) => [
+      name,
+      {
+        model: profile.model,
+        effort: profile.effort,
+        max_subagents: profile.maxSubagents,
+        token_budget: profile.tokenBudget,
+        summary: profile.summary,
+      },
+    ]),
+  );
+}
+
+export function publicModels(modelCatalog) {
+  return modelCatalog.map((model) => ({
+    id: model.id,
+    model: model.model,
+    display_name: model.displayName,
+    description: model.description,
+    is_default: model.isDefault,
+    supported_reasoning_efforts: model.supportedReasoningEfforts?.map(
+      (entry) => entry.reasoningEffort,
+    ) ?? [],
+  }));
+}

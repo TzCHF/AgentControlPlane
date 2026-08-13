@@ -1,0 +1,108 @@
+import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+import { Orchestrator } from "../src/core/orchestrator.js";
+import { TaskStore } from "../src/core/store.js";
+
+class FinalMessageCodex extends EventEmitter {
+  async start() {}
+
+  async request(method) {
+    if (method === "model/list") {
+      return {
+        data: [
+          {
+            id: "fake-model",
+            model: "fake-model",
+            isDefault: true,
+            supportedReasoningEfforts: [{ reasoningEffort: "low" }],
+          },
+        ],
+      };
+    }
+    if (method === "windowsSandbox/readiness") return { status: "ready" };
+    if (method === "thread/start") return { thread: { id: "thread-1" } };
+    if (method === "turn/start") {
+      setImmediate(() => {
+        this.emit("notification", {
+          method: "item/completed",
+          params: {
+            threadId: "thread-1",
+            turnId: "turn-1",
+            item: {
+              type: "agentMessage",
+              phase: "final_answer",
+              text: "Status: Blocked\n\nThe sandbox helper is unavailable.",
+            },
+          },
+        });
+        this.emit("notification", {
+          method: "turn/completed",
+          params: {
+            threadId: "thread-1",
+            turn: { id: "turn-1", status: "completed", items: [] },
+          },
+        });
+      });
+      return { turn: { id: "turn-1" } };
+    }
+    return {};
+  }
+
+  respond() {}
+}
+
+test("uses cached final messages and preserves blocked status", async () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "acp-result-work-"));
+  const store = new TaskStore(
+    fs.mkdtempSync(path.join(os.tmpdir(), "acp-result-state-")),
+  );
+  const config = {
+    workspaceRoots: [path.dirname(workspace)],
+    codex: {
+      approvalPolicy: "never",
+      sandbox: "workspace-write",
+      networkAccess: false,
+      defaultModel: null,
+    },
+    profiles: {
+      economy: {
+        model: "fake-model",
+        effort: "low",
+        maxSubagents: 0,
+        tokenBudget: 30000,
+        summary: "concise",
+      },
+    },
+    limits: {
+      maxBriefCharacters: 24000,
+      maxConcurrentTasks: 1,
+      maxStoredEventsPerTask: 20,
+      maxTaskRuntimeMinutes: 1,
+    },
+  };
+  const orchestrator = new Orchestrator({
+    config,
+    store,
+    codex: new FinalMessageCodex(),
+  });
+  await orchestrator.start();
+  const task = orchestrator.dispatch({
+    workspace,
+    objective: "Inspect a file",
+    profile: "economy",
+  });
+
+  const deadline = Date.now() + 1000;
+  while (["queued", "running"].includes(store.getTask(task.id).status)) {
+    if (Date.now() > deadline) throw new Error("Timed out");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+
+  const completed = store.getTask(task.id);
+  assert.equal(completed.status, "blocked");
+  assert.match(completed.result.summary, /sandbox helper/i);
+});

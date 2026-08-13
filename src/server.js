@@ -1,0 +1,175 @@
+import http from "node:http";
+import { pathToFileURL } from "node:url";
+import { loadConfig } from "./core/config.js";
+import { CodexAppServerClient } from "./core/codex-client.js";
+import { sendError, sendJson, readJson, routeParts } from "./core/http.js";
+import { Orchestrator } from "./core/orchestrator.js";
+import { publicModels, publicProfiles } from "./core/profiles.js";
+import { TaskStore } from "./core/store.js";
+import { createMcpHandler } from "./mcp/server.js";
+
+export async function createApplication(overrides = {}) {
+  const config = overrides.config ?? loadConfig();
+  config.publicProfiles = () => publicProfiles(config);
+  const store =
+    overrides.store ??
+    new TaskStore(
+      config.stateDir,
+      config.limits.maxStoredEventsPerTask,
+    );
+  const codex =
+    overrides.codex ??
+    new CodexAppServerClient({ command: config.codex.command });
+  const orchestrator =
+    overrides.orchestrator ?? new Orchestrator({ config, store, codex });
+  if (overrides.startCodex !== false) {
+    await orchestrator.start();
+  }
+  const handleMcp = createMcpHandler({ orchestrator, store, config });
+
+  const server = http.createServer(async (request, response) => {
+    try {
+      const { url, parts } = routeParts(request);
+
+      if (request.method === "GET" && url.pathname === "/health") {
+        sendJson(response, 200, {
+          status: "ok",
+          service: "agent-control-plane",
+          version: "0.1.0",
+          codex_ready: Boolean(codex.ready),
+          runtime: orchestrator.getRuntimeHealth(),
+        });
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === "/v1/profiles") {
+        sendJson(response, 200, { profiles: publicProfiles(config) });
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === "/v1/models") {
+        sendJson(response, 200, {
+          models: publicModels(orchestrator.getModels()),
+        });
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === "/v1/tasks") {
+        const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") ?? 20)));
+        sendJson(response, 200, { tasks: store.listTasks(limit) });
+        return;
+      }
+
+      if (request.method === "POST" && url.pathname === "/v1/tasks") {
+        const body = await readJson(request);
+        const task = orchestrator.dispatch(body);
+        sendJson(response, 202, { task });
+        return;
+      }
+
+      if (
+        request.method === "GET" &&
+        parts.length === 3 &&
+        parts[0] === "v1" &&
+        parts[1] === "tasks"
+      ) {
+        const task = store.getTask(
+          parts[2],
+          url.searchParams.get("events") === "1",
+        );
+        if (!task) {
+          sendJson(response, 404, {
+            error: { code: "task_not_found", message: "Task not found" },
+          });
+          return;
+        }
+        sendJson(response, 200, { task });
+        return;
+      }
+
+      if (
+        request.method === "POST" &&
+        parts.length === 4 &&
+        parts[0] === "v1" &&
+        parts[1] === "tasks" &&
+        parts[3] === "follow-up"
+      ) {
+        const body = await readJson(request);
+        const task = orchestrator.continueTask(parts[2], body);
+        sendJson(response, 202, { task });
+        return;
+      }
+
+      if (
+        request.method === "POST" &&
+        parts.length === 4 &&
+        parts[0] === "v1" &&
+        parts[1] === "tasks" &&
+        parts[3] === "cancel"
+      ) {
+        const task = await orchestrator.cancel(parts[2]);
+        sendJson(response, 200, { task });
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === "/v1/usage") {
+        sendJson(response, 200, { usage: store.usageReport() });
+        return;
+      }
+
+      if (url.pathname === "/mcp" && request.method === "POST") {
+        const body = await readJson(request, 1024 * 1024);
+        await handleMcp(request, response, body);
+        return;
+      }
+
+      sendJson(response, 404, {
+        error: { code: "not_found", message: "Route not found" },
+      });
+    } catch (error) {
+      sendError(response, error);
+    }
+  });
+
+  return {
+    config,
+    store,
+    codex,
+    orchestrator,
+    server,
+    async close() {
+      codex.stop();
+      if (server.listening) {
+        await new Promise((resolve, reject) =>
+          server.close((error) => (error ? reject(error) : resolve())),
+        );
+      }
+    },
+  };
+}
+
+export async function main() {
+  const app = await createApplication();
+  app.server.listen(app.config.server.port, app.config.server.host, () => {
+    console.log(
+      `AgentControlPlane listening on http://${app.config.server.host}:${app.config.server.port}`,
+    );
+  });
+
+  const shutdown = async () => {
+    await app.close();
+    process.exit(0);
+  };
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+}
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

@@ -1,0 +1,9 @@
+# AgentControlPlane repository instructions
+
+- Keep this repository independent from CWapi and do not copy CWapi source code.
+- Default to local-only networking and workspace-scoped writes.
+- Do not add API-key-based model calls. Codex authentication is owned by the installed Codex client.
+- Preserve compact structured task results and token-usage accounting.
+- Treat MCP as the control-plane boundary; Codex app-server is the execution-plane boundary.
+- Tests must not consume model quota unless explicitly marked as live tests.
+
