@@ -34,6 +34,13 @@
       "apiKeyEnv": "DEEPSEEK_API_KEY",
       "model": "deepseek-chat",
       "protocol": "chat"
+    },
+    "claude": {
+      "command": "claude",
+      "model": null,
+      "allowedTools": ["Read", "Write", "Edit", "Bash"],
+      "permissionMode": "acceptEdits",
+      "maxTurns": 30
     }
   },
   "profiles": {

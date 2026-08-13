@@ -8,6 +8,7 @@ import { publicModels, publicProfiles } from "./core/profiles.js";
 import { RateLimiter } from "./core/rate-limit.js";
 import { TaskStore } from "./core/store.js";
 import { CodexExecutor } from "./executors/codex-executor.js";
+import { ClaudeCodeExecutor } from "./executors/claude-code-executor.js";
 import { OpenAICompatibleExecutor } from "./executors/openai-compatible-executor.js";
 import { assertExecutor } from "./executors/executor.js";
 import { assertLifecycle } from "./executors/lifecycle.js";
@@ -34,6 +35,17 @@ function buildExecutor(config) {
       apiKey: process.env[options.apiKeyEnv] ?? options.apiKey ?? null,
       model: options.model,
       protocol: options.protocol,
+      workspaceRoots: config.workspaceRoots,
+    });
+  }
+  if (config.executor?.provider === "claude") {
+    const options = config.executor.claude ?? {};
+    return new ClaudeCodeExecutor({
+      command: options.command,
+      model: options.model ?? null,
+      allowedTools: options.allowedTools,
+      permissionMode: options.permissionMode,
+      maxTurns: options.maxTurns,
       workspaceRoots: config.workspaceRoots,
     });
   }
