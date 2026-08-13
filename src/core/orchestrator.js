@@ -35,6 +35,17 @@ function mapUsage(tokenUsage) {
   };
 }
 
+function mapGoalUsage(goal, currentUsage = null) {
+  const totalTokens = Math.max(0, Number(goal?.tokensUsed ?? 0));
+  return {
+    ...(currentUsage ?? zeroUsage()),
+    total_tokens: Math.max(
+      totalTokens,
+      Number(currentUsage?.total_tokens ?? 0),
+    ),
+  };
+}
+
 function extractReport(turn, cachedFinalMessage = null) {
   const messages = (turn?.items ?? []).filter(
     (item) => item.type === "agentMessage" && typeof item.text === "string",
@@ -261,6 +272,7 @@ export class Orchestrator extends EventEmitter {
         turnId: null,
       });
       this.#run(queued.taskId, queued.followUp).finally(() => {
+        this.#finishActiveTask(queued.taskId);
         this.running.delete(queued.taskId);
         queueMicrotask(() => this.#drain());
       });
@@ -383,6 +395,7 @@ export class Orchestrator extends EventEmitter {
         threadId,
         turnId,
       });
+      this.#startBudgetMonitor(taskId);
       await this.#waitForTerminalNotification(taskId);
     } catch (error) {
       this.store.updateTask(taskId, {
@@ -450,7 +463,102 @@ export class Orchestrator extends EventEmitter {
     const active = this.running.get(taskId);
     if (!active) return;
     if (active.timer) clearTimeout(active.timer);
+    if (active.budgetTimer) clearInterval(active.budgetTimer);
+    active.budgetTimer = null;
     active.resolve?.();
+  }
+
+  #startBudgetMonitor(taskId) {
+    const active = this.running.get(taskId);
+    if (!active || active.budgetTimer) return;
+    const intervalMs = Number(
+      this.config.limits.tokenUsagePollIntervalMs ?? 1000,
+    );
+    const poll = () => {
+      this.#refreshGoalUsage(taskId).catch((error) => {
+        const current = this.running.get(taskId);
+        if (!current || current.goalUsageDiagnosticEmitted) return;
+        current.goalUsageDiagnosticEmitted = true;
+        this.store.addEvent(taskId, {
+          type: "task.usage_poll_failed",
+          error: asErrorPayload(error),
+        });
+      });
+    };
+    poll();
+    active.budgetTimer = setInterval(poll, intervalMs);
+    active.budgetTimer.unref?.();
+  }
+
+  async #refreshGoalUsage(taskId, { enforceBudget = true } = {}) {
+    const active = this.running.get(taskId);
+    const task = this.store.getTask(taskId);
+    if (!active || !task?.threadId) return null;
+    if (active.goalUsagePollPromise) {
+      return active.goalUsagePollPromise;
+    }
+    const pollPromise = (async () => {
+      const response = await this.codex.request(
+        "thread/goal/get",
+        { threadId: task.threadId },
+        10000,
+      );
+      const goal = response?.goal;
+      if (!goal) return null;
+      const currentUsage = this.store.getTask(taskId)?.usage;
+      const usage = mapGoalUsage(goal, currentUsage);
+      if (
+        !currentUsage ||
+        usage.total_tokens >= Number(currentUsage.total_tokens ?? 0)
+      ) {
+        this.store.updateTask(taskId, { usage });
+      }
+
+      const latest = this.store.getTask(taskId);
+      const overBudget =
+        usage.total_tokens >= latest.policy.tokenBudget ||
+        goal.status === "budgetLimited";
+      if (
+        enforceBudget &&
+        !active.completing &&
+        latest.status === "running" &&
+        overBudget &&
+        !active.budgetInterruptRequested
+      ) {
+        active.budgetInterruptRequested = true;
+        active.budgetMeasuredTokens = usage.total_tokens;
+        this.store.addEvent(taskId, {
+          type: "task.token_budget_exceeded",
+          budget: latest.policy.tokenBudget,
+          measured: usage.total_tokens,
+          source: "thread_goal",
+        });
+        try {
+          await this.codex.request(
+            "turn/interrupt",
+            {
+              threadId: latest.threadId,
+              turnId: active.turnId,
+            },
+            10000,
+          );
+        } catch (error) {
+          this.store.addEvent(taskId, {
+            type: "task.budget_interrupt_failed",
+            error: asErrorPayload(error),
+          });
+        }
+      }
+      return usage;
+    })();
+    active.goalUsagePollPromise = pollPromise;
+    try {
+      return await pollPromise;
+    } finally {
+      if (active.goalUsagePollPromise === pollPromise) {
+        active.goalUsagePollPromise = null;
+      }
+    }
   }
 
   async #recoverInterruptedTasks() {
@@ -568,10 +676,12 @@ export class Orchestrator extends EventEmitter {
         usage.total_tokens > task.policy.tokenBudget
       ) {
         active.budgetInterruptRequested = true;
+        active.budgetMeasuredTokens = usage.total_tokens;
         this.store.addEvent(taskId, {
           type: "task.token_budget_exceeded",
           budget: task.policy.tokenBudget,
           measured: usage.total_tokens,
+          source: "token_usage_notification",
         });
         this.codex
           .request("turn/interrupt", {
@@ -619,32 +729,14 @@ export class Orchestrator extends EventEmitter {
     }
 
     if (message.method === "turn/completed") {
-      const current = this.store.getTask(taskId);
-      if (!current || current.status !== "running") {
+      this.#completeTask(taskId, params).catch((error) => {
+        this.store.updateTask(taskId, {
+          status: "failed",
+          error: asErrorPayload(error),
+          completedAt: new Date().toISOString(),
+        });
         this.#finishActiveTask(taskId);
-        return;
-      }
-      const report = extractReport(
-        params.turn,
-        this.running.get(taskId)?.finalMessage ?? null,
-      );
-      const finalStatus =
-        this.running.get(taskId)?.budgetInterruptRequested
-          ? "interrupted"
-          : params.turn.status === "completed"
-          ? report.status
-          : params.turn.status;
-      this.store.updateTask(taskId, {
-        status: finalStatus,
-        result: report,
-        error: params.turn.error ?? null,
-        completedAt: new Date().toISOString(),
       });
-      this.store.audit("task.completed", {
-        taskId,
-        status: finalStatus,
-      });
-      this.#finishActiveTask(taskId);
       return;
     }
 
@@ -658,6 +750,54 @@ export class Orchestrator extends EventEmitter {
         params,
       });
     }
+  }
+
+  async #completeTask(taskId, params) {
+    const current = this.store.getTask(taskId);
+    if (!current || current.status !== "running") {
+      this.#finishActiveTask(taskId);
+      return;
+    }
+    const active = this.running.get(taskId);
+    if (active) {
+      active.completing = true;
+      if (active.budgetTimer) clearInterval(active.budgetTimer);
+      active.budgetTimer = null;
+    }
+    await this.#refreshGoalUsage(taskId, { enforceBudget: false }).catch(
+      () => null,
+    );
+    const report = extractReport(
+      params.turn,
+      active?.finalMessage ?? null,
+    );
+    const budgetInterrupted = Boolean(active?.budgetInterruptRequested);
+    const finalStatus = budgetInterrupted
+      ? "interrupted"
+      : params.turn.status === "completed"
+        ? report.status
+        : params.turn.status;
+    const error = budgetInterrupted
+      ? {
+          code: "token_budget_exceeded",
+          message: `Task exceeded its token budget of ${current.policy.tokenBudget} tokens and was interrupted.`,
+          details: {
+            budget: current.policy.tokenBudget,
+            measured: active?.budgetMeasuredTokens ?? null,
+          },
+        }
+      : params.turn.error ?? null;
+    this.store.updateTask(taskId, {
+      status: finalStatus,
+      result: report,
+      error,
+      completedAt: new Date().toISOString(),
+    });
+    this.store.audit("task.completed", {
+      taskId,
+      status: finalStatus,
+    });
+    this.#finishActiveTask(taskId);
   }
 
   #onServerRequest(message) {

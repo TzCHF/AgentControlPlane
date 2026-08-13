@@ -13,8 +13,8 @@ independent work to subagents according to the selected profile.
 The project does **not** convert ChatGPT messages into Codex quota and does not
 bypass product limits. It reduces waste inside engineering runs by:
 
-- sending a compact brief instead of the full planning conversation;
-- reusing a project thread instead of recreating repository context;
+- sending only a compact engineering brief to Codex;
+- preserving repository context in a persistent project thread;
 - selecting model, reasoning effort, budget, and subagent concurrency per task;
 - returning summaries, diffs, test evidence, blockers, and measured token usage;
 - keeping long command logs out of the main conversation unless requested.
@@ -71,7 +71,12 @@ modify control-plane persistence.
 - On Windows, the launcher automatically prefers the newest standalone Codex
   binary that has its matching sandbox resources, avoiding PATH shims that lose
   resource-directory resolution.
-- Approval prompts are denied rather than silently elevated.
+- Approval prompts receive explicit denial responses from the control plane.
+- Token usage is measured from Codex thread goals even when the runtime does not
+  emit token-usage notifications. Active turns are interrupted when measured
+  usage reaches the configured task budget. Enforcement polls once per second by
+  default, so a provider may consume additional tokens during one polling
+  interval.
 - The HTTP server listens on loopback only.
 - Optional bearer authentication is enabled with `AGENT_CONTROL_TOKEN`.
 - Direct non-loopback binding is refused; remote access must use a secure tunnel

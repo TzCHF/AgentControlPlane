@@ -60,3 +60,13 @@
 - `list_profiles` — inspect available model/budget policies.
 - `list_models` — inspect the current Codex model catalog and reasoning options.
 - `usage_report` — aggregate measured Codex usage.
+
+## Token budgets
+
+AgentControlPlane reads `tokensUsed` from the Codex thread goal while a task is
+running and stores it as the task's measured `total_tokens`. When measured usage
+reaches `token_budget`, AgentControlPlane sends `turn/interrupt` and records the
+task as `interrupted` with error code `token_budget_exceeded`.
+
+The default polling interval is 1000 milliseconds. Providers can consume
+additional tokens between two polls.

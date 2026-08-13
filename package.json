@@ -14,6 +14,7 @@
     "check": "node --check src/server.js",
     "doctor": "node scripts/doctor.js",
     "smoke": "node scripts/smoke.js",
+    "smoke:budget": "node scripts/smoke-budget.js",
     "sandbox:setup": "node scripts/setup-windows-sandbox.js"
   },
   "dependencies": {

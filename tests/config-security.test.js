@@ -25,3 +25,22 @@ test("rejects non-loopback binding without an auth token", () => {
     (error) => error.code === "loopback_required",
   );
 });
+
+test("rejects token usage polling intervals below 250 milliseconds", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "acp-config-"));
+  const configPath = path.join(directory, "config.json");
+  fs.writeFileSync(
+    configPath,
+    JSON.stringify({
+      limits: {
+        tokenUsagePollIntervalMs: 100,
+      },
+    }),
+  );
+  assert.throws(
+    () => loadConfig(configPath),
+    (error) =>
+      error.code === "invalid_config" &&
+      error.message.includes("tokenUsagePollIntervalMs"),
+  );
+});

@@ -187,6 +187,16 @@ export function loadConfig(configPath = process.env.AGENT_CONTROL_CONFIG) {
       );
     }
   }
+  if (
+    config.limits.tokenUsagePollIntervalMs !== undefined &&
+    (!Number.isInteger(config.limits.tokenUsagePollIntervalMs) ||
+      config.limits.tokenUsagePollIntervalMs < 250)
+  ) {
+    throw new ControlPlaneError(
+      "invalid_config",
+      "limits.tokenUsagePollIntervalMs must be an integer of at least 250",
+    );
+  }
   const loopbackHosts = new Set(["127.0.0.1", "::1", "localhost"]);
   if (!loopbackHosts.has(config.server.host)) {
     throw new ControlPlaneError(
