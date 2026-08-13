@@ -164,9 +164,9 @@ test("runs a tool loop against an OpenAI-compatible responses endpoint", async (
   assert.equal(report.status, "completed");
   assert.deepEqual(report.changed_files, ["hello.txt"]);
 
-  const usageEvent = notifications.find(
-    (entry) => entry.method === "thread/tokenUsage/updated",
-  );
+  const usageEvent = notifications
+    .filter((entry) => entry.method === "thread/tokenUsage/updated")
+    .at(-1);
   assert.equal(usageEvent.params.tokenUsage.last.totalTokens, 45);
   assert.equal(usageEvent.params.tokenUsage.last.inputTokens, 30);
 

@@ -272,27 +272,27 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         { model: model ?? this.model, instructions, controller },
       );
       usage = this.#addUsage(usage, response.usage);
+      const goal = this.goals.get(threadId);
+      if (goal) {
+        goal.tokensUsed = Math.max(goal.tokensUsed, usage.total_tokens);
+      }
+      this.emit("notification", {
+        method: "thread/tokenUsage/updated",
+        params: {
+          threadId,
+          turnId,
+          tokenUsage: {
+            last: this.#toNotifiedUsage(usage),
+            total: this.#toNotifiedUsage(usage),
+          },
+        },
+      });
       const output = Array.isArray(response.output) ? response.output : [];
       const toolCalls = output.filter(
         (item) => item.type === "function_call" && typeof item.name === "string",
       );
       if (toolCalls.length === 0) {
         const text = this.#normalizeReport(this.#extractFinalText(output));
-        const goal = this.goals.get(threadId);
-        if (goal) {
-          goal.tokensUsed = Math.max(goal.tokensUsed, usage.total_tokens);
-        }
-        this.emit("notification", {
-          method: "thread/tokenUsage/updated",
-          params: {
-            threadId,
-            turnId,
-            tokenUsage: {
-              last: this.#toNotifiedUsage(usage),
-              total: this.#toNotifiedUsage(usage),
-            },
-          },
-        });
         this.emit("notification", {
           method: "turn/completed",
           params: {
