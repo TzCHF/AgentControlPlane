@@ -10,7 +10,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { asErrorPayload } from "../core/errors.js";
 import { publicModels } from "../core/profiles.js";
 
-const SERVER_INFO = { name: "agent-control-plane", version: "0.2.0" };
+const SERVER_INFO = { name: "agent-control-plane", version: "0.2.1" };
 
 // OpenAI negotiates this protocol version through its connector flow.
 // Prefer it over the SDK's latest so the discovery handshake matches what
@@ -22,11 +22,12 @@ const DISCOVERY_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS.includes(
   : SUPPORTED_PROTOCOL_VERSIONS[0];
 
 const SERVER_INSTRUCTIONS =
-  "You are the ChatGPT-facing control plane for a private local Codex " +
-  "engineering agent. Before dispatching work, call list_profiles and " +
-  "list_models to choose the model effort and main-agent model, then send a " +
-  "compact objective via dispatch_project. Treat dispatch_project as " +
-  "asynchronous: it queues a background Codex thread and returns a task id; " +
+  "You are the ChatGPT-facing control plane for private local engineering " +
+  "agents. Before dispatching work, call list_profiles and list_models to " +
+  "choose execution settings, then send a compact objective via " +
+  "dispatch_project. The executor field selects the local backend; opencode " +
+  "is an executor, never a model. Treat dispatch_project as asynchronous: " +
+  "it queues a background agent task and returns a task id; " +
   "poll task_status until it completes. Never run engineering work directly " +
   "in the conversation; route all of it through these tools.";
 
@@ -43,11 +44,10 @@ const briefFields = {
   max_subagents: z.number().int().min(0).max(8).nullable().optional(),
   token_budget: z.number().int().min(1000).max(250000).nullable().optional(),
   executor: z
-    .string()
+    .enum(["codex", "openai-compatible", "deepseek", "claude", "opencode"])
     .describe(
       "Execution backend: codex, openai-compatible, deepseek, claude, or opencode. Defaults to the configured provider.",
     )
-    .nullable()
     .optional(),
 };
 
@@ -81,7 +81,7 @@ function buildToolSpecs({ orchestrator, store, config }) {
       name: "dispatch_project",
       title: "Dispatch engineering project",
       description:
-        "Use this when the planning conversation is ready to send a compact, asynchronous engineering brief to a Codex project agent.",
+        "Queue a compact engineering brief for a selected local execution backend. Set executor to opencode to use OpenCode; do not put opencode in model.",
       inputSchema: briefFields,
       annotations: {
         readOnlyHint: false,
