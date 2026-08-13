@@ -26,7 +26,14 @@
     "openaiCompat": {
       "baseUrl": "http://127.0.0.1:10100/v1",
       "apiKey": null,
-      "model": "deepseek/deepseek-v4-pro"
+      "model": "deepseek/deepseek-v4-pro",
+      "protocol": "responses"
+    },
+    "deepseek": {
+      "baseUrl": "https://api.deepseek.com/v1",
+      "apiKeyEnv": "DEEPSEEK_API_KEY",
+      "model": "deepseek-chat",
+      "protocol": "chat"
     }
   },
   "profiles": {

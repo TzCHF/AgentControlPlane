@@ -48,6 +48,15 @@ const TOOLS = [
   },
 ];
 
+const TOOLS_CHAT = TOOLS.map((tool) => ({
+  type: "function",
+  function: {
+    name: tool.name,
+    description: tool.description,
+    parameters: tool.parameters,
+  },
+}));
+
 function isInside(root, target) {
   const relative = path.relative(root, target);
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
@@ -105,6 +114,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     baseUrl,
     apiKey = null,
     model = "deepseek/deepseek-v4-pro",
+    protocol = "responses",
     requestTimeoutMs = 30000,
     maxToolRounds = 20,
     workspaceRoots = [],
@@ -128,6 +138,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
     this.apiKey = apiKey ?? null;
     this.model = model;
+    this.protocol = protocol === "chat" ? "chat" : "responses";
     this.requestTimeoutMs = requestTimeoutMs;
     this.maxToolRounds = maxToolRounds;
     this.workspaceRoots = workspaceRoots;
@@ -257,6 +268,15 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
   }
 
   async #runTurn(turnId, { threadId, input, model, cwd, outputSchema }) {
+    if (this.protocol === "chat") {
+      return this.#runChatTurn(turnId, {
+        threadId,
+        input,
+        model,
+        cwd,
+        outputSchema,
+      });
+    }
     const controller = this.turns.get(turnId)?.controller;
     const brief = this.#extractBrief(input);
     const instructions = this.#buildInstructions(outputSchema);
@@ -467,6 +487,129 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         error: error instanceof Error ? error.message : String(error),
       });
     }
+  }
+
+  async #runChatTurn(turnId, { threadId, input, model, cwd, outputSchema }) {
+    const controller = this.turns.get(turnId)?.controller;
+    const brief = this.#extractBrief(input);
+    const instructions = this.#buildInstructions(outputSchema);
+    const messages = [
+      { role: "system", content: instructions },
+      { role: "user", content: brief },
+    ];
+    let usage = this.#zeroUsage();
+
+    for (let round = 0; round < this.maxToolRounds; round += 1) {
+      if (controller?.signal.aborted) break;
+      const response = await this.#callChat(messages, {
+        model: model ?? this.model,
+        controller,
+      });
+      usage = this.#addUsage(usage, response.usage);
+      const goal = this.goals.get(threadId);
+      if (goal) {
+        goal.tokensUsed = Math.max(goal.tokensUsed, usage.total_tokens);
+      }
+      this.emit("notification", {
+        method: "thread/tokenUsage/updated",
+        params: {
+          threadId,
+          turnId,
+          tokenUsage: {
+            last: this.#toNotifiedUsage(usage),
+            total: this.#toNotifiedUsage(usage),
+          },
+        },
+      });
+
+      if (response.toolCalls.length === 0) {
+        const text = this.#normalizeReport(response.finalText);
+        this.emit("notification", {
+          method: "turn/completed",
+          params: {
+            threadId,
+            turn: {
+              id: turnId,
+              status: "completed",
+              items: [{ type: "agentMessage", phase: "final_answer", text }],
+            },
+          },
+        });
+        return;
+      }
+
+      messages.push({
+        role: "assistant",
+        content: response.content,
+        tool_calls: response.rawToolCalls,
+      });
+      for (const call of response.toolCalls) {
+        const result = await this.#executeTool(
+          { name: call.name, arguments: call.arguments },
+          cwd,
+        );
+        messages.push({
+          role: "tool",
+          tool_call_id: call.callId,
+          content: result,
+        });
+      }
+    }
+
+    throw new ControlPlaneError(
+      "tool_round_limit",
+      `Exceeded ${this.maxToolRounds} tool rounds`,
+    );
+  }
+
+  async #callChat(messages, { model, controller }) {
+    const body = {
+      model,
+      messages,
+      tools: TOOLS_CHAT,
+      stream: false,
+      max_tokens: 4000,
+    };
+    const response = await this.#fetchJson(
+      "POST",
+      "/chat/completions",
+      body,
+      controller,
+    );
+    const message = response?.choices?.[0]?.message ?? {};
+    const rawToolCalls = Array.isArray(message.tool_calls)
+      ? message.tool_calls
+      : [];
+    const toolCalls = rawToolCalls.map((call) => ({
+      callId: call.id,
+      name: call.function?.name,
+      arguments:
+        typeof call.function?.arguments === "string"
+          ? call.function.arguments
+          : JSON.stringify(call.function?.arguments ?? {}),
+    }));
+    return {
+      content: typeof message.content === "string" ? message.content : null,
+      toolCalls,
+      rawToolCalls,
+      finalText: typeof message.content === "string" ? message.content : "",
+      usage: this.#normalizeChatUsage(response?.usage),
+    };
+  }
+
+  #normalizeChatUsage(usage) {
+    if (!usage) return this.#zeroUsage();
+    return {
+      input_tokens: Number(usage.prompt_tokens ?? 0),
+      cached_input_tokens: Number(
+        usage.prompt_tokens_details?.cached_tokens ?? 0,
+      ),
+      output_tokens: Number(usage.completion_tokens ?? 0),
+      reasoning_output_tokens: Number(
+        usage.completion_tokens_details?.reasoning_tokens ?? 0,
+      ),
+      total_tokens: Number(usage.total_tokens ?? 0),
+    };
   }
 
   async #responses(inputItems, { model, instructions, controller }) {

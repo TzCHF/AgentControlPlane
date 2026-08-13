@@ -15,13 +15,25 @@ import { createMcpHandler } from "./mcp/server.js";
 
 function buildExecutor(config) {
   if (config.executor?.provider === "openai-compatible") {
+    const options = config.executor.openaiCompat ?? {};
     return new OpenAICompatibleExecutor({
-      baseUrl: config.executor.openaiCompat?.baseUrl,
+      baseUrl: options.baseUrl,
       apiKey:
         process.env.AGENT_CONTROL_OPENAI_KEY ??
-        config.executor.openaiCompat?.apiKey ??
+        options.apiKey ??
         null,
-      model: config.executor.openaiCompat?.model,
+      model: options.model,
+      protocol: options.protocol,
+      workspaceRoots: config.workspaceRoots,
+    });
+  }
+  if (config.executor?.provider === "deepseek") {
+    const options = config.executor.deepseek ?? {};
+    return new OpenAICompatibleExecutor({
+      baseUrl: options.baseUrl,
+      apiKey: process.env[options.apiKeyEnv] ?? options.apiKey ?? null,
+      model: options.model,
+      protocol: options.protocol,
       workspaceRoots: config.workspaceRoots,
     });
   }
