@@ -119,14 +119,14 @@ export class Orchestrator extends EventEmitter {
 
   async start() {
     await this.codex.start();
-    const models = await this.codex.request("model/list", {
+    const models = await this.codex.listModels({
       limit: 100,
       includeHidden: false,
     });
     this.modelCatalog = models.data ?? [];
     if (process.platform === "win32") {
       try {
-        const readiness = await this.codex.request("windowsSandbox/readiness", {});
+        const readiness = await this.codex.getSandboxReadiness({});
         this.runtimeHealth.windowsSandbox = readiness.status;
       } catch (error) {
         this.runtimeHealth.windowsSandbox = "unknown";
@@ -227,7 +227,7 @@ export class Orchestrator extends EventEmitter {
     const active = this.running.get(taskId);
     if (task.threadId && task.turnId && active) {
       try {
-        await this.codex.request("turn/interrupt", {
+        await this.codex.interruptTurn({
           threadId: task.threadId,
           turnId: task.turnId,
         });
@@ -297,7 +297,7 @@ export class Orchestrator extends EventEmitter {
 
       if (threadId) {
         try {
-          await this.codex.request("thread/resume", {
+          await this.codex.resumeThread({
             threadId,
             historyMode: "paginated",
           });
@@ -311,7 +311,7 @@ export class Orchestrator extends EventEmitter {
       }
 
       if (!threadId) {
-        const started = await this.codex.request("thread/start", {
+        const started = await this.codex.startThread({
           cwd: workspace,
           model: task.policy.model,
           approvalPolicy: this.config.codex.approvalPolicy,
@@ -337,14 +337,14 @@ export class Orchestrator extends EventEmitter {
       }
 
       this.store.updateTask(taskId, { threadId });
-      await this.codex.request("thread/goal/set", {
+      await this.codex.setGoal({
         threadId,
         objective: task.brief.objective,
         status: "active",
         tokenBudget: task.policy.tokenBudget,
       });
 
-      const response = await this.codex.request("turn/start", {
+      const response = await this.codex.startTurn({
         threadId,
         input: [
           {
@@ -374,7 +374,7 @@ export class Orchestrator extends EventEmitter {
       const turnId = response.turn.id;
       const latestTask = this.store.getTask(taskId);
       if (latestTask?.status === "cancelled") {
-        await this.codex.request("turn/interrupt", {
+        await this.codex.interruptTurn({
           threadId,
           turnId,
         });
@@ -426,8 +426,7 @@ export class Orchestrator extends EventEmitter {
         if (task?.status === "running") {
           let interruptionError = null;
           try {
-            await this.codex.request(
-              "turn/interrupt",
+            await this.codex.interruptTurn(
               {
                 threadId: task.threadId,
                 turnId: task.turnId,
@@ -498,8 +497,7 @@ export class Orchestrator extends EventEmitter {
       return active.goalUsagePollPromise;
     }
     const pollPromise = (async () => {
-      const response = await this.codex.request(
-        "thread/goal/get",
+      const response = await this.codex.getGoal(
         { threadId: task.threadId },
         10000,
       );
@@ -534,8 +532,7 @@ export class Orchestrator extends EventEmitter {
           source: "thread_goal",
         });
         try {
-          await this.codex.request(
-            "turn/interrupt",
+          await this.codex.interruptTurn(
             {
               threadId: latest.threadId,
               turnId: active.turnId,
@@ -575,7 +572,7 @@ export class Orchestrator extends EventEmitter {
       let recovered = false;
       if (task.threadId) {
         try {
-          const resumed = await this.codex.request("thread/resume", {
+          const resumed = await this.codex.resumeThread({
             threadId: task.threadId,
             historyMode: "paginated",
           });
@@ -684,7 +681,7 @@ export class Orchestrator extends EventEmitter {
           source: "token_usage_notification",
         });
         this.codex
-          .request("turn/interrupt", {
+          .interruptTurn({
             threadId: task.threadId,
             turnId: active.turnId,
           })

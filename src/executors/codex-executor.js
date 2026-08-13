@@ -36,4 +36,36 @@ export class CodexExecutor extends ExecutorAdapter {
   respond(...args) {
     return this.client.respond(...args);
   }
+
+  listModels(params = {}) {
+    return this.client.request("model/list", params);
+  }
+
+  getSandboxReadiness(params = {}) {
+    return this.client.request("windowsSandbox/readiness", params);
+  }
+
+  startThread(params) {
+    return this.client.request("thread/start", params);
+  }
+
+  resumeThread(params) {
+    return this.client.request("thread/resume", params);
+  }
+
+  setGoal(params) {
+    return this.client.request("thread/goal/set", params);
+  }
+
+  getGoal(params, timeoutMs) {
+    return this.client.request("thread/goal/get", params, timeoutMs);
+  }
+
+  startTurn(params) {
+    return this.client.request("turn/start", params);
+  }
+
+  interruptTurn(params, timeoutMs) {
+    return this.client.request("turn/interrupt", params, timeoutMs);
+  }
 }

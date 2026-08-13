@@ -58,3 +58,13 @@ must remain within the supplied concurrency and budget instructions.
 `.agent-control/state.json` stores tasks and project-to-thread associations.
 `.agent-control/audit.jsonl` stores append-only events. State writes use a
 temporary file followed by an atomic rename.
+
+## Executor abstraction
+
+The orchestrator depends on a semantic agent lifecycle contract
+(`src/executors/lifecycle.js`) rather than any one agent protocol. The contract
+covers model listing, sandbox readiness, and the thread/goal/turn lifecycle.
+`CodexExecutor` is the reference implementation and maps that contract to the
+Codex app-server RPC. A second backend (for example, Claude Code) can implement
+the same methods against its own transport, leaving the MCP surface and the
+orchestrator unchanged.

@@ -9,6 +9,7 @@ import { RateLimiter } from "./core/rate-limit.js";
 import { TaskStore } from "./core/store.js";
 import { CodexExecutor } from "./executors/codex-executor.js";
 import { assertExecutor } from "./executors/executor.js";
+import { assertLifecycle } from "./executors/lifecycle.js";
 import { createMcpHandler } from "./mcp/server.js";
 
 export async function createApplication(overrides = {}) {
@@ -38,8 +39,11 @@ export async function createApplication(overrides = {}) {
       }),
     { execution: overrides.startCodex !== false },
   );
-  const orchestrator =
-    overrides.orchestrator ?? new Orchestrator({ config, store, codex });
+  let orchestrator = overrides.orchestrator;
+  if (!orchestrator) {
+    assertLifecycle(codex);
+    orchestrator = new Orchestrator({ config, store, codex });
+  }
   if (overrides.startCodex !== false) {
     await orchestrator.start();
   }

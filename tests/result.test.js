@@ -53,6 +53,38 @@ class FinalMessageCodex extends EventEmitter {
   }
 
   respond() {}
+
+  listModels(params) {
+    return this.request("model/list", params);
+  }
+
+  getSandboxReadiness(params) {
+    return this.request("windowsSandbox/readiness", params);
+  }
+
+  startThread(params) {
+    return this.request("thread/start", params);
+  }
+
+  resumeThread(params) {
+    return this.request("thread/resume", params);
+  }
+
+  setGoal(params) {
+    return this.request("thread/goal/set", params);
+  }
+
+  getGoal(params, timeoutMs) {
+    return this.request("thread/goal/get", params, timeoutMs);
+  }
+
+  startTurn(params) {
+    return this.request("turn/start", params);
+  }
+
+  interruptTurn(params, timeoutMs) {
+    return this.request("turn/interrupt", params, timeoutMs);
+  }
 }
 
 test("uses cached final messages and preserves blocked status", async () => {
