@@ -73,7 +73,7 @@ test("server/discover is served statelessly without an MCP session", async () =>
     assert.equal(body.jsonrpc, "2.0");
     assert.equal(body.id, 7);
     assert.equal(body.result.serverInfo.name, "agent-control-plane");
-    assert.equal(body.result.serverInfo.version, "0.2.1");
+    assert.equal(body.result.serverInfo.version, "0.2.2");
     assert.equal(typeof body.result.protocolVersion, "string");
     assert.ok(body.result.capabilities?.tools);
     assert.ok(Array.isArray(body.result.tools));
@@ -81,6 +81,7 @@ test("server/discover is served statelessly without an MCP session", async () =>
     const names = body.result.tools.map((tool) => tool.name);
     for (const expected of [
       "dispatch_project",
+      "dispatch_opencode",
       "task_status",
       "continue_project",
       "cancel_task",
@@ -97,13 +98,11 @@ test("server/discover is served statelessly without an MCP session", async () =>
     );
     assert.equal(typeof dispatch.inputSchema, "object");
     assert.equal(dispatch.inputSchema.type, "object");
-    assert.deepEqual(dispatch.inputSchema.properties.executor.enum, [
-      "codex",
-      "openai-compatible",
-      "deepseek",
-      "claude",
-      "opencode",
-    ]);
+    assert.equal(dispatch.inputSchema.properties.executor, undefined);
+    const dispatchOpenCode = body.result.tools.find(
+      (tool) => tool.name === "dispatch_opencode",
+    );
+    assert.equal(dispatchOpenCode.inputSchema.properties.executor, undefined);
   } finally {
     await app.close();
   }
