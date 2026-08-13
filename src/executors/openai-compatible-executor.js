@@ -333,6 +333,14 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         return;
       }
 
+      for (const item of output) {
+        if (item.type === "reasoning") {
+          inputItems.push({
+            type: "reasoning",
+            content: item.content ?? [],
+          });
+        }
+      }
       for (const call of toolCalls) {
         const result = await this.#executeTool(call, cwd);
         const callId = call.call_id ?? call.id;

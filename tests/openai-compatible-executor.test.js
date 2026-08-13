@@ -30,6 +30,10 @@ function createMockServer() {
           JSON.stringify({
             output: [
               {
+                type: "reasoning",
+                content: [{ type: "reasoning_text", text: "I should write the file." }],
+              },
+              {
                 type: "function_call",
                 id: "fc_1",
                 call_id: "call_1",
@@ -261,6 +265,13 @@ test("runs a tool loop against an OpenAI-compatible responses endpoint", async (
   assert.equal(
     requests.filter((entry) => entry.url === "/v1/responses").length,
     2,
+  );
+  const secondBody = requests.filter(
+    (entry) => entry.url === "/v1/responses",
+  )[1].body;
+  assert.ok(
+    secondBody.input.some((item) => item.type === "reasoning"),
+    "the continuation echoes the reasoning item back",
   );
 
   await executor.stop();
