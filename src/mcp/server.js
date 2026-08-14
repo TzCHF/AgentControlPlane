@@ -27,12 +27,15 @@ const SERVER_INSTRUCTIONS =
   "matter, then send a compact objective through dispatch_project. Leave " +
   "executor as auto unless the user requests a specific backend. Treat " +
   "dispatch tools as asynchronous: " +
-  "it queues a background agent task and returns a task id; " +
+  "they queue a background agent task and return a task id; " +
   "poll task_status until it completes. If the structured result is blocked, " +
-  "partial, failed, or shows a misunderstanding, correct the compact brief " +
-  "with continue_project when it is safe to do so; ask the user only when a " +
-  "real decision or permission is required. Never run engineering work directly " +
-  "in the conversation; route all of it through these tools.";
+  "partial, failed, or shows a misunderstanding, use continue_project when the " +
+  "same executor should continue its existing project thread. Use " +
+  "handoff_project when a different engineering executor should review, verify, " +
+  "or continue the work using compact evidence from the source task. Ask the " +
+  "user only when a real decision or permission is required. Never run " +
+  "engineering work directly in the conversation; route all of it through " +
+  "these tools.";
 
 const briefFields = {
   workspace: z.string().describe("Absolute project workspace path"),
@@ -46,6 +49,19 @@ const briefFields = {
   context: z.array(z.string()).optional(),
   evidence_required: z.array(z.string()).optional(),
   profile: z.enum(["economy", "balanced", "deep"]).default("balanced"),
+  model: z.string().nullable().optional(),
+  reasoning_effort: z.string().nullable().optional(),
+  max_subagents: z.number().int().min(0).max(8).nullable().optional(),
+  token_budget: z.number().int().min(1000).max(250000).nullable().optional(),
+};
+
+const followUpFields = {
+  objective: z.string().min(1),
+  constraints: z.array(z.string()).optional(),
+  acceptance_criteria: z.array(z.string()).optional(),
+  context: z.array(z.string()).optional(),
+  evidence_required: z.array(z.string()).optional(),
+  profile: z.enum(["economy", "balanced", "deep"]).optional(),
   model: z.string().nullable().optional(),
   reasoning_effort: z.string().nullable().optional(),
   max_subagents: z.number().int().min(0).max(8).nullable().optional(),
@@ -151,19 +167,10 @@ function buildToolSpecs({ orchestrator, store, config }) {
       name: "continue_project",
       title: "Continue engineering project",
       description:
-        "Use this when acceptance or review found a concrete follow-up for the same persistent Codex project thread.",
+        "Continue the same project with the same executor and persistent executor thread after review found a concrete correction or follow-up.",
       inputSchema: {
         task_id: z.string().uuid(),
-        objective: z.string().min(1),
-        constraints: z.array(z.string()).optional(),
-        acceptance_criteria: z.array(z.string()).optional(),
-        context: z.array(z.string()).optional(),
-        evidence_required: z.array(z.string()).optional(),
-        profile: z.enum(["economy", "balanced", "deep"]).optional(),
-        model: z.string().nullable().optional(),
-        reasoning_effort: z.string().nullable().optional(),
-        max_subagents: z.number().int().min(0).max(8).nullable().optional(),
-        token_budget: z.number().int().min(1000).max(250000).nullable().optional(),
+        ...followUpFields,
       },
       annotations: {
         readOnlyHint: false,
@@ -176,7 +183,38 @@ function buildToolSpecs({ orchestrator, store, config }) {
           const task = orchestrator.continueTask(task_id, args);
           return result(
             { task },
-            `Follow-up task ${task.id} was queued on the existing project thread.`,
+            `Follow-up task ${task.id} was queued on the existing ${task.executor} project thread.`,
+          );
+        } catch (error) {
+          return failure(error);
+        }
+      },
+    },
+    {
+      name: "handoff_project",
+      title: "Hand off project to another engineering executor",
+      description:
+        "Create a new engineering task from a completed source task, carrying only compact source evidence into the selected executor. Use this for cross-executor review, verification, or continuation instead of copying the full conversation.",
+      inputSchema: {
+        source_task_id: z.string().uuid(),
+        executor: z
+          .string()
+          .default("auto")
+          .describe("Target executor id, or auto for capability-based routing"),
+        ...followUpFields,
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: networkAccess,
+        idempotentHint: false,
+      },
+      async handler({ source_task_id, ...args }) {
+        try {
+          const task = orchestrator.handoffTask(source_task_id, args);
+          return result(
+            { task },
+            `Handoff task ${task.id} was queued on ${task.executor} from source task ${source_task_id}.`,
           );
         } catch (error) {
           return failure(error);
@@ -290,7 +328,7 @@ function buildToolSpecs({ orchestrator, store, config }) {
       name: "usage_report",
       title: "Read measured engineering token usage",
       description:
-        "Use this when the user asks how many Codex tokens the control plane has measured across tasks.",
+        "Use this when the user asks how many engineering tokens the control plane has measured across tasks.",
       inputSchema: {},
       annotations: {
         readOnlyHint: true,
