@@ -1,4 +1,4 @@
-import { publicProfiles } from "../core/profiles.js";
+﻿import { publicProfiles } from "../core/profiles.js";
 import { asErrorPayload, ControlPlaneError } from "../core/errors.js";
 import { readJson, sendJson } from "../core/http.js";
 import { isCompanionOrigin } from "./pairing-manager.js";
@@ -49,18 +49,18 @@ function sendHtml(response, statusCode, body) {
 function approvalPage(pairing) {
   const action = `/companion/approve?id=${encodeURIComponent(pairing.pairing_id)}&secret=${encodeURIComponent(pairing.secret)}`;
   return `<!doctype html>
-<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pair AgentControlPlane</title>
-<style>body{font:16px system-ui;margin:0;background:#0d1117;color:#e6edf3;display:grid;min-height:100vh;place-items:center}.card{width:min(520px,calc(100% - 40px));padding:28px;border:1px solid #30363d;border-radius:14px;background:#161b22}.code{font:700 30px ui-monospace;letter-spacing:.18em;margin:20px 0}.muted{color:#8b949e;overflow-wrap:anywhere}button{font:600 16px system-ui;padding:11px 18px;border:0;border-radius:8px;background:#238636;color:white;cursor:pointer}</style>
-<main class="card"><h1>Pair browser companion</h1><p>Approve this one-time request only if the code matches the browser extension.</p><div class="code">${escapeHtml(pairing.code.slice(0, 3))}-${escapeHtml(pairing.code.slice(3))}</div><p><strong>${escapeHtml(pairing.label)}</strong></p><p class="muted">${escapeHtml(pairing.origin)}</p><form method="post" action="${escapeHtml(action)}"><button type="submit">Approve companion</button></form></main></html>`;
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>配对 AgentControlPlane</title>
+<style>body{font:16px system-ui;margin:0;background:#0d1117;color:#e6edf3;display:grid;min-height:100vh;place-items:center}.card{width:min(520px,calc(100% - 40px));padding:28px;border:1px solid #30363d;border-radius:14px;background:#161b22}.code{font:700 30px ui-monospace;letter-spacing:.18em;margin:20px 0}.muted{color:#8b949e;overflow-wrap:anywhere}button{font:600 16px system-ui;padding:11px 18px;border:0;border-radius:8px;background:#238636;color:white;cursor:pointer}.ok{color:#3fb950}</style>
+<main class="card"><h1>配对浏览器伴侣<br><span style="font-size:16px;color:#8b949e">Pair browser companion</span></h1><p>此页面由你刚才点击的「配对」操作打开，属于一次性本地批准。确认下方来源后点击「批准」即可完成配对。</p><div class="code">${escapeHtml(pairing.code.slice(0, 3))}-${escapeHtml(pairing.code.slice(3))}</div><p><strong>${escapeHtml(pairing.label)}</strong></p><p class="muted">${escapeHtml(pairing.origin)}</p><form method="post" action="${escapeHtml(action)}"><button type="submit">批准 Approve companion</button></form></main></html>`;
 }
 
 function approvedPage(pairing) {
   return `<!doctype html>
-<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AgentControlPlane paired</title>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AgentControlPlane 已配对</title>
 <style>body{font:16px system-ui;margin:0;background:#0d1117;color:#e6edf3;display:grid;min-height:100vh;place-items:center}.card{width:min(520px,calc(100% - 40px));padding:28px;border:1px solid #30363d;border-radius:14px;background:#161b22}.ok{color:#3fb950}</style>
-<main class="card"><h1 class="ok">Paired</h1><p>${escapeHtml(pairing.label)} can now dispatch scoped engineering tasks. You may close this tab.</p></main></html>`;
+<main class="card"><h1 class="ok">配对成功 Paired</h1><p>${escapeHtml(pairing.label)} 现在可以派发受作用域限制的工程任务。你可以关闭此标签页，回到网页 AI 页面继续。</p></main></html>`;
 }
 
 function publicTask(task) {
@@ -151,7 +151,7 @@ export class CompanionRouter {
         sendJson(response, 403, {
           error: {
             code: "companion_origin_denied",
-            message: "Browser companion origin is not allowed",
+            message: "Browser companion origin is not allowed 浏览器伴侣来源不被允许",
           },
         });
         return true;
@@ -169,7 +169,7 @@ export class CompanionRouter {
       sendJson(response, 403, {
         error: {
           code: "companion_origin_denied",
-          message: "Browser companion origin is not allowed",
+          message: "Browser companion origin is not allowed 浏览器伴侣来源不被允许",
         },
       });
       return true;
@@ -187,7 +187,7 @@ export class CompanionRouter {
           {
             error: {
               code: "pairing_requires_loopback",
-              message: "Browser companion pairing is local-only",
+              message: "Browser companion pairing is local-only 伴侣配对仅限本地",
             },
           },
           cors,
@@ -247,7 +247,7 @@ export class CompanionRouter {
         {
           error: {
             code: "companion_unauthorized",
-            message: "A valid paired companion token is required",
+            message: "A valid paired companion token is required 需要有效的伴侣令牌",
           },
         },
         { ...cors, "www-authenticate": 'Bearer realm="ACP Companion"' },
@@ -306,7 +306,7 @@ export class CompanionRouter {
         sendJson(
           response,
           404,
-          { error: { code: "task_not_found", message: "Task not found" } },
+          { error: { code: "task_not_found", message: "Task not found 任务不存在" } },
           cors,
         );
         return true;
@@ -317,7 +317,7 @@ export class CompanionRouter {
           sendJson(
             response,
             404,
-            { error: { code: "task_not_found", message: "Task not found" } },
+            { error: { code: "task_not_found", message: "Task not found 任务不存在" } },
             cors,
           );
           return true;
@@ -350,7 +350,7 @@ export class CompanionRouter {
     sendJson(
       response,
       404,
-      { error: { code: "not_found", message: "Companion route not found" } },
+      { error: { code: "not_found", message: "Companion route not found 伴侣路由不存在" } },
       cors,
     );
     return true;

@@ -5,19 +5,22 @@ export function createPanel({ adapterId, handlers }) {
   const shadow = host.attachShadow({ mode: "closed" });
   shadow.innerHTML = `
     <style>
-      *{box-sizing:border-box}button,input,select,textarea{font:inherit}.launcher{width:52px;height:52px;border:0;border-radius:50%;background:#238636;color:white;font:700 14px system-ui;box-shadow:0 5px 18px #0006;cursor:pointer}.panel{display:none;width:min(390px,calc(100vw - 36px));max-height:min(680px,calc(100vh - 96px));overflow:auto;margin-bottom:10px;padding:16px;border:1px solid #30363d;border-radius:14px;background:#0d1117;color:#e6edf3;font:14px system-ui;box-shadow:0 12px 36px #0008}.panel.open{display:block}.row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:9px 0}.stack{display:grid;gap:6px;margin:9px 0}label{color:#8b949e;font-size:12px}input,select,textarea{width:100%;padding:8px;border:1px solid #30363d;border-radius:7px;background:#161b22;color:#e6edf3}textarea{min-height:86px;resize:vertical}.actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.actions button{padding:8px 10px;border:1px solid #30363d;border-radius:7px;background:#21262d;color:#e6edf3;cursor:pointer}.actions .primary{background:#238636;border-color:#238636}.status{padding:8px;border-radius:7px;background:#161b22;color:#8b949e;overflow-wrap:anywhere}.toggle{display:flex;align-items:center;gap:7px;color:#c9d1d9}.toggle input{width:auto}.title{display:flex;justify-content:space-between;align-items:center}.badge{font:12px ui-monospace;color:#58a6ff}
+      *{box-sizing:border-box}button,input,select,textarea{font:inherit}.launcher{width:52px;height:52px;border:0;border-radius:50%;background:#238636;color:white;font:700 14px system-ui;box-shadow:0 5px 18px #0006;cursor:pointer}.panel{display:none;width:min(390px,calc(100vw - 36px));max-height:min(680px,calc(100vh - 96px));overflow:auto;margin-bottom:10px;padding:16px;border:1px solid #30363d;border-radius:14px;background:#0d1117;color:#e6edf3;font:14px system-ui;box-shadow:0 12px 36px #0008}.panel.open{display:block}.row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:9px 0}.stack{display:grid;gap:6px;margin:9px 0}label{color:#8b949e;font-size:12px}input,select,textarea{width:100%;padding:8px;border:1px solid #30363d;border-radius:7px;background:#161b22;color:#e6edf3}textarea{min-height:86px;resize:vertical}.actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.actions button{padding:8px 10px;border:1px solid #30363d;border-radius:7px;background:#21262d;color:#e6edf3;cursor:pointer}.actions .primary{background:#238636;border-color:#238636}.status{padding:8px;border-radius:7px;background:#161b22;color:#8b949e;overflow-wrap:anywhere}.hint{padding:8px;border-radius:7px;background:#161b22;color:#8b949e;font-size:12px;line-height:1.8}.advanced{margin:9px 0}.advanced summary{cursor:pointer;color:#58a6ff;font-size:13px}.toggle{display:flex;align-items:center;gap:7px;color:#c9d1d9}.toggle input{width:auto}.title{display:flex;justify-content:space-between;align-items:center}.badge{font:12px ui-monospace;color:#58a6ff}
     </style>
     <section class="panel">
       <div class="title"><strong>AgentControlPlane</strong><span class="badge"></span></div>
       <div class="status">Checking local connection… 正在检查本地连接…</div>
-      <div class="stack"><label>Workspace 工作区</label><select data-field="workspace"><option value="">Select after pairing 配对后选择</option></select></div>
-      <div class="row"><div><label>Profile 配置档</label><select data-field="profile"><option>balanced</option></select></div><div><label>Executor 执行器</label><select data-field="executor"><option>auto</option></select></div></div>
-      <div class="stack"><label>Objective or ACP_TASK envelope 目标或 ACP_TASK 信封</label><textarea data-field="objective" placeholder="Describe the engineering task 描述工程任务"></textarea></div>
-      <label class="toggle"><input type="checkbox" data-field="autoDispatch"> Automatically dispatch ACP_TASK envelopes 自动派发 ACP_TASK 信封</label>
-      <label class="toggle"><input type="checkbox" data-field="autoSubmitResults"> Automatically send ACP_RESULT back to this web AI 自动将 ACP_RESULT 回传给该网页 AI</label>
-      <div class="actions"><button data-action="connect">Pair 配对</button><button data-action="teach">Teach web AI 教导网页 AI</button><button data-action="latest">Use latest reply 使用最新回复</button><button class="primary" data-action="dispatch">Dispatch 派发</button></div>
+      <p class="hint">① 点「配对」，在自动打开的批准页点「批准」<br>② 点「教导网页 AI」，发送插入的控制器指令<br>③ 网页 AI 输出任务块后自动派发，结果在此显示</p>
+      <div class="actions"><button class="primary" data-action="connect">Pair 配对</button><button data-action="teach">Teach web AI 教导网页 AI</button><button data-action="latest">Use latest reply 使用最新回复</button><button data-action="dispatch">Dispatch 派发</button></div>
+      <details class="advanced"><summary>Advanced settings 高级设置</summary>
+        <div class="stack"><label>Workspace 工作区</label><select data-field="workspace"><option value="">Select after pairing 配对后选择</option></select></div>
+        <div class="row"><div><label>Profile 配置档</label><select data-field="profile"><option>balanced</option></select></div><div><label>Executor 执行器</label><select data-field="executor"><option>auto</option></select></div></div>
+        <div class="stack"><label>Objective or ACP_TASK envelope 目标或 ACP_TASK 信封</label><textarea data-field="objective" placeholder="Describe the engineering task 描述工程任务"></textarea></div>
+        <label class="toggle"><input type="checkbox" data-field="autoDispatch"> Automatically dispatch ACP_TASK envelopes 自动派发 ACP_TASK 信封</label>
+        <label class="toggle"><input type="checkbox" data-field="autoSubmitResults"> Automatically send ACP_RESULT back to this web AI 自动将 ACP_RESULT 回传给该网页 AI</label>
+      </details>
     </section>
-    <button class="launcher" title="AgentControlPlane">ACP</button>`;
+    <button class="launcher" title="AgentControlPlane Companion 浏览器伴侣">ACP</button>`;
   document.documentElement.append(host);
 
   const panel = shadow.querySelector(".panel");

@@ -79,7 +79,7 @@
     });
     panel.open();
     panel.setStatus(
-      `Approve code ${formatCode(response.code)} in the local tab 请在本地标签页批准配对码 ${formatCode(response.code)}`,
+      `Approve code ${formatCode(response.code)} in the local tab 已打开批准页，请点击「批准」（配对码 ${formatCode(response.code)}）`,
     );
     const deadline = Date.parse(response.expires_at);
     while (Date.now() < deadline) {
