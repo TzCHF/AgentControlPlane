@@ -3,7 +3,7 @@
 ## 现在仓库状态（本地）
 
 - 分支：`main`（路径 `C:\Users\45928\Documents\Github\AgentControlPlane`）
-- 本地领先 `origin/main` 的提交数：`19`
+- 本地领先 `origin/main` 的提交数：`23`
 - 关键提交：
   - `586bde0`（`v0.3.2`）
   - `3adfec3`（`v0.4.0`）
@@ -63,5 +63,6 @@ git push origin --tags
 
 - `v0.3.2` 已有本地 tag 且对应提交 `586bde0`。
 - 现有 `main` 工作在该基础上继续到 `v0.4.0`。
+
 
 

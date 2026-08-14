@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-08-14T17:53:41.844Z",
+  "generated_at": "2026-08-14T18:05:30.648Z",
   "cases": [
     {
       "id": "pair-opencode-1",
       "category": "opencode",
       "direct": {
         "success": false,
-        "duration_ms": 74160,
+        "duration_ms": 74205,
         "executor_usage": {
           "input_tokens": 0,
           "cached_input_tokens": 0,
@@ -38,7 +38,7 @@
       },
       "errors": [
         "direct_failed:unknown",
-        "opencode exited with code 1:  run=7f3f3383 message=process session.id=ses_ffe9aef14ffehTd8SOsxEliXfj messageID=msg_001651363001nIuDd4Neikdnhm error=\"Cannot connect to API: Unable to connect. Is the computer able to access the url?\" stack=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url?\\n at e (B:/~BUN/root/chunk-aaw76hgx.js:2:6248)\\n at <anonymous> (B:/~BUN/root/chunk-aaw76hgx.js:6:13321)\\n at processTicksAndRejections (native:7:39)\" timestamp=2026-08-14T17:51:06.810Z level=WARN run=7f3f3383 message=\"background dependency install failed\" dir=\"C:\\\\Users\\\\45928\\\\AppData\\\\Local\\\\Temp\\\\acp-opencode-home-jBQSHC\\\\opencode\" error=\"Cause([Fail(NpmInstallFailedError (cause: FetchError: request to https://registry.npmjs.org/@opencode-ai%2fplugin failed, reason: ECONNREFUSED))])\" timestamp=2026-08-14T17:51:07.280Z level=INFO run=7f3f3383 message=\"disposing instance\" directory=\"C:\\\\Users\\\\45928\\\\Documents\\\\Github\\\\AgentControlPlane\\\\.benchmark-opencode-1-1786729793301-RNVukC\""
+        "opencode exited with code 1:  run=fff9f17f message=process session.id=ses_ffe8c9d60ffeEYLWHheSAj4Hoj messageID=msg_001736542001jGU32Oz0XB4msJ error=\"Cannot connect to API: Unable to connect. Is the computer able to access the url?\" stack=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url?\\n at e (B:/~BUN/root/chunk-aaw76hgx.js:2:6248)\\n at <anonymous> (B:/~BUN/root/chunk-aaw76hgx.js:6:13321)\\n at processTicksAndRejections (native:7:39)\" timestamp=2026-08-14T18:06:45.289Z level=WARN run=fff9f17f message=\"background dependency install failed\" dir=\"C:\\\\Users\\\\45928\\\\AppData\\\\Local\\\\Temp\\\\acp-opencode-home-KUdLNK\\\\opencode\" error=\"Cause([Fail(NpmInstallFailedError (cause: FetchError: request to https://registry.npmjs.org/@opencode-ai%2fplugin failed, reason: ECONNREFUSED))])\" timestamp=2026-08-14T18:06:45.700Z level=INFO run=fff9f17f message=\"disposing instance\" directory=\"C:\\\\Users\\\\45928\\\\Documents\\\\Github\\\\AgentControlPlane\\\\.benchmark-opencode-1-1786730731721-zjZX0Q\""
       ]
     },
     {
@@ -46,7 +46,7 @@
       "category": "opencode",
       "direct": {
         "success": false,
-        "duration_ms": 77186,
+        "duration_ms": 73335,
         "executor_usage": {
           "input_tokens": 0,
           "cached_input_tokens": 0,
@@ -78,7 +78,7 @@
       },
       "errors": [
         "direct_failed:unknown",
-        "opencode exited with code 1:  run=3e76369b message=process session.id=ses_ffe99cbc0ffeMjyCIdEgekggBt messageID=msg_0016636ad001pqDlPOAQUUXXHI error=\"Cannot connect to API: Unable to connect. Is the computer able to access the url?\" stack=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url?\\n at e (B:/~BUN/root/chunk-aaw76hgx.js:2:6248)\\n at <anonymous> (B:/~BUN/root/chunk-aaw76hgx.js:6:13321)\\n at processTicksAndRejections (native:7:39)\" timestamp=2026-08-14T17:52:23.498Z level=WARN run=3e76369b message=\"background dependency install failed\" dir=\"C:\\\\Users\\\\45928\\\\AppData\\\\Local\\\\Temp\\\\acp-opencode-home-jBQSHC\\\\opencode\" error=\"Cause([Fail(NpmInstallFailedError (cause: FetchError: request to https://registry.npmjs.org/@opencode-ai%2fplugin failed, reason: ECONNREFUSED))])\" timestamp=2026-08-14T17:52:24.457Z level=INFO run=3e76369b message=\"disposing instance\" directory=\"C:\\\\Users\\\\45928\\\\Documents\\\\Github\\\\AgentControlPlane\\\\.benchmark-opencode-2-1786729793301-sZCXOy\""
+        "opencode exited with code 1: seek modelID=deepseek-v4-pro session.id=ses_ffe8b7a5bffefGW4J6ZVIhU0yU small=false agent=build mode=primary error.error=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url? (cause: Error: Unable to connect. Is the computer able to access the url?)\" timestamp=2026-08-14T18:07:58.606Z level=ERROR run=f1a8af06 message=process session.id=ses_ffe8b7a5bffefGW4J6ZVIhU0yU messageID=msg_00174881d001Wb8PdBNe1WNMcd error=\"Cannot connect to API: Unable to connect. Is the computer able to access the url?\" stack=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url?\\n at e (B:/~BUN/root/chunk-aaw76hgx.js:2:6248)\\n at <anonymous> (B:/~BUN/root/chunk-aaw76hgx.js:6:13321)\\n at processTicksAndRejections (native:7:39)\" timestamp=2026-08-14T18:07:59.312Z level=INFO run=f1a8af06 message=\"disposing instance\" directory=\"C:\\\\Users\\\\45928\\\\Documents\\\\Github\\\\AgentControlPlane\\\\.benchmark-opencode-2-1786730731721-R7FD8c\""
       ]
     },
     {
@@ -86,7 +86,7 @@
       "category": "opencode",
       "direct": {
         "success": false,
-        "duration_ms": 75946,
+        "duration_ms": 74847,
         "executor_usage": {
           "input_tokens": 0,
           "cached_input_tokens": 0,
@@ -118,13 +118,13 @@
       },
       "errors": [
         "direct_failed:unknown",
-        "opencode exited with code 1:  run=41b72b55 message=process session.id=ses_ffe989ca2ffeA3JwaV3Q7h52Ki messageID=msg_00167664c001Unx4Nao6QC860Z error=\"Cannot connect to API: Unable to connect. Is the computer able to access the url?\" stack=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url?\\n at e (B:/~BUN/root/chunk-aaw76hgx.js:2:6248)\\n at <anonymous> (B:/~BUN/root/chunk-aaw76hgx.js:6:13321)\\n at processTicksAndRejections (native:7:39)\" timestamp=2026-08-14T17:53:40.242Z level=WARN run=41b72b55 message=\"background dependency install failed\" dir=\"C:\\\\Users\\\\45928\\\\AppData\\\\Local\\\\Temp\\\\acp-opencode-home-jBQSHC\\\\opencode\" error=\"Cause([Fail(NpmInstallFailedError (cause: FetchError: request to https://registry.npmjs.org/@opencode-ai%2fplugin failed, reason: ECONNREFUSED))])\" timestamp=2026-08-14T17:53:40.897Z level=INFO run=41b72b55 message=\"disposing instance\" directory=\"C:\\\\Users\\\\45928\\\\Documents\\\\Github\\\\AgentControlPlane\\\\.benchmark-opencode-3-1786729793301-Z6VhEO\""
+        "opencode exited with code 1: seek modelID=deepseek-v4-pro session.id=ses_ffe8a59f7ffehCpaz0Q6h25JfT small=false agent=build mode=primary error.error=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url? (cause: Error: Unable to connect. Is the computer able to access the url?)\" timestamp=2026-08-14T18:09:14.021Z level=ERROR run=4204a143 message=process session.id=ses_ffe8a59f7ffehCpaz0Q6h25JfT messageID=msg_00175aa58001gjKG53ETboiVz5 error=\"Cannot connect to API: Unable to connect. Is the computer able to access the url?\" stack=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url?\\n at e (B:/~BUN/root/chunk-aaw76hgx.js:2:6248)\\n at <anonymous> (B:/~BUN/root/chunk-aaw76hgx.js:6:13321)\\n at processTicksAndRejections (native:7:39)\" timestamp=2026-08-14T18:09:14.766Z level=INFO run=4204a143 message=\"disposing instance\" directory=\"C:\\\\Users\\\\45928\\\\Documents\\\\Github\\\\AgentControlPlane\\\\.benchmark-opencode-3-1786730731721-Jk3vsH\""
       ]
     }
   ],
   "summary": {
     "schema_version": 1,
-    "generated_at": "2026-08-14T17:53:41.844Z",
+    "generated_at": "2026-08-14T18:09:15.331Z",
     "case_count": 3,
     "comparable_case_count": 0,
     "average_execution_savings_rate": null,
@@ -155,7 +155,7 @@
         "total_savings_rate": null,
         "direct_success": false,
         "controlled_success": false,
-        "direct_duration_ms": 74160,
+        "direct_duration_ms": 74205,
         "controlled_duration_ms": 0
       },
       {
@@ -181,7 +181,7 @@
         "total_savings_rate": null,
         "direct_success": false,
         "controlled_success": false,
-        "direct_duration_ms": 77186,
+        "direct_duration_ms": 73335,
         "controlled_duration_ms": 0
       },
       {
@@ -207,7 +207,7 @@
         "total_savings_rate": null,
         "direct_success": false,
         "controlled_success": false,
-        "direct_duration_ms": 75946,
+        "direct_duration_ms": 74847,
         "controlled_duration_ms": 0
       }
     ]
