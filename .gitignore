@@ -4,6 +4,7 @@ node_modules/
 coverage/
 dist/
 *.log
+.runtime/
 docs/app-server-schema/
 .live-smoke-state*/
 .smoke-workspace*/

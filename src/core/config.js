@@ -235,7 +235,24 @@ export function loadConfig(configPath = process.env.AGENT_CONTROL_CONFIG) {
     integrityKey:
       process.env.AGENT_CONTROL_AUDIT_KEY ?? config.audit?.integrityKey ?? null,
   };
-  config.codex.command = resolveCodexCommand(config.codex.command);
+  const configuredCodexCommand = config.codex.command;
+  try {
+    config.codex.command = resolveCodexCommand(configuredCodexCommand);
+  } catch (error) {
+    if ((config.executor?.provider ?? "auto") === "codex") throw error;
+    config.codex.command = configuredCodexCommand;
+    config.codex.discoveryError = error.message;
+  }
+  const routingOrder = config.executor?.routing?.order ?? [];
+  if (
+    !Array.isArray(routingOrder) ||
+    routingOrder.some((provider) => typeof provider !== "string" || !provider)
+  ) {
+    throw new ControlPlaneError(
+      "invalid_config",
+      "executor.routing.order must be an array of executor ids",
+    );
+  }
   if (!Array.isArray(config.workspaceRoots) || config.workspaceRoots.length === 0) {
     config.workspaceRoots = [path.dirname(projectRoot)];
   }
@@ -266,7 +283,10 @@ export function loadConfig(configPath = process.env.AGENT_CONTROL_CONFIG) {
       "The state directory must be outside every allowed workspace root",
     );
   }
-  if (config.workspaceRoots.some((root) => isInside(root, config.codex.command))) {
+  if (
+    path.isAbsolute(config.codex.command) &&
+    config.workspaceRoots.some((root) => isInside(root, config.codex.command))
+  ) {
     throw new ControlPlaneError(
       "unsafe_codex_command",
       "The Codex executable must be outside every allowed workspace root",

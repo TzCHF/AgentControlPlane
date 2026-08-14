@@ -22,7 +22,16 @@
     ]
   },
   "executor": {
-    "provider": "codex",
+    "provider": "auto",
+    "routing": {
+      "order": [
+        "opencode",
+        "codex",
+        "claude",
+        "openai-compatible",
+        "deepseek"
+      ]
+    },
     "openaiCompat": {
       "baseUrl": "http://127.0.0.1:10100/v1",
       "apiKey": null,

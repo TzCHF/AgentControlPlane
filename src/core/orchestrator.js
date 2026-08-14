@@ -7,6 +7,7 @@ import {
 import { ControlPlaneError, asErrorPayload } from "./errors.js";
 import { resolveProfile } from "./profiles.js";
 import { resolveWorkspace } from "./workspace.js";
+import { discoverExecutors } from "../executors/discovery.js";
 
 function zeroUsage() {
   return {
@@ -111,10 +112,13 @@ export class Orchestrator extends EventEmitter {
     this.store = store;
     this.executors =
       executors ?? new Map([[defaultProvider ?? "codex", codex]]);
-    this.defaultProvider = defaultProvider ?? config?.executor?.provider ?? "codex";
+    this.defaultProvider = defaultProvider ?? config?.executor?.provider ?? "auto";
+    this.primaryProvider = null;
+    this.executorDiscovery = {};
     this.running = new Map();
     this.queue = [];
     this.modelCatalog = [];
+    this.modelCatalogs = new Map();
     this.runtimeHealth = {
       windowsSandbox: process.platform === "win32" ? "unknown" : "not_applicable",
     };
@@ -131,8 +135,38 @@ export class Orchestrator extends EventEmitter {
     }
   }
 
-  #executorFor(task) {
-    const provider = task?.executor ?? this.defaultProvider;
+  #orderedProviders(profileName = null) {
+    const profileOrder = profileName
+      ? this.config.executor?.routing?.profiles?.[profileName]
+      : null;
+    const configured = profileOrder ?? this.config.executor?.routing?.order ?? [];
+    return [...new Set([...configured, ...this.executors.keys()])];
+  }
+
+  #executorEntry(task = {}) {
+    const requested = task.executor ?? this.defaultProvider;
+    const order = this.#orderedProviders(task.profile ?? task.policy?.name);
+    const provider =
+      requested === "auto"
+        ? order.find(
+            (id) =>
+              this.executors.has(id) &&
+              this.executorDiscovery[id]?.available !== false &&
+              this.executorDiscovery[id]?.status !== "degraded",
+          ) ??
+          order.find(
+            (id) =>
+              this.executors.has(id) &&
+              this.executorDiscovery[id]?.available !== false,
+          )
+        : requested;
+    if (!provider) {
+      throw new ControlPlaneError(
+        "no_executor_available",
+        "No configured engineering executor is available",
+        { executors: this.getExecutors() },
+      );
+    }
     const executor = this.executors.get(provider);
     if (!executor) {
       throw new ControlPlaneError(
@@ -141,18 +175,38 @@ export class Orchestrator extends EventEmitter {
         { available: [...this.executors.keys()] },
       );
     }
-    return executor;
+    const discovery = this.executorDiscovery[provider];
+    if (discovery?.available === false) {
+      throw new ControlPlaneError(
+        "executor_unavailable",
+        `Executor is not available: ${provider}`,
+        { executor: provider, discovery },
+      );
+    }
+    return { id: provider, executor };
+  }
+
+  #executorFor(task) {
+    return this.#executorEntry(task).executor;
   }
 
   async start() {
-    const primary = this.#executorFor({});
+    this.executorDiscovery = await discoverExecutors(this.executors);
+    const { id, executor: primary } = this.#executorEntry({});
+    this.primaryProvider = id;
     await primary.start();
-    const models = await primary.listModels({
-      limit: 100,
-      includeHidden: false,
-    });
-    this.modelCatalog = models.data ?? [];
-    if (process.platform === "win32") {
+    try {
+      const models = await primary.listModels({
+        limit: 100,
+        includeHidden: false,
+      });
+      this.modelCatalog = models.data ?? [];
+      this.modelCatalogs.set(id, this.modelCatalog);
+    } catch (error) {
+      this.modelCatalog = [];
+      this.emit("diagnostic", { source: `${id}-models`, text: error.message });
+    }
+    if (process.platform === "win32" && primary.requiresWindowsSandbox) {
       try {
         const readiness = await primary.getSandboxReadiness({});
         this.runtimeHealth.windowsSandbox = readiness.status;
@@ -163,12 +217,40 @@ export class Orchestrator extends EventEmitter {
           text: error.message,
         });
       }
+    } else if (process.platform === "win32") {
+      this.runtimeHealth.windowsSandbox = "not_required";
     }
+    this.runtimeHealth.defaultExecutor = id;
+    this.runtimeHealth.executors = structuredClone(this.executorDiscovery);
     await this.#recoverInterruptedTasks();
   }
 
-  getModels() {
-    return structuredClone(this.modelCatalog);
+  getModels(executorId = null) {
+    const selected =
+      !executorId || executorId === "auto"
+        ? this.primaryProvider
+        : executorId;
+    return structuredClone(this.modelCatalogs.get(selected) ?? []);
+  }
+
+  getExecutors() {
+    return [...this.executors.entries()].map(([id, executor]) => ({
+      ...(typeof executor.describe === "function"
+        ? executor.describe()
+        : {
+            id,
+            display_name: executor.displayName ?? id,
+            ready: Boolean(executor.ready),
+            discovery: structuredClone(this.executorDiscovery[id] ?? {}),
+            capabilities: structuredClone(executor.capabilities ?? {}),
+          }),
+      id,
+      selected: id === this.primaryProvider,
+    }));
+  }
+
+  getDefaultExecutorId() {
+    return this.primaryProvider;
   }
 
   getRuntimeHealth() {
@@ -181,15 +263,17 @@ export class Orchestrator extends EventEmitter {
       request.workspace,
       this.config.workspaceRoots,
     );
-    const provider = request.executor ?? this.defaultProvider;
-    this.#executorFor({ executor: provider });
+    const { id: provider } = this.#executorEntry({
+      executor: request.executor ?? this.defaultProvider,
+      profile: request.profile,
+    });
     const brief = normalizeBrief(
       request,
       this.config.limits.maxBriefCharacters,
     );
-    const catalog =
-      provider === this.defaultProvider ? this.modelCatalog : [];
+    const catalog = this.modelCatalogs.get(provider) ?? [];
     const policy = resolveProfile(this.config, request, catalog);
+    if (provider !== "codex" && !request.model) policy.model = null;
     const task = this.store.createTask({
       workspace,
       brief,
@@ -229,7 +313,8 @@ export class Orchestrator extends EventEmitter {
       reasoning_effort: request.reasoning_effort,
       max_subagents: request.max_subagents,
       token_budget: request.token_budget,
-    }, this.modelCatalog);
+    }, this.modelCatalogs.get(parent.executor) ?? []);
+    if (parent.executor !== "codex" && !request.model) policy.model = null;
     const task = this.store.createTask({
       workspace: parent.workspace,
       brief,
@@ -615,7 +700,9 @@ export class Orchestrator extends EventEmitter {
       let recovered = false;
       if (task.threadId) {
         try {
-          const resumed = await this.#executorFor(task).resumeThread({
+          const executor = this.#executorFor(task);
+          if (!executor.ready) await executor.start();
+          const resumed = await executor.resumeThread({
             threadId: task.threadId,
             historyMode: "paginated",
           });

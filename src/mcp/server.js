@@ -10,7 +10,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { asErrorPayload } from "../core/errors.js";
 import { publicModels } from "../core/profiles.js";
 
-const SERVER_INFO = { name: "agent-control-plane", version: "0.2.2" };
+const SERVER_INFO = { name: "agent-control-plane", version: "0.3.0" };
 
 // OpenAI negotiates this protocol version through its connector flow.
 // Prefer it over the SDK's latest so the discovery handshake matches what
@@ -22,18 +22,25 @@ const DISCOVERY_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS.includes(
   : SUPPORTED_PROTOCOL_VERSIONS[0];
 
 const SERVER_INSTRUCTIONS =
-  "You are the ChatGPT-facing control plane for private local engineering " +
-  "agents. Before dispatching work, call list_profiles and list_models to " +
-  "choose execution settings, then send a compact objective via " +
-  "dispatch_project. Use dispatch_opencode when OpenCode is requested; " +
-  "opencode is never a model. Treat dispatch tools as asynchronous: " +
+  "This is a control plane between an AI conversation and private engineering " +
+  "executors. Call list_executors and list_profiles when execution settings " +
+  "matter, then send a compact objective through dispatch_project. Leave " +
+  "executor as auto unless the user requests a specific backend. Treat " +
+  "dispatch tools as asynchronous: " +
   "it queues a background agent task and returns a task id; " +
-  "poll task_status until it completes. Never run engineering work directly " +
+  "poll task_status until it completes. If the structured result is blocked, " +
+  "partial, failed, or shows a misunderstanding, correct the compact brief " +
+  "with continue_project when it is safe to do so; ask the user only when a " +
+  "real decision or permission is required. Never run engineering work directly " +
   "in the conversation; route all of it through these tools.";
 
 const briefFields = {
   workspace: z.string().describe("Absolute project workspace path"),
   objective: z.string().min(1).describe("Compact engineering objective"),
+  executor: z
+    .string()
+    .default("auto")
+    .describe("Engineering executor id, or auto for capability-based routing"),
   constraints: z.array(z.string()).optional(),
   acceptance_criteria: z.array(z.string()).optional(),
   context: z.array(z.string()).optional(),
@@ -75,7 +82,7 @@ function buildToolSpecs({ orchestrator, store, config }) {
       name: "dispatch_project",
       title: "Dispatch engineering project",
       description:
-        "Queue a compact engineering brief using the configured default execution backend.",
+        "Queue a compact engineering brief. By default the control plane automatically selects an available local executor.",
       inputSchema: briefFields,
       annotations: {
         readOnlyHint: false,
@@ -214,6 +221,28 @@ function buildToolSpecs({ orchestrator, store, config }) {
       },
     },
     {
+      name: "list_executors",
+      title: "List engineering executors",
+      description:
+        "List discovered engineering backends, readiness, capabilities, and the automatically selected default.",
+      inputSchema: {},
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        idempotentHint: true,
+      },
+      async handler() {
+        return result(
+          {
+            default_executor: orchestrator.getDefaultExecutorId(),
+            executors: orchestrator.getExecutors(),
+          },
+          "Returned discovered engineering executors.",
+        );
+      },
+    },
+    {
       name: "list_profiles",
       title: "List engineering execution profiles",
       description:
@@ -234,20 +263,26 @@ function buildToolSpecs({ orchestrator, store, config }) {
     },
     {
       name: "list_models",
-      title: "List available Codex engineering models",
+      title: "List available engineering models",
       description:
-        "Use this when the user wants to choose the engineering main-agent model or reasoning effort before dispatch.",
-      inputSchema: {},
+        "List the cached model catalog for the selected or specified executor.",
+      inputSchema: { executor: z.string().default("auto") },
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
         openWorldHint: false,
         idempotentHint: true,
       },
-      async handler() {
+      async handler({ executor }) {
         return result(
-          { models: publicModels(orchestrator.getModels()) },
-          "Returned the models currently advertised by Codex.",
+          {
+            executor:
+              executor === "auto"
+                ? orchestrator.getDefaultExecutorId()
+                : executor,
+            models: publicModels(orchestrator.getModels(executor)),
+          },
+          "Returned the cached models advertised by the executor.",
         );
       },
     },

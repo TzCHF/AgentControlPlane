@@ -24,6 +24,14 @@ class StubOrchestrator {
   getModels() {
     return [];
   }
+
+  getDefaultExecutorId() {
+    return "codex";
+  }
+
+  getExecutors() {
+    return [];
+  }
 }
 
 function testConfig() {
@@ -73,7 +81,7 @@ test("server/discover is served statelessly without an MCP session", async () =>
     assert.equal(body.jsonrpc, "2.0");
     assert.equal(body.id, 7);
     assert.equal(body.result.serverInfo.name, "agent-control-plane");
-    assert.equal(body.result.serverInfo.version, "0.2.2");
+    assert.equal(body.result.serverInfo.version, "0.3.0");
     assert.equal(typeof body.result.protocolVersion, "string");
     assert.ok(body.result.capabilities?.tools);
     assert.ok(Array.isArray(body.result.tools));
@@ -86,6 +94,7 @@ test("server/discover is served statelessly without an MCP session", async () =>
       "continue_project",
       "cancel_task",
       "list_tasks",
+      "list_executors",
       "list_profiles",
       "list_models",
       "usage_report",
@@ -98,11 +107,11 @@ test("server/discover is served statelessly without an MCP session", async () =>
     );
     assert.equal(typeof dispatch.inputSchema, "object");
     assert.equal(dispatch.inputSchema.type, "object");
-    assert.equal(dispatch.inputSchema.properties.executor, undefined);
+    assert.equal(dispatch.inputSchema.properties.executor.type, "string");
     const dispatchOpenCode = body.result.tools.find(
       (tool) => tool.name === "dispatch_opencode",
     );
-    assert.equal(dispatchOpenCode.inputSchema.properties.executor, undefined);
+    assert.equal(dispatchOpenCode.inputSchema.properties.executor.type, "string");
   } finally {
     await app.close();
   }

@@ -1,5 +1,6 @@
 import { CodexAppServerClient } from "../core/codex-client.js";
 import { ExecutorAdapter } from "./executor.js";
+import { probeCommandExecutor } from "./discovery.js";
 
 export class CodexExecutor extends ExecutorAdapter {
   constructor(options) {
@@ -14,10 +15,15 @@ export class CodexExecutor extends ExecutorAdapter {
       },
     });
     this.requiresWindowsSandbox = true;
+    this.command = options?.command ?? "codex";
     this.client = new CodexAppServerClient(options);
     for (const event of ["notification", "serverRequest", "stderr"] ) {
       this.client.on(event, (payload) => this.emit(event, payload));
     }
+  }
+
+  probe() {
+    return probeCommandExecutor({ command: this.command });
   }
 
   async start() {

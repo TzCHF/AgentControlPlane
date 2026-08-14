@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import readline from "node:readline";
 import { ControlPlaneError } from "../core/errors.js";
 import { ExecutorAdapter } from "./executor.js";
+import { probeCommandExecutor } from "./discovery.js";
 
 export function normalizeClaudeResult(events) {
   let resultText = "";
@@ -63,6 +64,10 @@ export class ClaudeCodeExecutor extends ExecutorAdapter {
 
   async start() {
     this.ready = true;
+  }
+
+  probe() {
+    return probeCommandExecutor({ command: this.command });
   }
 
   async stop() {

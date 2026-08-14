@@ -3,9 +3,8 @@
 // The orchestrator depends on this semantic surface instead of any specific
 // agent protocol (for example, Codex app-server RPC). An executor that
 // implements these methods can drive the control plane's thread/goal/turn
-// lifecycle. CodexExecutor is the reference implementation; future adapters
-// (for example, Claude Code) implement the same methods against their own
-// transport without changing the orchestrator.
+// lifecycle. Codex, OpenCode, Claude Code, and OpenAI-compatible adapters map
+// their own transports to this contract without changing the orchestrator.
 
 export const AGENT_LIFECYCLE_METHODS = Object.freeze([
   "listModels",

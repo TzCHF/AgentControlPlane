@@ -36,6 +36,31 @@ export class ExecutorAdapter extends EventEmitter {
     };
     this.ready = false;
     this.requiresWindowsSandbox = false;
+    this.discovery = {
+      available: null,
+      status: "unknown",
+      reason: null,
+      detail: null,
+      command: null,
+      version: null,
+      checked_at: null,
+    };
+  }
+
+  async probe() {
+    return { available: true, status: "available", reason: null };
+  }
+
+  setDiscovery(result = {}) {
+    this.discovery = {
+      ...this.discovery,
+      ...result,
+      available:
+        result.available === undefined
+          ? this.discovery.available
+          : Boolean(result.available),
+    };
+    return structuredClone(this.discovery);
   }
 
   async start() {
@@ -59,6 +84,7 @@ export class ExecutorAdapter extends EventEmitter {
       id: this.id,
       display_name: this.displayName,
       ready: Boolean(this.ready),
+      discovery: structuredClone(this.discovery),
       capabilities: structuredClone(this.capabilities),
     };
   }

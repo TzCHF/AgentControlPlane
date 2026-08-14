@@ -5,22 +5,16 @@
 ```json
 {
   "workspace": "D:\\Projects\\example",
+  "executor": "auto",
   "objective": "Add a tested GET /hello endpoint.",
-  "constraints": [
-    "Do not add a framework dependency."
-  ],
+  "constraints": ["Do not add a framework dependency."],
   "acceptance_criteria": [
     "GET /hello returns HTTP 200",
     "Response JSON equals {\"message\":\"hello\"}",
     "Automated tests pass"
   ],
-  "context": [
-    "The project already uses node:test."
-  ],
-  "evidence_required": [
-    "test command and result",
-    "changed file list"
-  ],
+  "context": ["The project already uses node:test."],
+  "evidence_required": ["test command and result", "changed file list"],
   "profile": "balanced",
   "model": null,
   "reasoning_effort": null,
@@ -28,6 +22,10 @@
   "token_budget": null
 }
 ```
+
+`executor` may be `auto`, `opencode`, `codex`, `claude`,
+`openai-compatible`, or `deepseek`. `auto` resolves to an actual executor before
+the task is persisted, so status and audit records always show where work ran.
 
 ## Compact result
 
@@ -50,23 +48,28 @@
 }
 ```
 
+The web controller should poll until terminal status. When the result is
+`blocked`, `partial`, or `failed`, it should use the structured blocker and
+evidence to correct the brief or explain why user input is required. This is the
+automatic feedback loop that replaces copying output between two conversations.
+
 ## MCP tools
 
-- `dispatch_project` — create an asynchronous engineering task.
-- `task_status` — get compact state, result, usage, and optionally recent events.
-- `continue_project` — send a follow-up into the same project thread.
-- `cancel_task` — interrupt an active turn.
+- `dispatch_project` — create an asynchronous task with auto or explicit route.
+- `dispatch_opencode` — backwards-compatible OpenCode shortcut.
+- `task_status` — read compact state, result, usage, and optional recent events.
+- `continue_project` — send a correction or follow-up to the same project.
+- `cancel_task` — interrupt queued or active work.
 - `list_tasks` — list recent tasks.
-- `list_profiles` — inspect available model/budget policies.
-- `list_models` — inspect the current Codex model catalog and reasoning options.
-- `usage_report` — aggregate measured Codex usage.
+- `list_executors` — inspect discovery, capabilities, and current default.
+- `list_profiles` — inspect model/budget policies.
+- `list_models` — inspect the cached catalog for one executor.
+- `usage_report` — aggregate measured engineering usage.
 
 ## Token budgets
 
-AgentControlPlane reads `tokensUsed` from the Codex thread goal while a task is
-running and stores it as the task's measured `total_tokens`. When measured usage
-reaches `token_budget`, AgentControlPlane sends `turn/interrupt` and records the
-task as `interrupted` with error code `token_budget_exceeded`.
-
-The default polling interval is 1000 milliseconds. Providers can consume
-additional tokens between two polls.
+Usage measurement and interruption precision depend on executor telemetry.
+Codex exposes a live thread goal and can be polled while running. CLI adapters
+may report cumulative usage only in their final event, so their budget is also
+sent as policy guidance but cannot always be enforced at the same granularity.
+Providers can consume additional tokens between measurements.

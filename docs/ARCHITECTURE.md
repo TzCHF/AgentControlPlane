@@ -2,44 +2,77 @@
 
 ## Product boundary
 
-AgentControlPlane separates reasoning into two layers:
+AgentControlPlane separates work into two layers:
 
-1. **Control plane** — the ChatGPT conversation clarifies intent, compares
-   approaches, selects a policy, dispatches work, and accepts results.
-2. **Execution plane** — a Codex project agent edits code, runs tools, verifies
-   results, and optionally delegates independent work to subagents.
+1. **Control plane** — an MCP-capable web AI clarifies intent, compares
+   approaches, sends a compact brief, and evaluates the result.
+2. **Execution plane** — a selected local engineering agent edits code, runs
+   tools, verifies results, and optionally delegates independent work.
 
-This separation is a usage-efficiency strategy. Codex work still consumes the
-applicable engineering/agent usage allowance.
+This reduces repeated context and manual translation between conversations. It
+does not bypass provider limits; the chosen executor still consumes its own
+allowance or API usage.
 
 ## Data flow
 
 ```text
 User
-  -> ChatGPT: broad request and discussion
+  -> web AI: broad request and discussion
   -> dispatch_project: compact EngineeringBrief
-  -> TaskStore: queued task
-  -> Orchestrator: workspace and policy validation
-  -> Codex app-server: thread/start or thread/resume
-  -> Codex app-server: thread/goal/set with token budget
-  -> Codex app-server: turn/start
-  -> Codex main agent and optional subagents
-  -> app-server notifications: messages, subagents, diff, token usage
+  -> Orchestrator: workspace, policy, and route validation
+  -> TaskStore: queued task with resolved executor id
+  -> executor adapter: thread/goal/turn lifecycle
+  -> local engineering agent and optional subagents
+  -> normalized result, evidence, events, and usage
   -> TaskStore + append-only audit log
-  -> task_status: compact result and evidence
-  -> ChatGPT: acceptance or follow-up
+  -> task_status: compact structured result
+  -> web AI: accept, correct automatically, or request user input
 ```
 
-## Token-efficiency mechanisms
+## Two-sided adapter boundary
 
-- `EngineeringBrief` excludes conversational filler and includes only the
-  objective, constraints, acceptance criteria, known context, and requested
-  evidence.
-- One persistent Codex thread is associated with each project workspace.
-- Profiles choose reasoning effort and subagent concurrency.
-- App-server token notifications are stored as measured usage.
-- Final output is constrained to a compact JSON-shaped engineering report.
-- Raw events remain local and are returned only when explicitly requested.
+The northbound boundary is MCP. Any web AI that can invoke the published MCP
+tools can act as the controller. Product-specific connection and permission
+steps live outside the core task protocol.
+
+The southbound boundary is the semantic lifecycle contract in
+`src/executors/lifecycle.js`: model listing, readiness, persistent project
+identity, goals, turns, cancellation, events, and usage.
+
+Implementations currently include:
+
+- `CodexExecutor` for Codex app-server RPC;
+- `OpenCodeExecutor` for OpenCode's JSON event stream;
+- `ClaudeCodeExecutor` for Claude Code's stream-json output;
+- `OpenAICompatibleExecutor` for responses/chat endpoints and its bounded local
+  `read_file`, `write_file`, and `shell` tool loop.
+
+## Discovery and routing
+
+At startup every adapter performs a read-only probe. CLI probes only resolve the
+executable and do not launch it; local compatible endpoints expose `/models`;
+remote compatible providers must have a configured credential. Discovery does
+not send an engineering prompt or consume a model turn.
+
+With `executor.provider: "auto"`, routing follows
+`executor.routing.order`. Healthy entries are preferred over degraded entries.
+The resolved id is persisted on the task, so continuation, cancellation, audit,
+and reporting use the same executor. An explicit per-task `executor` overrides
+automatic routing.
+
+## Feedback loop and token efficiency
+
+- `EngineeringBrief` includes only objective, constraints, acceptance criteria,
+  known context, and requested evidence.
+- A project identity is reused where the executor supports persistent sessions.
+- Final output is normalized to compact summary, files, tests, blockers, next
+  action, and usage.
+- The web controller polls the task and can turn a structured blocker into a
+  corrected `continue_project` call without the user copying text.
+- Raw events stay local and are returned only when explicitly requested.
+
+Usage precision depends on the executor. Codex exposes live goal usage; CLI
+agents may report cumulative usage only when their process finishes.
 
 ## Profiles
 
@@ -47,30 +80,19 @@ User
 |---|---|---:|---:|---:|
 | economy | Small, well-defined edits | low | 0 | 30k |
 | balanced | Normal feature/fix work | high | up to 2 | 90k |
-| deep | Architecture, broad refactor, difficult debugging | ultra | up to 4 | 220k |
+| deep | Architecture, broad refactors, hard debugging | ultra | up to 4 | 220k |
 
-The main conversation may override model, effort, subagent count, or token budget
-within local policy. A main engineering agent may choose how to divide work, but
-must remain within the supplied concurrency and budget instructions.
+Profiles are policy defaults, not executor locks. A task may override model,
+effort, concurrency, and budget within configured limits.
 
-## Persistence
+## Persistence and trust
 
-`.agent-control/state.json` stores tasks and project-to-thread associations.
-`.agent-control/audit.jsonl` stores append-only events. State writes use a
-temporary file followed by an atomic rename.
+Task state and project associations are stored outside workspaces. Audit entries
+form an append-only integrity chain. The local HTTP service binds only to
+loopback.
 
-## Executor abstraction
-
-The orchestrator depends on a semantic agent lifecycle contract
-(`src/executors/lifecycle.js`) rather than any one agent protocol. The contract
-covers model listing, sandbox readiness, and the thread/goal/turn lifecycle.
-`CodexExecutor` is the reference implementation and maps that contract to the
-Codex app-server RPC. `OpenAICompatibleExecutor` implements the same contract
-against any OpenAI-compatible responses endpoint (for example, OpenCodex on
-`127.0.0.1:10100`), running a bounded tool loop with `read_file`, `write_file`,
-and `shell` tools. Select the executor with `executor.provider` in
-`config/default.json` (`codex` or `openai-compatible`).
-
-The OpenAI-compatible executor is intended for a single-user local setup. Its
-`shell` tool runs commands with the host user's privileges and does not inherit
-the Codex sandbox, so it should only be used with a workspace you fully trust.
+Codex has an explicit workspace-write sandbox path. CLI and compatible endpoint
+adapters execute with the host user's privileges and are therefore restricted
+to allowlisted, trusted workspaces. A hosted relay requires a separate
+multi-tenant authentication and device-trust design; the local server must not
+be exposed directly to the public Internet.

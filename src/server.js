@@ -15,10 +15,12 @@ import { assertExecutor } from "./executors/executor.js";
 import { assertLifecycle } from "./executors/lifecycle.js";
 import { createMcpHandler } from "./mcp/server.js";
 
-function buildExecutor(config, provider) {
+export function buildExecutor(config, provider) {
   if (provider === "openai-compatible") {
     const options = config.executor.openaiCompat ?? {};
     return new OpenAICompatibleExecutor({
+      id: "openai-compatible",
+      displayName: "OpenAI Compatible (OpenCodex)",
       baseUrl: options.baseUrl,
       apiKey:
         process.env.AGENT_CONTROL_OPENAI_KEY ??
@@ -32,6 +34,8 @@ function buildExecutor(config, provider) {
   if (provider === "deepseek") {
     const options = config.executor.deepseek ?? {};
     return new OpenAICompatibleExecutor({
+      id: "deepseek",
+      displayName: "DeepSeek",
       baseUrl: options.baseUrl,
       apiKey: process.env[options.apiKeyEnv] ?? options.apiKey ?? null,
       model: options.model,
@@ -66,7 +70,7 @@ function buildExecutor(config, provider) {
   });
 }
 
-function buildExecutors(config) {
+export function buildExecutors(config) {
   const providers = [
     "codex",
     "openai-compatible",
@@ -110,15 +114,17 @@ export async function createApplication(overrides = {}) {
     defaultProvider = "codex";
   } else {
     executors = buildExecutors(config);
-    defaultProvider = config.executor?.provider ?? "codex";
+    defaultProvider = config.executor?.provider ?? "auto";
     for (const executor of executors.values()) {
       assertLifecycle(executor);
     }
-    assertExecutor(executors.get(defaultProvider), {
-      execution: overrides.startCodex !== false,
-    });
+    if (defaultProvider !== "auto") {
+      assertExecutor(executors.get(defaultProvider), {
+        execution: overrides.startCodex !== false,
+      });
+    }
   }
-  const codex = executors.get(defaultProvider);
+  const codex = executors.get("codex") ?? executors.get(defaultProvider);
   let orchestrator = overrides.orchestrator;
   if (!orchestrator) {
     orchestrator = new Orchestrator({
@@ -205,10 +211,16 @@ export async function createApplication(overrides = {}) {
       }
 
       if (isHealth) {
+        const defaultExecutor = orchestrator.getDefaultExecutorId?.() ?? "codex";
+        const executors = orchestrator.getExecutors?.() ?? [];
         sendJson(response, 200, {
           status: "ok",
           service: "agent-control-plane",
-          version: "0.2.2",
+          version: "0.3.0",
+          default_executor: defaultExecutor,
+          executor_ready:
+            executors.find((executor) => executor.id === defaultExecutor)?.ready ??
+            Boolean(codex.ready),
           codex_ready: Boolean(codex.ready),
         });
         return;
@@ -232,7 +244,17 @@ export async function createApplication(overrides = {}) {
         sendJson(response, 200, {
           codex_ready: Boolean(codex.ready),
           codex_command: config.codex?.command ?? null,
+          default_executor: orchestrator.getDefaultExecutorId?.() ?? "codex",
+          executors: orchestrator.getExecutors?.() ?? [],
           runtime: orchestrator.getRuntimeHealth(),
+        });
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === "/v1/executors") {
+        sendJson(response, 200, {
+          default_executor: orchestrator.getDefaultExecutorId?.() ?? "codex",
+          executors: orchestrator.getExecutors?.() ?? [],
         });
         return;
       }
@@ -243,8 +265,10 @@ export async function createApplication(overrides = {}) {
       }
 
       if (request.method === "GET" && url.pathname === "/v1/models") {
+        const executor = url.searchParams.get("executor");
         sendJson(response, 200, {
-          models: publicModels(orchestrator.getModels()),
+          executor: executor ?? orchestrator.getDefaultExecutorId?.() ?? null,
+          models: publicModels(orchestrator.getModels(executor)),
         });
         return;
       }

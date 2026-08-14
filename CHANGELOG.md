@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.3.0 — 2026-08-14
+
+Automatic multi-executor routing and a provider-neutral MCP surface.
+
+### Added
+
+- Startup discovery for OpenCode, Codex, Claude Code, OpenAI-compatible local
+  endpoints, and DeepSeek configuration.
+- Capability/readiness metadata through `list_executors`, `/v1/executors`, and
+  diagnostics.
+- Per-task `executor` selection with `auto` as the zero-configuration default.
+- Executor discovery and automatic fallback tests.
+- Apache-2.0 licensing and project attribution through `NOTICE`.
+
+### Changed
+
+- OpenCode is the first automatic route when its CLI is installed; Codex,
+  Claude, OpenAI-compatible, and DeepSeek routes remain available.
+- MCP instructions and project documentation are provider-neutral.
+- Non-Codex executors use their own configured default model unless a task
+  explicitly supplies one.
+
 ## v0.2.0 — 2026-08-13
 
 Security hardening and the multi-executor foundation.

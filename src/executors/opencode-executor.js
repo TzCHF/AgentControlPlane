@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import readline from "node:readline";
 import { ControlPlaneError } from "../core/errors.js";
 import { ExecutorAdapter } from "./executor.js";
+import { probeCommandExecutor } from "./discovery.js";
 
 // Matches `opencode run --format json`: newline-delimited JSON events with a
 // top-level `type` and a `part` object. Text parts carry `part.text`; the
@@ -68,6 +69,10 @@ export class OpenCodeExecutor extends ExecutorAdapter {
 
   async start() {
     this.ready = true;
+  }
+
+  probe() {
+    return probeCommandExecutor({ command: this.command });
   }
 
   async stop() {

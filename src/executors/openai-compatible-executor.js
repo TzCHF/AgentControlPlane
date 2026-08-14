@@ -111,6 +111,8 @@ function runShell(workspace, command, timeoutMs = 30000) {
 
 export class OpenAICompatibleExecutor extends ExecutorAdapter {
   constructor({
+    id = "openai-compatible",
+    displayName = "OpenAI Compatible",
     baseUrl,
     apiKey = null,
     model = "deepseek/deepseek-v4-pro",
@@ -120,8 +122,8 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     workspaceRoots = [],
   } = {}) {
     super({
-      id: "openai-compatible",
-      displayName: "OpenAI Compatible (OpenCodex)",
+      id,
+      displayName,
       capabilities: {
         persistentThreads: false,
         tokenUsage: true,
@@ -144,6 +146,40 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     this.workspaceRoots = workspaceRoots;
     this.goals = new Map();
     this.turns = new Map();
+  }
+
+  async probe() {
+    let parsed;
+    try {
+      parsed = new URL(this.baseUrl);
+    } catch {
+      return {
+        available: false,
+        status: "unavailable",
+        reason: "invalid_base_url",
+      };
+    }
+    const local = ["127.0.0.1", "localhost", "::1"].includes(parsed.hostname);
+    if (!local) {
+      return this.apiKey
+        ? { available: true, status: "configured", reason: null }
+        : {
+            available: false,
+            status: "unavailable",
+            reason: "missing_api_key",
+          };
+    }
+    try {
+      await this.#fetchJson("GET", "/models");
+      return { available: true, status: "available", reason: null };
+    } catch (error) {
+      return {
+        available: false,
+        status: "unavailable",
+        reason: "endpoint_unreachable",
+        detail: error.message,
+      };
+    }
   }
 
   async start() {

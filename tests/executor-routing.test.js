@@ -13,6 +13,16 @@ class RecordingExecutor extends EventEmitter {
     this.id = id;
     this.ready = false;
     this.turnStarts = [];
+    this.discovery = { available: null, status: "unknown" };
+  }
+
+  async probe() {
+    return { available: true, status: "available", reason: null };
+  }
+
+  setDiscovery(result) {
+    this.discovery = result;
+    return result;
   }
 
   async start() {
@@ -189,4 +199,77 @@ test("rejects an unknown executor", async () => {
       }),
     /Unknown executor/,
   );
+});
+
+test("auto routing selects the first available executor and stores its id", async () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "acp-auto-route-"));
+  const store = new TaskStore(
+    fs.mkdtempSync(path.join(os.tmpdir(), "acp-auto-route-state-")),
+    20,
+  );
+  const codex = new RecordingExecutor("codex");
+  codex.probe = async () => ({
+    available: false,
+    status: "unavailable",
+    reason: "usage_unavailable",
+  });
+  const opencode = new RecordingExecutor("opencode");
+  const config = testConfig(workspace);
+  config.executor = {
+    provider: "auto",
+    routing: { order: ["codex", "opencode"] },
+  };
+  const orchestrator = new Orchestrator({
+    config,
+    store,
+    executors: new Map([
+      ["codex", codex],
+      ["opencode", opencode],
+    ]),
+    defaultProvider: "auto",
+  });
+  await orchestrator.start();
+
+  assert.equal(orchestrator.getDefaultExecutorId(), "opencode");
+  const task = orchestrator.dispatch({
+    workspace,
+    objective: "auto hello",
+    profile: "economy",
+  });
+  await waitFor(() => store.getTask(task.id)?.status === "completed");
+
+  assert.equal(store.getTask(task.id).executor, "opencode");
+  assert.equal(opencode.turnStarts.length, 1);
+  assert.equal(opencode.turnStarts[0].model, null);
+});
+
+test("auto routing prefers a healthy executor over an earlier degraded one", async () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "acp-auto-health-"));
+  const store = new TaskStore(
+    fs.mkdtempSync(path.join(os.tmpdir(), "acp-auto-health-state-")),
+    20,
+  );
+  const degraded = new RecordingExecutor("opencode");
+  degraded.probe = async () => ({
+    available: true,
+    status: "degraded",
+    reason: "version_check_failed",
+  });
+  const healthy = new RecordingExecutor("codex");
+  const config = testConfig(workspace);
+  config.executor = {
+    provider: "auto",
+    routing: { order: ["opencode", "codex"] },
+  };
+  const orchestrator = new Orchestrator({
+    config,
+    store,
+    executors: new Map([
+      ["opencode", degraded],
+      ["codex", healthy],
+    ]),
+    defaultProvider: "auto",
+  });
+  await orchestrator.start();
+  assert.equal(orchestrator.getDefaultExecutorId(), "codex");
 });
