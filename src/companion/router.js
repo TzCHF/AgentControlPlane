@@ -1,4 +1,4 @@
-﻿import { publicProfiles } from "../core/profiles.js";
+import { publicProfiles } from "../core/profiles.js";
 import { asErrorPayload, ControlPlaneError } from "../core/errors.js";
 import { readJson, sendJson } from "../core/http.js";
 import { isCompanionOrigin } from "./pairing-manager.js";
@@ -123,7 +123,8 @@ export class CompanionRouter {
         return false;
       }
     }
-    return isCompanionOrigin(origin);
+    if (origin) return isCompanionOrigin(origin);
+    return request.method === "GET" || request.method === "HEAD";
   }
 
   sendError(request, response, error) {
@@ -165,7 +166,11 @@ export class CompanionRouter {
       return this.#approval(request, response, url);
     }
 
-    if (!isCompanionOrigin(origin)) {
+    const hasOrigin = Boolean(origin);
+    if (
+      (hasOrigin && !isCompanionOrigin(origin)) ||
+      (!hasOrigin && request.method !== "GET" && request.method !== "HEAD")
+    ) {
       sendJson(response, 403, {
         error: {
           code: "companion_origin_denied",

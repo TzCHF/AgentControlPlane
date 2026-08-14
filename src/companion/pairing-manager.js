@@ -134,7 +134,7 @@ export class PairingManager {
 
   claim(id, secret, origin) {
     const pairing = this.#pendingPairing(id, secret);
-    if (!safeEqual(pairing.origin, origin)) {
+    if (origin && !safeEqual(pairing.origin, origin)) {
       throw new ControlPlaneError(
         "companion_origin_denied",
         "The pairing was created by a different browser extension",
@@ -166,12 +166,13 @@ export class PairingManager {
   }
 
   authenticate(token, origin) {
-    if (!token || !isCompanionOrigin(origin)) return null;
+    if (!token) return null;
+    if (origin && !isCompanionOrigin(origin)) return null;
     const tokenHash = hash(token);
     for (const client of Object.values(this.state.clients)) {
       if (
         client.activated !== false &&
-        safeEqual(client.origin, origin) &&
+        (!origin || safeEqual(client.origin, origin)) &&
         safeEqual(client.token_hash, tokenHash)
       ) {
         client.last_used_at = isoNow();

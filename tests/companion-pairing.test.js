@@ -80,3 +80,22 @@ test("does not release a pairing token to a different extension", () => {
     /different browser extension/,
   );
 });
+
+test("claims and authenticates without an Origin header", () => {
+  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "acp-companion-"));
+  const manager = new PairingManager({ stateDir });
+  const started = manager.start({
+    origin: extensionOrigin,
+    label: "DeepSeek tab",
+  });
+  manager.approve(started.pairing_id, started.pairing_secret);
+  const claim = manager.claim(started.pairing_id, started.pairing_secret, undefined);
+  assert.equal(claim.status, "approved");
+  const client = manager.authenticate(claim.token, undefined);
+  assert.equal(client.label, "DeepSeek tab");
+  assert.equal(manager.authenticate(claim.token, "https://attacker.example"), null);
+  assert.equal(
+    manager.authenticate(claim.token, `chrome-extension://${"b".repeat(32)}`),
+    null,
+  );
+});
