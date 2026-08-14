@@ -42,14 +42,15 @@
 ## 当前仓库状态（本地）
 
 - 分支：`main`
-- 领先：`ahead 12`（相对 `origin/main`）
-- 头提交：`fa69152`
+- 领先：`ahead 15`（相对 `origin/main`）
+- 头提交：`bd5979a`
 - 本地未提交改动：无
 
 ## 最后发布动作（当前环境限制）
 
-- `git push origin main`
-- `git push origin --tags`
+- 已尝试（当前环境）：
+  - `git push origin main`（失败：`Failed to connect to github.com:443`）
+  - `git push origin --tags`（失败：`Failed to connect to github.com:443`）
 - 在 GitHub 创建 `v0.4.0` Release（可复用 `RELEASE-DRAFT-v0.4.0.md`）
 
-> 备注：`git push` 在当前会话环境受额度拦截，外部发布动作需要你这边在可用额度/会话下执行。
+> 备注：`git push` 当前会话环境无法访问 `github.com:443`，外部发布动作需要在你可联网/可认证环境执行。
