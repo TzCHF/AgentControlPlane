@@ -51,14 +51,14 @@
     if (!currentState.connected) {
       panel.setStatus(
         currentState.pending
-          ? `Pairing code ${formatCode(currentState.pending.code)} is waiting for approval`
-          : "Not paired with the local control plane",
+          ? `Pairing code ${formatCode(currentState.pending.code)} is waiting for approval 配对码 ${formatCode(currentState.pending.code)} 等待批准`
+          : "Not paired with the local control plane 未与本地控制面配对",
       );
       return;
     }
     const options = await message("ACP_OPTIONS");
     panel.setOptions(options, currentState.settings);
-    panel.setStatus(`Connected · ${options.default_executor}`, "success");
+    panel.setStatus(`Connected · ${options.default_executor} 已连接 · ${options.default_executor}`, "success");
   }
 
   async function saveSettings(values) {
@@ -79,7 +79,7 @@
     });
     panel.open();
     panel.setStatus(
-      `Approve code ${formatCode(response.code)} in the local tab`,
+      `Approve code ${formatCode(response.code)} in the local tab 请在本地标签页批准配对码 ${formatCode(response.code)}`,
     );
     const deadline = Date.parse(response.expires_at);
     while (Date.now() < deadline) {
@@ -91,28 +91,28 @@
       }
       if (pairing.status === "expired") break;
     }
-    throw new Error("Pairing request expired");
+    throw new Error("Pairing request expired 配对请求已过期");
   }
 
   async function teach() {
     await refreshState();
     const composer = adapters.findComposer(document, adapter);
-    if (!composer) throw new Error("Could not find this site's message composer");
+    if (!composer) throw new Error("Could not find this site's message composer 找不到该站点的消息输入框");
     adapters.writeComposer(
       composer,
       protocol.controllerPrompt(currentState.settings),
     );
-    panel.setStatus("Controller prompt inserted for review", "success");
+    panel.setStatus("Controller prompt inserted for review 控制器指令已插入，待审阅", "success");
   }
 
   async function useLatest() {
     const text = adapters.latestAssistantText(document, adapter);
-    if (!text) throw new Error("Could not find an assistant reply on this page");
+    if (!text) throw new Error("Could not find an assistant reply on this page 找不到该页面上的 AI 回复");
     const envelope = protocol.extractTaskEnvelope(text);
     panel.setObjective(envelope ? JSON.stringify(envelope, null, 2) : text);
     panel.open();
     panel.setStatus(
-      envelope ? "ACP_TASK envelope loaded" : "Latest reply loaded as objective",
+      envelope ? "ACP_TASK envelope loaded ACP_TASK 信封已载入" : "Latest reply loaded as objective 最新回复已载入为目标",
       "success",
     );
   }
@@ -128,7 +128,7 @@
 
   async function dispatchEnvelope(envelope, settings = currentState?.settings) {
     if (!currentState?.connected) await refreshState();
-    if (!currentState?.connected) throw new Error("Pair the companion before dispatch");
+    if (!currentState?.connected) throw new Error("Pair the companion before dispatch 派发前请先配对");
     const request = protocol.normalizeDispatch(envelope, {
       ...currentState.settings,
       ...settings,
@@ -138,7 +138,7 @@
       pageUrl: location.href,
     });
     panel.open();
-    panel.setStatus(`Task ${response.task.id.slice(0, 8)} queued`);
+    panel.setStatus(`Task ${response.task.id.slice(0, 8)} queued 任务 ${response.task.id.slice(0, 8)} 已排队`);
     await pollTask(response.task.id);
   }
 
@@ -147,7 +147,7 @@
     while (Date.now() < deadline) {
       const response = await message("ACP_TASK_STATUS", { taskId });
       const task = response.task;
-      panel.setStatus(`Task ${task.id.slice(0, 8)} · ${task.status}`);
+      panel.setStatus(`Task ${task.id.slice(0, 8)} · ${task.status} 任务 ${task.id.slice(0, 8)} · ${task.status}`);
       if (task.terminal) {
         const result = protocol.formatTaskResult(task);
         await returnResult(result);
@@ -159,12 +159,12 @@
       }
       await delay(2000);
     }
-    throw new Error("Task monitoring timed out");
+    throw new Error("Task monitoring timed out 任务监控超时");
   }
 
   async function returnResult(text) {
     const composer = adapters.findComposer(document, adapter);
-    if (!composer) throw new Error("Task finished, but the web AI composer was not found");
+    if (!composer) throw new Error("Task finished, but the web AI composer was not found 任务已完成，但未找到网页 AI 输入框");
     adapters.writeComposer(composer, text);
     if (currentState.settings.autoSubmitResults) {
       await delay(250);
@@ -222,7 +222,7 @@
   }
 
   await refreshState().catch((error) => {
-    panel.setStatus(`Local service unavailable: ${error.message}`, "error");
+    panel.setStatus(`Local service unavailable 本地服务不可用：${error.message}`, "error");
   });
   if (currentState?.connected) {
     const active = await message("ACP_ACTIVE_TASKS", {

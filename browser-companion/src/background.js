@@ -45,7 +45,7 @@ async function api(path, { method = "GET", body, paired = true } = {}) {
     if (response.status === 401 && paired) {
       await update({ token: null, clientId: null });
     }
-    throw new Error(payload?.error?.message ?? `ACP request failed (${response.status})`);
+    throw new Error(payload?.error?.message ?? `ACP request failed (${response.status}) 请求失败 (${response.status})`);
   }
   return payload;
 }
@@ -53,7 +53,7 @@ async function api(path, { method = "GET", body, paired = true } = {}) {
 async function startPairing(label) {
   const payload = await api("/v1/companion/pairings", {
     method: "POST",
-    body: { label: label || "AgentControlPlane browser companion" },
+    body: { label: label || "AgentControlPlane browser companion 浏览器伴侣" },
     paired: false,
   });
   await update({
@@ -143,7 +143,7 @@ async function forgetActiveTask(taskId) {
 
 async function enableSite(url) {
   const parsed = new URL(url);
-  if (parsed.protocol !== "https:") throw new Error("Only HTTPS sites are supported");
+  if (parsed.protocol !== "https:") throw new Error("Only HTTPS sites are supported 仅支持 HTTPS 站点");
   const pattern = `${parsed.origin}/*`;
   const granted = await chrome.permissions.request({ origins: [pattern] });
   if (!granted) return { granted: false };
@@ -230,7 +230,7 @@ async function handle(message) {
       return { disconnected: true };
     }
     default:
-      throw new Error("Unknown AgentControlPlane companion request");
+      throw new Error("Unknown AgentControlPlane companion request 未知的 AgentControlPlane 伴侣请求");
   }
 }
 
