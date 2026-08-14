@@ -119,7 +119,7 @@ After setup, validate true end-to-end integration from each supported web page:
 
    ```powershell
    cd C:\Users\45928\Documents\Github\AgentControlPlane
-   npm.cmd run start:smoke
+   npm.cmd start
    ```
 
 2. On the target page, open the ACP panel and pair the browser once (one-time
