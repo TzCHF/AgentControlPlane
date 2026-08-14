@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![CI](https://img.shields.io/github/actions/workflow/status/Ya-KARAS/AgentControlPlane/ci.yml?branch=main)](https://github.com/Ya-KARAS/AgentControlPlane/actions/workflows/ci.yml)
+[![CI](https://github.com/Ya-KARAS/AgentControlPlane/actions/workflows/ci.yml/badge.svg)](https://github.com/Ya-KARAS/AgentControlPlane/actions/workflows/ci.yml)
 [![version](https://img.shields.io/github/v/release/Ya-KARAS/AgentControlPlane?label=version&color=536af5)](https://github.com/Ya-KARAS/AgentControlPlane/releases)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-3c873a)](https://nodejs.org)
 [![license](https://img.shields.io/badge/license-Apache--2.0-d22128)](LICENSE)
