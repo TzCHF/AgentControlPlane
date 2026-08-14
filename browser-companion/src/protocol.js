@@ -41,6 +41,13 @@ export function normalizeDispatch(envelope, settings = {}) {
       80,
     ),
   };
+  const listTargets = new Set([
+    "context",
+    "constraints",
+    "acceptance_criteria",
+    "preferred_files",
+    "forbidden_actions",
+  ]);
   for (const [source, target, limit] of [
     ["context", "context", 16000],
     ["constraints", "constraints", 12000],
@@ -52,6 +59,10 @@ export function normalizeDispatch(envelope, settings = {}) {
   ]) {
     const value = envelope?.[source];
     if (value == null) continue;
+    if (listTargets.has(target) && typeof value === "string") {
+      request[target] = [boundedString(value, limit)];
+      continue;
+    }
     request[target] = Array.isArray(value)
       ? value.map((entry) => boundedString(entry, 1000)).slice(0, 100)
       : boundedString(value, limit);

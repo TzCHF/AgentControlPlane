@@ -56,6 +56,19 @@ test("web envelopes cannot override the locally selected workspace", () => {
   assert.equal(request.workspace, "C:\\approved-project");
 });
 
+test("string context and constraints from the web AI become string arrays", () => {
+  const request = normalizeDispatch(
+    {
+      objective: "Create hello.txt",
+      context: "Local smoke task",
+      constraints: "Touch only hello.txt",
+    },
+    { workspace: "C:\\approved-project", executor: "auto" },
+  );
+  assert.deepEqual(request.context, ["Local smoke task"]);
+  assert.deepEqual(request.constraints, ["Touch only hello.txt"]);
+});
+
 test("formats terminal results and creates stable envelope identifiers", () => {
   const task = {
     id: "task-1",
