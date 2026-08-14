@@ -19,6 +19,7 @@
     "smoke:companion": "node scripts/smoke-companion.js",
     "harness:companion": "node scripts/serve-companion-harness.js",
     "smoke:budget": "node scripts/smoke-budget.js",
+    "benchmark:real": "node scripts/benchmark-real.js",
     "benchmark:report": "node scripts/benchmark-report.js",
     "verify:audit": "node scripts/verify-audit.js",
     "sandbox:setup": "node scripts/setup-windows-sandbox.js"

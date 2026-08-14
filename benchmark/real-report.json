@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-14T16:57:47.225Z",
+  "case_count": 3,
+  "comparable_case_count": 0,
+  "average_execution_savings_rate": null,
+  "average_total_savings_rate": null,
+  "direct_success_rate": 0,
+  "controlled_success_rate": 0,
+  "cases": [
+    {
+      "id": "pair-opencode-1",
+      "category": "opencode",
+      "direct_usage": {
+        "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "uncached_input_tokens": 0,
+        "output_tokens": 0,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 0
+      },
+      "controlled_usage": {
+        "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "uncached_input_tokens": 0,
+        "output_tokens": 0,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 0
+      },
+      "execution_savings_rate": null,
+      "total_savings_rate": null,
+      "direct_success": false,
+      "controlled_success": false,
+      "direct_duration_ms": 77205,
+      "controlled_duration_ms": 0
+    },
+    {
+      "id": "pair-opencode-2",
+      "category": "opencode",
+      "direct_usage": {
+        "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "uncached_input_tokens": 0,
+        "output_tokens": 0,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 0
+      },
+      "controlled_usage": {
+        "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "uncached_input_tokens": 0,
+        "output_tokens": 0,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 0
+      },
+      "execution_savings_rate": null,
+      "total_savings_rate": null,
+      "direct_success": false,
+      "controlled_success": false,
+      "direct_duration_ms": 71542,
+      "controlled_duration_ms": 0
+    },
+    {
+      "id": "pair-opencode-3",
+      "category": "opencode",
+      "direct_usage": {
+        "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "uncached_input_tokens": 0,
+        "output_tokens": 0,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 0
+      },
+      "controlled_usage": {
+        "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "uncached_input_tokens": 0,
+        "output_tokens": 0,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 0
+      },
+      "execution_savings_rate": null,
+      "total_savings_rate": null,
+      "direct_success": false,
+      "controlled_success": false,
+      "direct_duration_ms": 74935,
+      "controlled_duration_ms": 0
+    }
+  ]
+}

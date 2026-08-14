@@ -1,0 +1,215 @@
+{
+  "generated_at": "2026-08-14T16:50:17.804Z",
+  "cases": [
+    {
+      "id": "pair-opencode-1",
+      "category": "opencode",
+      "direct": {
+        "success": false,
+        "duration_ms": 77205,
+        "executor_usage": {
+          "input_tokens": 0,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 0
+        }
+      },
+      "controlled": {
+        "success": false,
+        "duration_ms": null,
+        "controller_usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 0,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 0
+        },
+        "executor_usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 0,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 0
+        }
+      },
+      "errors": [
+        "direct_failed:unknown",
+        "opencode exited with code 1: seek modelID=deepseek-v4-pro session.id=ses_ffed17720ffe435PCfGfJCO4tF small=false agent=build mode=primary error.error=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url? (cause: Error: Unable to connect. Is the computer able to access the url?)\" timestamp=2026-08-14T16:51:35.044Z level=ERROR run=2a9d8ce8 message=process session.id=ses_ffed17720ffe435PCfGfJCO4tF messageID=msg_0012e8d58001mS4lKnm41LGDxV error=\"Cannot connect to API: Unable to connect. Is the computer able to access the url?\" stack=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url?\\n at e (B:/~BUN/root/chunk-aaw76hgx.js:2:6248)\\n at <anonymous> (B:/~BUN/root/chunk-aaw76hgx.js:6:13321)\\n at processTicksAndRejections (native:7:39)\" timestamp=2026-08-14T16:51:35.753Z level=INFO run=2a9d8ce8 message=\"disposing instance\" directory=\"C:\\\\Users\\\\45928\\\\Documents\\\\Github\\\\AgentControlPlane\\\\.benchmark-opencode-1-1786726219079-UzavDf\""
+      ]
+    },
+    {
+      "id": "pair-opencode-2",
+      "category": "opencode",
+      "direct": {
+        "success": false,
+        "duration_ms": 71542,
+        "executor_usage": {
+          "input_tokens": 0,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 0
+        }
+      },
+      "controlled": {
+        "success": false,
+        "duration_ms": null,
+        "controller_usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 0,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 0
+        },
+        "executor_usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 0,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 0
+        }
+      },
+      "errors": [
+        "direct_failed:unknown",
+        "opencode exited with code 1: seek modelID=deepseek-v4-pro session.id=ses_ffed048bbffe1f1RkmIHTmq7Wm small=false agent=build mode=primary error.error=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url? (cause: Error: Unable to connect. Is the computer able to access the url?)\" timestamp=2026-08-14T16:52:47.072Z level=ERROR run=00e6466d message=process session.id=ses_ffed048bbffe1f1RkmIHTmq7Wm messageID=msg_0012fba7a001wxGYPR9iIshf6D error=\"Cannot connect to API: Unable to connect. Is the computer able to access the url?\" stack=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url?\\n at e (B:/~BUN/root/chunk-aaw76hgx.js:2:6248)\\n at <anonymous> (B:/~BUN/root/chunk-aaw76hgx.js:6:13321)\\n at processTicksAndRejections (native:7:39)\" timestamp=2026-08-14T16:52:47.837Z level=INFO run=00e6466d message=\"disposing instance\" directory=\"C:\\\\Users\\\\45928\\\\Documents\\\\Github\\\\AgentControlPlane\\\\.benchmark-opencode-2-1786726219079-EECXRX\""
+      ]
+    },
+    {
+      "id": "pair-opencode-3",
+      "category": "opencode",
+      "direct": {
+        "success": false,
+        "duration_ms": 74935,
+        "executor_usage": {
+          "input_tokens": 0,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 0
+        }
+      },
+      "controlled": {
+        "success": false,
+        "duration_ms": null,
+        "controller_usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 0,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 0
+        },
+        "executor_usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 0,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 0
+        }
+      },
+      "errors": [
+        "direct_failed:unknown",
+        "opencode exited with code 1:  run=3922e70c message=process session.id=ses_ffecf311effexuZNC1xEwxQpaC messageID=msg_00130d2c4001XmgQAy32OdMKq2 error=\"Cannot connect to API: Unable to connect. Is the computer able to access the url?\" stack=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url?\\n at e (B:/~BUN/root/chunk-aaw76hgx.js:2:6248)\\n at <anonymous> (B:/~BUN/root/chunk-aaw76hgx.js:6:13321)\\n at processTicksAndRejections (native:7:39)\" timestamp=2026-08-14T16:54:02.717Z level=WARN run=3922e70c message=\"background dependency install failed\" dir=\"C:\\\\Users\\\\45928\\\\AppData\\\\Local\\\\Temp\\\\acp-opencode-home-aDXZWe\\\\opencode\" error=\"Cause([Fail(NpmInstallFailedError (cause: FetchError: request to https://registry.npmjs.org/@opencode-ai%2fplugin failed, reason: ECONNREFUSED))])\" timestamp=2026-08-14T16:54:03.239Z level=INFO run=3922e70c message=\"disposing instance\" directory=\"C:\\\\Users\\\\45928\\\\Documents\\\\Github\\\\AgentControlPlane\\\\.benchmark-opencode-3-1786726219079-Yh4Iou\""
+      ]
+    }
+  ],
+  "summary": {
+    "schema_version": 1,
+    "generated_at": "2026-08-14T16:54:04.057Z",
+    "case_count": 3,
+    "comparable_case_count": 0,
+    "average_execution_savings_rate": null,
+    "average_total_savings_rate": null,
+    "direct_success_rate": 0,
+    "controlled_success_rate": 0,
+    "cases": [
+      {
+        "id": "pair-opencode-1",
+        "category": "opencode",
+        "direct_usage": {
+          "input_tokens": 0,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 0
+        },
+        "controlled_usage": {
+          "input_tokens": 0,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 0
+        },
+        "execution_savings_rate": null,
+        "total_savings_rate": null,
+        "direct_success": false,
+        "controlled_success": false,
+        "direct_duration_ms": 77205,
+        "controlled_duration_ms": 0
+      },
+      {
+        "id": "pair-opencode-2",
+        "category": "opencode",
+        "direct_usage": {
+          "input_tokens": 0,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 0
+        },
+        "controlled_usage": {
+          "input_tokens": 0,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 0
+        },
+        "execution_savings_rate": null,
+        "total_savings_rate": null,
+        "direct_success": false,
+        "controlled_success": false,
+        "direct_duration_ms": 71542,
+        "controlled_duration_ms": 0
+      },
+      {
+        "id": "pair-opencode-3",
+        "category": "opencode",
+        "direct_usage": {
+          "input_tokens": 0,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 0
+        },
+        "controlled_usage": {
+          "input_tokens": 0,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 0
+        },
+        "execution_savings_rate": null,
+        "total_savings_rate": null,
+        "direct_success": false,
+        "controlled_success": false,
+        "direct_duration_ms": 74935,
+        "controlled_duration_ms": 0
+      }
+    ]
+  }
+}
