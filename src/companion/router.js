@@ -13,6 +13,7 @@ const TERMINAL_STATUSES = new Set([
 ]);
 
 function companionCors(origin) {
+  if (!origin) return {};
   return {
     "access-control-allow-origin": origin,
     "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
