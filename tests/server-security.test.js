@@ -75,6 +75,21 @@ test("health stays available without a bearer token", async () => {
   });
 });
 
+test("OAuth protected resource metadata is public and names the MCP resource", async () => {
+  await withServer(testConfig(), async (baseUrl) => {
+    for (const path of [
+      "/.well-known/oauth-protected-resource/mcp",
+      "/.well-known/oauth-protected-resource",
+    ]) {
+      const response = await fetch(`${baseUrl}${path}`);
+      assert.equal(response.status, 200);
+      const body = await response.json();
+      assert.equal(body.resource, `${baseUrl}/mcp`);
+      assert.deepEqual(body.bearer_methods_supported, ["header"]);
+    }
+  });
+});
+
 test("protected routes require a valid bearer token", async () => {
   await withServer(testConfig(), async (baseUrl) => {
     const denied = await fetch(`${baseUrl}/v1/tasks`);

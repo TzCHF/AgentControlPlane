@@ -165,7 +165,13 @@ export async function createApplication(overrides = {}) {
       }
 
       const isHealth = request.method === "GET" && url.pathname === "/health";
-      if (!isHealth && rateLimiter) {
+      const isProtectedResourceMetadata =
+        request.method === "GET" &&
+        [
+          "/.well-known/oauth-protected-resource/mcp",
+          "/.well-known/oauth-protected-resource",
+        ].includes(url.pathname);
+      if (!isHealth && !isProtectedResourceMetadata && rateLimiter) {
         const key = request.socket.remoteAddress ?? "unknown";
         const decision = rateLimiter.consume(key);
         if (!decision.allowed) {
@@ -183,7 +189,7 @@ export async function createApplication(overrides = {}) {
           return;
         }
       }
-      if (!isHealth && !tokenMatches(request)) {
+      if (!isHealth && !isProtectedResourceMetadata && !tokenMatches(request)) {
         sendJson(
           response,
           401,
@@ -204,6 +210,20 @@ export async function createApplication(overrides = {}) {
           service: "agent-control-plane",
           version: "0.2.2",
           codex_ready: Boolean(codex.ready),
+        });
+        return;
+      }
+
+      if (isProtectedResourceMetadata) {
+        const forwardedProto = request.headers["x-forwarded-proto"];
+        const protocol =
+          typeof forwardedProto === "string"
+            ? forwardedProto.split(",", 1)[0].trim()
+            : "http";
+        const host = request.headers.host ?? `${config.server.host}:${config.server.port}`;
+        sendJson(response, 200, {
+          resource: `${protocol}://${host}/mcp`,
+          bearer_methods_supported: ["header"],
         });
         return;
       }
