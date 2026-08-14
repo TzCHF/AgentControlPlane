@@ -1,5 +1,7 @@
 # Security policy
 
+> [中文文档](SECURITY.zh-CN.md)
+
 ## Supported scope
 
 The current version is a local, single-user development service. Direct

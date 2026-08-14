@@ -1,5 +1,7 @@
 # Control-plane protocol
 
+> [中文文档](PROTOCOL.zh-CN.md)
+
 ## Engineering brief
 
 ```json

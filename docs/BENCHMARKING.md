@@ -1,5 +1,7 @@
 # Benchmarking
 
+> [中文文档](BENCHMARKING.zh-CN.md)
+
 AgentControlPlane compares two execution paths for one engineering task.
 
 ## Paths

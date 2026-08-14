@@ -1,5 +1,7 @@
 # Browser companion
 
+> [中文文档](BROWSER-COMPANION.zh-CN.md)
+
 The AgentControlPlane browser companion connects a normal web AI conversation
 to the local control plane when the web product does not provide a usable custom
 MCP connection. It does not reuse, export, or bypass model quota. The web AI
@@ -15,7 +17,7 @@ its own account or provider configuration.
 
 The generic adapter uses accessibility and composer heuristics. A web page can
 change its DOM at any time, so the built-in adapters are preferred and adapter
-failures are reported in the page panel instead of silently submitting text.
+failures are reported in the page panel.
 
 ## Install for local testing
 

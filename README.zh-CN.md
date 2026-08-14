@@ -43,7 +43,7 @@ AgentControlPlane 的本地核心按 [Apache License 2.0](LICENSE) 开源。独�
 
 北向接口是标准 MCP，不绑定单一模型。ChatGPT 自定义应用是当前已完整记录的连接方式；其他支持 MCP 的网页 AI 客户端可以使用同一组工具。
 
-对于不提供自定义 MCP 连接入口的账户或网页 AI 产品，v0.4 浏览器伴侣提供本地、供应商中立的桥接。它内置 ChatGPT、DeepSeek 和 Claude 的适配器，以及可选的通用 HTTPS 聊天适配器。见 [浏览器伴侣](docs/BROWSER-COMPANION.md)。
+对于不提供自定义 MCP 连接入口的账户或网页 AI 产品，v0.4 浏览器伴侣提供本地、供应商中立的桥接。它内置 ChatGPT、DeepSeek 和 Claude 的适配器，以及可选的通用 HTTPS 聊天适配器。见 [浏览器伴侣](docs/BROWSER-COMPANION.zh-CN.md)。
 
 本地执行器层当前包括：
 
@@ -76,7 +76,7 @@ npm.cmd start
 
 对于没有自带 MCP 连接器的网页 AI，把 [`browser-companion`](browser-companion) 作为未打包的 Manifest V3 扩展加载，在网页 AI 页面上打开 ACP 面板，并批准一次性本地配对码。该扩展永远不需要控制平面的主 bearer 令牌。
 
-连接 ChatGPT 请按 [docs/CHATGPT-CONNECTION.md](docs/CHATGPT-CONNECTION.md) 操作。网页供应商可能仍要求一次性的连接器、权限或隧道设置；这类账户级设置无法由本地服务代完成。
+连接 ChatGPT 请按 [docs/CHATGPT-CONNECTION.zh-CN.md](docs/CHATGPT-CONNECTION.zh-CN.md) 操作。网页供应商可能仍要求一次性的连接器、权限或隧道设置；这类账户级设置无法由本地服务代完成。
 
 ## 派发示例
 
@@ -101,7 +101,7 @@ brief and continue the same project.
 
 配置档是策略默认值。模型、投入、子代理和预算的显式覆盖仍然可用。模型字段只在所选执行器有意义时才传递；否则 OpenCode 与 Claude 使用各自配置的默认模型。用量精度取决于执行器的遥测。
 
-直接执行与受控执行的 token 对照实验见 [docs/BENCHMARKING.md](docs/BENCHMARKING.md)。
+直接执行与受控执行的 token 对照实验见 [docs/BENCHMARKING.zh-CN.md](docs/BENCHMARKING.zh-CN.md)。
 
 ## MCP 工具
 
@@ -131,13 +131,13 @@ brief and continue the same project.
 
 ## 文档
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)（架构）
-- [docs/PROTOCOL.md](docs/PROTOCOL.md)（协议）
-- [docs/CHATGPT-CONNECTION.md](docs/CHATGPT-CONNECTION.md)（ChatGPT 连接）
-- [docs/BENCHMARKING.md](docs/BENCHMARKING.md)（基准测试）
-- [docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md)（安全审查）
-- [docs/COMMERCIALIZATION.md](docs/COMMERCIALIZATION.md)（商业化）
-- [SECURITY.md](SECURITY.md)（安全）
+- [docs/ARCHITECTURE.zh-CN.md](docs/ARCHITECTURE.zh-CN.md)（架构）
+- [docs/PROTOCOL.zh-CN.md](docs/PROTOCOL.zh-CN.md)（协议）
+- [docs/CHATGPT-CONNECTION.zh-CN.md](docs/CHATGPT-CONNECTION.zh-CN.md)（ChatGPT 连接）
+- [docs/BENCHMARKING.zh-CN.md](docs/BENCHMARKING.zh-CN.md)（基准测试）
+- [docs/SECURITY-REVIEW.zh-CN.md](docs/SECURITY-REVIEW.zh-CN.md)（安全审查）
+- [docs/COMMERCIALIZATION.zh-CN.md](docs/COMMERCIALIZATION.zh-CN.md)（商业化）
+- [SECURITY.zh-CN.md](SECURITY.zh-CN.md)（安全）
 - [CHANGELOG.md](CHANGELOG.md)（变更记录）
 
 默认工作区允许列表是此仓库的父目录。用 `AGENT_CONTROL_CONFIG` 做机器特定的覆盖，且不要把本地路径或凭据提交进仓库。

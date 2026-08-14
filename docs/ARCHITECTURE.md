@@ -1,5 +1,7 @@
 # Architecture
 
+> [中文文档](ARCHITECTURE.zh-CN.md)
+
 ## Product boundary
 
 AgentControlPlane separates work into two layers:
@@ -82,8 +84,8 @@ agents may report cumulative usage only when their process finishes.
 | balanced | Normal feature/fix work | high | up to 2 | 90k |
 | deep | Architecture, broad refactors, hard debugging | ultra | up to 4 | 220k |
 
-Profiles are policy defaults, not executor locks. A task may override model,
-effort, concurrency, and budget within configured limits.
+Profiles are policy defaults; a task may override model, effort, concurrency,
+and budget within configured limits.
 
 ## Persistence and trust
 

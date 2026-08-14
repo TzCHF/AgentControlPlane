@@ -1,5 +1,7 @@
 # Connect ChatGPT to AgentControlPlane
 
+> [中文文档](CHATGPT-CONNECTION.zh-CN.md)
+
 AgentControlPlane is a tool-only MCP server. The recommended private-use path is
 OpenAI Secure MCP Tunnel because the server can remain bound to loopback and no
 inbound firewall port needs to be opened.

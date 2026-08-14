@@ -1,5 +1,7 @@
 # Commercialization roadmap
 
+> [中文文档](COMMERCIALIZATION.zh-CN.md)
+
 ## Recommended product split
 
 Use an open local agent plus a hosted relay:
@@ -16,8 +18,7 @@ local AgentControlPlane (workspace, executors, state, audit)
 
 The local component should retain source code, filesystem access, executor
 credentials, command output, and detailed events by default. The hosted relay
-should carry compact encrypted task envelopes and status, not mount or scan user
-workspaces.
+should carry only compact encrypted task envelopes and status.
 
 This removes public-IP, port-forwarding, and per-provider tunnel setup for end
 users. A user installs the desktop/local service, signs in, pairs one device,
@@ -63,7 +64,7 @@ this repository merely because they interoperate with its public protocol.
 Apache-2.0 permits third parties to run competing hosted services. Commercial
 differentiation therefore comes from the managed network, trusted distribution,
 support, compatibility certification, enterprise controls, and operational
-reliability rather than exclusive rights over the local core.
+reliability.
 
 ## Claims and economics
 

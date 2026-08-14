@@ -166,13 +166,13 @@ authenticated private tunnel or a separately hardened relay.
 
 ## Documentation
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- [docs/PROTOCOL.md](docs/PROTOCOL.md)
-- [docs/CHATGPT-CONNECTION.md](docs/CHATGPT-CONNECTION.md)
-- [docs/BENCHMARKING.md](docs/BENCHMARKING.md)
-- [docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md)
-- [docs/COMMERCIALIZATION.md](docs/COMMERCIALIZATION.md)
-- [SECURITY.md](SECURITY.md)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ([中文](docs/ARCHITECTURE.zh-CN.md))
+- [docs/PROTOCOL.md](docs/PROTOCOL.md) ([中文](docs/PROTOCOL.zh-CN.md))
+- [docs/CHATGPT-CONNECTION.md](docs/CHATGPT-CONNECTION.md) ([中文](docs/CHATGPT-CONNECTION.zh-CN.md))
+- [docs/BENCHMARKING.md](docs/BENCHMARKING.md) ([中文](docs/BENCHMARKING.zh-CN.md))
+- [docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md) ([中文](docs/SECURITY-REVIEW.zh-CN.md))
+- [docs/COMMERCIALIZATION.md](docs/COMMERCIALIZATION.md) ([中文](docs/COMMERCIALIZATION.zh-CN.md))
+- [SECURITY.md](SECURITY.md) ([中文](SECURITY.zh-CN.md))
 - [CHANGELOG.md](CHANGELOG.md)
 
 The default workspace allowlist is the parent directory of this repository.

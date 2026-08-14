@@ -1,5 +1,7 @@
 # Security review
 
+> [中文文档](SECURITY-REVIEW.zh-CN.md)
+
 Review date: 2026-08-13
 
 Scope: current first-party source, configuration, tests, scripts, and project
@@ -46,9 +48,9 @@ single-user boundary, but block untrusted or multi-tenant commercialization:
 - `workspace-write` restricts writes but is not a general confidential-read
   sandbox. A user authorized to dispatch Codex must already be trusted with the
   local account's readable data.
-- The local bearer token is one shared operator secret, not user identity or
-  authorization. Public deployment requires MCP-compatible OAuth 2.1 and
-  per-user policy.
+- The local bearer token is one shared operator secret and carries no per-user
+  identity or authorization. Public deployment requires MCP-compatible OAuth 2.1
+  and per-user policy.
 - State persistence is a bounded local JSON store. Commercial scale should use
   transactional storage, tenant isolation, per-principal quotas, distributed
   rate limiting, encrypted secret management, and signed audit export.
