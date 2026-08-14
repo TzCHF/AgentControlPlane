@@ -110,3 +110,64 @@ npm.cmd run companion:check
 The test suite validates origin restrictions, one-time token delivery, hashed
 credential persistence, per-client task ownership, protocol parsing, adapter
 selection, manifest permissions, and the scoped dispatch/status/follow-up flow.
+
+## Web AI + Multi-executor end-to-end validation
+
+After setup, validate true end-to-end integration from each supported web page:
+
+1. Start AgentControlPlane in the test profile:
+
+   ```powershell
+   cd C:\Users\45928\Documents\Github\AgentControlPlane
+   npm.cmd run start:smoke
+   ```
+
+2. On the target page, open the ACP panel and pair the browser once (one-time
+   approval code).
+
+3. In the web composer, set the execution target by asking the web AI to follow
+   this schema exactly:
+
+   - Use `executor: "auto"` for normal routing.
+   - Use `executor: "opencode"` to force the local Opencode CLI.
+   - Use `executor: "deepseek"` to force MCP deepseek route.
+   - Use `executor: "claude"` to force Claude CLI route (if available in your
+     local configuration).
+
+4. Use a deterministic objective:
+
+   ```text
+   Please emit ACP task block for a tiny local change:
+   {
+     "workspace": "acp-live-test",
+     "objective": "Create C:\\Users\\<user>\\Documents\\Github\\acp-live-test\\acp-hello.txt with exact text: ACP_WEB_AI_OK",
+     "context": "local smoke task",
+     "acceptance_criteria": ["file exists", "exact text is ACP_WEB_AI_OK"],
+     "executor": "opencode"
+   }
+   ```
+
+5. Verify from terminal:
+
+   - task status returns `completed`
+   - `changed_files` includes `acp-hello.txt`
+   - file content is exactly `ACP_WEB_AI_OK`
+
+### Acceptance per site
+
+- ChatGPT (`chatgpt.com`): validates browser companion message capture and MCP
+  fallback path together.
+- DeepSeek (`chat.deepseek.com`): validates adapter button behavior and task
+  block transport on a second website.
+- Claude (`claude.ai`): validates cross-provider UI compatibility.
+
+For a full multi-executor pass, repeat step 4 with each `executor` value above and
+record one row per run in a short table:
+
+- `executor`
+- page used
+- `task_id`
+- `status`
+- `changed_files`
+- `result.summary`
+- elapsed seconds
