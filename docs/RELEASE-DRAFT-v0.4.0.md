@@ -47,9 +47,9 @@ v0.4.0 完成了“网页 AI 到本地工程执行器”的补强体验层：
 
 | 时间 | 页面 | executor | task_id | status | changed_files | usage | 备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2026-08-14 | chatgpt.com | auto | `TBD` | completed | `acp-live-test/benchmark...` | `TBD` | 示例值 |
-| 2026-08-14 | chat.deepseek.com | auto | `TBD` | completed | `...` | `TBD` | 示例值 |
-| 2026-08-14 | claude.ai | auto | `TBD` | completed | `...` | `TBD` | 示例值 |
+| 2026-08-14 | chatgpt.com | auto | `pending` | pending | pending | pending | 等待联网执行 |
+| 2026-08-14 | chat.deepseek.com | auto | `pending` | pending | pending | pending | 等待联网执行 |
+| 2026-08-14 | claude.ai | auto | `pending` | pending | pending | pending | 等待联网执行 |
 
 > `TBD` 由你在现场执行后按实际结果替换，不得留空。
 

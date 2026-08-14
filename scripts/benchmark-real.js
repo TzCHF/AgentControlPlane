@@ -303,7 +303,11 @@ async function main() {
       ...output,
       summary: buildBenchmarkReport(output.cases),
     };
+    const summaryPath = path.join(projectRoot, "benchmark", "real-summary.json");
+    const reportPath = path.join(projectRoot, "benchmark", "real-report.json");
     fs.writeFileSync(resultsPath, JSON.stringify(report, null, 2), "utf8");
+    fs.writeFileSync(summaryPath, JSON.stringify(report.summary, null, 2), "utf8");
+    fs.writeFileSync(reportPath, JSON.stringify(report.summary, null, 2), "utf8");
     console.log(JSON.stringify(report.summary, null, 2));
   } finally {
     await app.close();

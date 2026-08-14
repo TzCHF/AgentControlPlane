@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-08-14T17:07:25.750Z",
+  "generated_at": "2026-08-14T17:34:55.358Z",
   "case_count": 3,
   "comparable_case_count": 0,
   "average_execution_savings_rate": null,
@@ -31,7 +31,7 @@
       "total_savings_rate": null,
       "direct_success": false,
       "controlled_success": false,
-      "direct_duration_ms": 78975,
+      "direct_duration_ms": 74994,
       "controlled_duration_ms": 0
     },
     {
@@ -57,7 +57,7 @@
       "total_savings_rate": null,
       "direct_success": false,
       "controlled_success": false,
-      "direct_duration_ms": 72271,
+      "direct_duration_ms": 73334,
       "controlled_duration_ms": 0
     },
     {
@@ -83,7 +83,7 @@
       "total_savings_rate": null,
       "direct_success": false,
       "controlled_success": false,
-      "direct_duration_ms": 72453,
+      "direct_duration_ms": 77240,
       "controlled_duration_ms": 0
     }
   ]

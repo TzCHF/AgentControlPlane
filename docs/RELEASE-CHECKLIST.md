@@ -3,7 +3,7 @@
 ## 现在仓库状态（本地）
 
 - 分支：`main`（路径 `C:\Users\45928\Documents\Github\AgentControlPlane`）
-- 本地领先 `origin/main` 的提交数：`8`
+- 本地领先 `origin/main` 的提交数：`14`
 - 关键提交：
   - `586bde0`（`v0.3.2`）
   - `3adfec3`（`v0.4.0`）
@@ -31,8 +31,8 @@ npm.cmd run benchmark:report -- benchmark/real-results.json
 - `test`：通过（72/72）
 - `check`：`Browser companion validated`
 - `smoke:companion`：`status: "passed"`
-- `benchmark:real`：写入 `benchmark/real-results.json`
-- `benchmark:report`：生成对照摘要
+- `benchmark:real`：写入 `benchmark/real-results.json` 并同步刷新 `benchmark/real-summary.json`、`benchmark/real-report.json`
+- `benchmark:report`：基于结果文件生成一致摘要
 
 ## 已经生成的发布材料
 

@@ -20,7 +20,7 @@ npm.cmd run benchmark:report -- benchmark/real-results.json
 
 ## 最新一次结果（2026-08-14）
 
-- `generated_at`: `2026-08-14T17:07:25.750Z`
+- `generated_at`: `2026-08-14T17:34:55.358Z`
 - `case_count`: `3`
 - 直接路径成功率：`0`
 - 编排路径成功率：`0`
@@ -32,7 +32,6 @@ npm.cmd run benchmark:report -- benchmark/real-results.json
 
 - `opencode` 的 direct 阶段三次都失败，报错内容为：
   - `AI_APICallError: Cannot connect to API: Unable to connect.`
-  - 部分运行出现 `npm registry` 侧 `ECONNREFUSED`（`@opencode-ai/plugin` 插件安装失败）
 
 ## 结论
 

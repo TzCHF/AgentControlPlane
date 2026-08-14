@@ -35,7 +35,7 @@
 
 ## 4) 真实 token 对照最新结果（证据）
 
-- 生成时间：`2026-08-14T17:07:25.750Z`
+- 生成时间：`2026-08-14T17:34:55.358Z`
 - 样本数：`3`
 - 直接执行成功率：`0`
 - 编排执行成功率：`0`
@@ -46,8 +46,8 @@
 失败摘要：
 
 - `opencode` 直连与编排均失败，核心错误：
-  - `AI_APICallError: Cannot connect to API: Unable to connect.`
-  - 部分样本出现 `npm registry` 侧 `ECONNREFUSED`（`@opencode-ai/plugin` 安装失败）
+- `AI_APICallError: Cannot connect to API: Unable to connect.`
+- 当前三次均为连接失败，没有成功样本。
 - 该结果说明是**外部执行通路不可达**导致，不影响控制平面结构与发布链路本身可用性。
 
 ## 5) 网页 AI 端到端结果（请用实测替换）
@@ -56,9 +56,9 @@
 
 | 时间 | 页面 | executor | task_id | status | changed_files | usage.total_tokens | result.summary | 备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2026-08-14 00:00 | chatgpt.com | auto | TBD-CHATGPT | TBD | TBD | TBD | TBD | TBD |
-| 2026-08-14 00:00 | chat.deepseek.com | auto | TBD-DEEPSEEK | TBD | TBD | TBD | TBD | TBD |
-| 2026-08-14 00:00 | claude.ai | auto | TBD-CLAUDE | TBD | TBD | TBD | TBD | TBD |
+| 2026-08-14 00:00 | chatgpt.com | auto | pending | pending | pending | pending | pending | 未完成（需联网在真实站点复核） |
+| 2026-08-14 00:00 | chat.deepseek.com | auto | pending | pending | pending | pending | pending | 未完成（需联网在真实站点复核） |
+| 2026-08-14 00:00 | claude.ai | auto | pending | pending | pending | pending | pending | 未完成（需联网在真实站点复核） |
 
 ## 6) 风险与下一步
 
