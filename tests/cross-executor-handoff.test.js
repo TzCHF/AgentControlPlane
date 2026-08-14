@@ -183,8 +183,9 @@ test("keeps persistent project threads isolated per executor", async () => {
   assert.deepEqual(codex.resumedThreads, ["codex-thread-1"]);
   assert.equal(opencode.startedThreads.length, 1);
   assert.deepEqual(opencode.resumedThreads, []);
-  assert.equal(store.getProject(workspace, "codex").threadId, "codex-thread-1");
-  assert.equal(store.getProject(workspace, "opencode").threadId, "opencode-thread-1");
+  const canonicalWorkspace = store.getTask(firstCodex.id).workspace;
+  assert.equal(store.getProject(canonicalWorkspace, "codex").threadId, "codex-thread-1");
+  assert.equal(store.getProject(canonicalWorkspace, "opencode").threadId, "opencode-thread-1");
 });
 
 test("hands completed evidence to a different executor without reusing its thread", async () => {
