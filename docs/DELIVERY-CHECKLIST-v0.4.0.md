@@ -42,8 +42,8 @@
 ## 当前仓库状态（本地）
 
 - 分支：`main`
-- 领先：`ahead 26`（相对 `origin/main`）
-- 头提交：`751dd7b`
+- 领先：`ahead`（相对 `origin/main`，请用你的本地 git status/log 核对）
+- 头提交：`(请用 git rev-parse --short HEAD)`
 - 本地未提交改动：无
 
 ## 最后发布动作（当前环境限制）
@@ -54,6 +54,7 @@
 - 在 GitHub 创建 `v0.4.0` Release（可复用 `RELEASE-DRAFT-v0.4.0.md`）
 
 > 备注：`git push` 当前会话环境无法访问 `github.com:443`，外部发布动作需要在你可联网/可认证环境执行。
+
 
 
 
