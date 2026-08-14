@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "AgentControlPlane Companion",
+  "description": "Connect supported web AI conversations to local engineering executors through AgentControlPlane.",
+  "version": "0.4.0",
+  "permissions": ["storage", "tabs", "scripting"],
+  "host_permissions": [
+    "http://127.0.0.1:4318/*",
+    "http://localhost:4318/*",
+    "https://chatgpt.com/*",
+    "https://chat.deepseek.com/*",
+    "https://claude.ai/*"
+  ],
+  "optional_host_permissions": ["https://*/*"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "AgentControlPlane Companion",
+    "default_popup": "popup/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.deepseek.com/*",
+        "https://claude.ai/*"
+      ],
+      "js": ["src/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["src/protocol.js", "src/site-adapters.js", "src/panel.js"],
+      "matches": ["https://*/*"]
+    }
+  ]
+}

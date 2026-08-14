@@ -44,3 +44,18 @@ test("rejects token usage polling intervals below 250 milliseconds", () => {
       error.message.includes("tokenUsagePollIntervalMs"),
   );
 });
+
+test("rejects unsafe browser companion pairing limits", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "acp-config-"));
+  const configPath = path.join(directory, "config.json");
+  fs.writeFileSync(
+    configPath,
+    JSON.stringify({ companion: { maxPending: 0 } }),
+  );
+  assert.throws(
+    () => loadConfig(configPath),
+    (error) =>
+      error.code === "invalid_config" &&
+      error.message.includes("companion.maxPending"),
+  );
+});

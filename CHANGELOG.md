@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.4.0 — 2026-08-14
+
+Browser companion and provider-neutral web AI control loop.
+
+### Added
+
+- A Manifest V3 browser companion for ChatGPT, DeepSeek, Claude, and optional
+  generic HTTPS chat sites.
+- One-time local pairing with extension-bound, hashed client credentials; no
+  control-plane API key needs to be copied into the browser.
+- Scoped companion APIs for executor/profile/workspace discovery, dispatch,
+  status, follow-up, cancellation, and compact result delivery.
+- `<ACP_TASK>` and `<ACP_RESULT>` envelopes for reliable bidirectional handoff
+  between a web planning conversation and local engineering executors.
+- Per-site automatic dispatch and result submission controls, with automatic
+  result submission disabled until the user opts in.
+- Browser companion protocol, pairing, origin, ownership, and manifest tests.
+
+### Security
+
+- Pairing approval is loopback-only, short-lived, and bound to the exact browser
+  extension origin.
+- Paired clients can read and mutate only tasks that they created.
+- Raw companion tokens are returned once and never persisted by the control
+  plane; only SHA-256 token hashes are stored.
+
 ## v0.3.2 — 2026-08-14
 
 Claude Code readiness hotfix.
