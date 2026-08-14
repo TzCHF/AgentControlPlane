@@ -1,10 +1,9 @@
-# 真实 Token 对照验证报告（v0.4.0）
+# 真实 Token 对照验证结果（v0.4.0）
 
 ## 验证目标
 
-- 比较同一任务在网页端直接执行（direct）与 ACP 编排执行（controlled）下的
-  token 使用与成功率。
-- 覆盖 `executor=opencode`，以验证“网页 AI + ACP + 执行器”闭环下的真实开销。
+- 比较同一任务在“网页 AI 直接执行路径”和“ACP 编排路径（控制器 + 执行器）”下的 token 消耗与成功率。
+- 覆盖执行器：`opencode`，用于验证网页 AI 到多执行器链路中的真实调度能力。
 
 ## 验证命令
 
@@ -16,29 +15,27 @@ npm.cmd run benchmark:report -- benchmark/real-results.json
 ## 结果文件
 
 - `benchmark/real-results.json`
-- `benchmark/real-summary.json`（由上述报告内容规整化）
+- `benchmark/real-summary.json`
+- `benchmark/real-report.json`（汇总结果）
 
-## 最新一次结果摘要
+## 最新一次结果（2026-08-14）
 
-日期：`2026-08-14T16:57:47.225Z`
-
-- 执行 executor：`opencode`
-- case 数：`3`
+- `generated_at`: `2026-08-14T17:07:25.750Z`
+- `case_count`: `3`
 - 直接路径成功率：`0`
 - 编排路径成功率：`0`
 - 可比较样本数：`0`
-- 平均节省率：`null`（无可比较成功样本）
+- 平均执行节省率：`null`
+- 平均总节省率：`null`
 
 ## 失败原因（关键）
 
-`opencode` 任务在 direct 阶段均失败，失败日志显示：
-
-1. `AI_APICallError: Cannot connect to API: Unable to connect.`
-2. `background dependency install failed`（如 `npm` 插件仓库 `ECONNREFUSED`）
-
-结论：在当前运行环境中，真实 token 对照无法形成有效样本；验证链路本身（任务调度、结果记录）已通过，但执行器端 API 通路不通。
+- `opencode` 的 direct 阶段三次都失败，报错内容为：
+  - `AI_APICallError: Cannot connect to API: Unable to connect.`
+  - 部分运行出现 `npm registry` 侧 `ECONNREFUSED`（`@opencode-ai/plugin` 插件安装失败）
 
 ## 结论
 
-- 网页 AI 到 ACP 到执行器的端到端调度逻辑已在本地完成并可执行；
-- 但“真实 token 对比”尚不能产出成功样本，待 `opencode` 可稳定联网/插件依赖正常后可立即重跑得到有效对比。
+- 本地浏览器伴侣与 ACP 派发链路本身可用（对应测试 `npm run test` 与 `npm run smoke:companion` 已通过）。
+- 真实 token 对照当前未形成有效成功样本，原因是执行器网络/API 通路不可达。
+- 一旦 `opencode` 执行器的 API 可达并可稳定运行，执行同一命令即可获得可对照样本。

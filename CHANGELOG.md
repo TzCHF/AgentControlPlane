@@ -17,6 +17,11 @@ Browser companion and provider-neutral web AI control loop.
 - Per-site automatic dispatch and result submission controls, with automatic
   result submission disabled until the user opts in.
 - Browser companion protocol, pairing, origin, ownership, and manifest tests.
+- `benchmark:real` script and real end-to-end comparison artifacts
+  (`benchmark/real-results.json`, `benchmark/real-report.json`,
+  `benchmark/real-summary.json`, and
+  `docs/REAL-TOKEN-COMPARISON-RESULTS.md`) for direct versus controlled
+  execution experiments.
 
 ### Security
 
