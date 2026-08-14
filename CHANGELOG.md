@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.3.2 — 2026-08-14
+
+Claude Code readiness hotfix.
+
+### Fixed
+
+- Distinguish an installed Claude Code CLI from an authenticated, usable
+  executor.
+- Mark Claude Code as `not_authenticated` and skip it during automatic routing
+  when neither a Pro/Max login nor an Anthropic API key is available.
+- Restore Claude Code automatically after account or API-key authentication and
+  a control-plane restart.
+
 ## v0.3.1 — 2026-08-14
 
 Windows CLI routing and failure-diagnostics hotfix.

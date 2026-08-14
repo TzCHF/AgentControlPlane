@@ -39,6 +39,11 @@ The local executor layer currently includes:
 - OpenAI-compatible local endpoints, including OpenCodex
 - DeepSeek through the OpenAI-compatible adapter
 
+Claude Code is optional. Installing its CLI is not sufficient by itself: the
+adapter becomes available only after a Claude Pro/Max account login or when the
+CLI is configured with an Anthropic API key. Otherwise discovery reports
+`not_authenticated` and automatic routing skips it.
+
 At startup, `executor.provider: "auto"` discovers installed/configured backends
 and selects the first available entry from `executor.routing.order`. A task may
 override that decision with `executor: "opencode"`, `"codex"`, `"claude"`,

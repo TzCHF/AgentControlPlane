@@ -3,7 +3,33 @@ import { randomUUID } from "node:crypto";
 import readline from "node:readline";
 import { ControlPlaneError } from "../core/errors.js";
 import { ExecutorAdapter, formatCliExitError } from "./executor.js";
-import { probeCommandExecutor } from "./discovery.js";
+import { probeCommandExecutor, readCommandVersion } from "./discovery.js";
+
+export function classifyClaudeAuthentication(
+  output,
+  { apiKeyConfigured = false } = {},
+) {
+  if (apiKeyConfigured) {
+    return { authenticated: true, authMethod: "api_key" };
+  }
+  const text = String(output ?? "").trim();
+  if (!text) return null;
+  try {
+    const status = JSON.parse(text);
+    if (status?.loggedIn === true) {
+      return {
+        authenticated: true,
+        authMethod: String(status.authMethod ?? "account"),
+      };
+    }
+    if (status?.loggedIn === false) {
+      return { authenticated: false, authMethod: "none" };
+    }
+  } catch {
+    // Older Claude Code releases may not support JSON auth status output.
+  }
+  return null;
+}
 
 export function normalizeClaudeResult(events) {
   let resultText = "";
@@ -66,8 +92,50 @@ export class ClaudeCodeExecutor extends ExecutorAdapter {
     this.ready = true;
   }
 
-  probe() {
-    return probeCommandExecutor({ command: this.command });
+  async probe() {
+    const installed = await probeCommandExecutor({ command: this.command });
+    if (!installed.available) return installed;
+
+    const authentication = classifyClaudeAuthentication(null, {
+      apiKeyConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
+    });
+    if (authentication?.authenticated) {
+      return {
+        ...installed,
+        status: "available",
+        detail: `Authenticated with ${authentication.authMethod}`,
+      };
+    }
+
+    const authStatus = await readCommandVersion(
+      installed.command,
+      ["auth", "status"],
+      5000,
+    );
+    const detected = classifyClaudeAuthentication(authStatus.output);
+    if (detected?.authenticated === false) {
+      return {
+        ...installed,
+        available: false,
+        status: "unavailable",
+        reason: "not_authenticated",
+        detail:
+          "Claude Code requires a Pro/Max account login or an Anthropic API key.",
+      };
+    }
+    if (detected?.authenticated) {
+      return {
+        ...installed,
+        status: "available",
+        detail: `Authenticated with ${detected.authMethod}`,
+      };
+    }
+    return {
+      ...installed,
+      status: "degraded",
+      reason: "auth_status_unknown",
+      detail: authStatus.error ?? "Could not determine Claude Code login status",
+    };
   }
 
   async stop() {
