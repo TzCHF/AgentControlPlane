@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import readline from "node:readline";
 import { ControlPlaneError } from "../core/errors.js";
-import { ExecutorAdapter } from "./executor.js";
+import { ExecutorAdapter, formatCliExitError } from "./executor.js";
 import { probeCommandExecutor } from "./discovery.js";
 
 export function normalizeClaudeResult(events) {
@@ -200,6 +200,14 @@ export class ClaudeCodeExecutor extends ExecutorAdapter {
 
   #runClaude(turnId, { threadId, child }) {
     const events = [];
+    let stderr = "";
+    let stdoutDiagnostics = "";
+    let finished = false;
+    const finish = (payload) => {
+      if (finished) return;
+      finished = true;
+      this.#finishClaude(turnId, threadId, payload);
+    };
     const lines = readline.createInterface({
       input: child.stdout,
       crlfDelay: Infinity,
@@ -208,14 +216,16 @@ export class ClaudeCodeExecutor extends ExecutorAdapter {
       try {
         events.push(JSON.parse(line));
       } catch {
-        // Skip non-JSON lines.
+        stdoutDiagnostics = `${stdoutDiagnostics}${line}\n`.slice(-4000);
       }
     });
     child.stderr.on("data", (chunk) => {
-      this.emit("stderr", chunk.toString("utf8"));
+      const text = chunk.toString("utf8");
+      stderr = `${stderr}${text}`.slice(-4000);
+      this.emit("stderr", text);
     });
     child.on("error", (error) => {
-      this.#finishClaude(turnId, threadId, {
+      finish({
         status: "failed",
         error: error.message,
         resultText: "",
@@ -225,9 +235,15 @@ export class ClaudeCodeExecutor extends ExecutorAdapter {
     child.on("close", (code) => {
       const normalized = normalizeClaudeResult(events);
       const failed = normalized.status !== "completed" || code !== 0;
-      this.#finishClaude(turnId, threadId, {
+      finish({
         status: failed ? "failed" : "completed",
-        error: failed ? `claude exited with code ${code}` : null,
+        error: failed
+          ? formatCliExitError(
+              "claude",
+              code,
+              stderr || stdoutDiagnostics || normalized.resultText,
+            )
+          : null,
         resultText: normalized.resultText,
         usage: normalized.usage,
       });

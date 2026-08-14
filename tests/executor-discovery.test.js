@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
@@ -26,6 +28,22 @@ test("discovers a CLI without invoking its version command", async () => {
   assert.equal(result.status, "installed");
   assert.equal(result.version, null);
 });
+
+test(
+  "resolves a Windows npm cmd shim to its underlying executable",
+  { skip: process.platform !== "win32" },
+  () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "acp-shim-"));
+    const target = path.join(root, "node_modules", "tool", "bin", "tool.exe");
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, "placeholder");
+    fs.writeFileSync(
+      path.join(root, "tool.cmd"),
+      '@ECHO off\r\n"%dp0%\\node_modules\\tool\\bin\\tool.exe" %*\r\n',
+    );
+    assert.equal(resolveExecutable("tool", root), fs.realpathSync.native(target));
+  },
+);
 
 test("stores normalized discovery metadata on an executor", async () => {
   class AvailableExecutor extends ExecutorAdapter {

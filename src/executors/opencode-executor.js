@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import readline from "node:readline";
 import { ControlPlaneError } from "../core/errors.js";
-import { ExecutorAdapter } from "./executor.js";
+import { ExecutorAdapter, formatCliExitError } from "./executor.js";
 import { probeCommandExecutor } from "./discovery.js";
 
 // Matches `opencode run --format json`: newline-delimited JSON events with a
@@ -201,6 +201,14 @@ export class OpenCodeExecutor extends ExecutorAdapter {
 
   #runOpenCode(turnId, { threadId, child }) {
     const events = [];
+    let stderr = "";
+    let stdoutDiagnostics = "";
+    let finished = false;
+    const finish = (payload) => {
+      if (finished) return;
+      finished = true;
+      this.#finishOpenCode(turnId, threadId, payload);
+    };
     const lines = readline.createInterface({
       input: child.stdout,
       crlfDelay: Infinity,
@@ -209,14 +217,16 @@ export class OpenCodeExecutor extends ExecutorAdapter {
       try {
         events.push(JSON.parse(line));
       } catch {
-        // Skip non-JSON lines.
+        stdoutDiagnostics = `${stdoutDiagnostics}${line}\n`.slice(-4000);
       }
     });
     child.stderr.on("data", (chunk) => {
-      this.emit("stderr", chunk.toString("utf8"));
+      const text = chunk.toString("utf8");
+      stderr = `${stderr}${text}`.slice(-4000);
+      this.emit("stderr", text);
     });
     child.on("error", (error) => {
-      this.#finishOpenCode(turnId, threadId, {
+      finish({
         status: "failed",
         error: error.message,
         resultText: "",
@@ -226,9 +236,15 @@ export class OpenCodeExecutor extends ExecutorAdapter {
     child.on("close", (code) => {
       const normalized = normalizeOpenCodeEvents(events);
       const failed = code !== 0;
-      this.#finishOpenCode(turnId, threadId, {
+      finish({
         status: failed ? "failed" : "completed",
-        error: failed ? `opencode exited with code ${code}` : null,
+        error: failed
+          ? formatCliExitError(
+              "opencode",
+              code,
+              stderr || stdoutDiagnostics || normalized.finalText,
+            )
+          : null,
         resultText: normalized.finalText,
         usage: normalized.usage,
       });

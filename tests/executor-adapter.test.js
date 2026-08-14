@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import test from "node:test";
-import { ExecutorAdapter, assertExecutor } from "../src/executors/executor.js";
+import {
+  ExecutorAdapter,
+  assertExecutor,
+  formatCliExitError,
+} from "../src/executors/executor.js";
 import { normalizeControllerIdentity } from "../src/controllers/controller.js";
 
 test("executor contract accepts compatible implementations", () => {
@@ -35,6 +39,14 @@ test("executor adapter exposes capabilities", () => {
   assert.equal(description.id, "test");
   assert.equal(description.capabilities.tokenUsage, true);
   assert.equal(description.capabilities.subagents, false);
+});
+
+test("CLI failures include bounded normalized stderr", () => {
+  assert.equal(
+    formatCliExitError("claude", 1, "\u001b[31mNot logged in\u001b[0m\nRun auth"),
+    "claude exited with code 1: Not logged in Run auth",
+  );
+  assert.ok(formatCliExitError("tool", 2, "x".repeat(1500)).length < 1050);
 });
 
 test("controller identity normalizes supported transports", () => {

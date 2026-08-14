@@ -57,7 +57,7 @@ function extractReport(turn, cachedFinalMessage = null) {
   if (!finalText) {
     return {
       status: turn?.status === "completed" ? "completed" : "failed",
-      summary: "Codex completed without a final agent message.",
+      summary: "Executor completed without a final agent message.",
       changed_files: [],
       tests: [],
       blockers: [],

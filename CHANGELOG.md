@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.3.1 — 2026-08-14
+
+Windows CLI routing and failure-diagnostics hotfix.
+
+### Fixed
+
+- Resolve npm-generated `opencode.cmd` and `claude.cmd` shims to their trusted
+  underlying executables before dispatch.
+- Apply discovered executable paths to the active adapters instead of retaining
+  unresolved command names.
+- Include bounded, ANSI-stripped CLI stderr in failed task errors and prevent
+  duplicate terminal notifications.
+- Use executor-neutral wording when a failed backend returns no final message.
+
 ## v0.3.0 — 2026-08-14
 
 Automatic multi-executor routing and a provider-neutral MCP surface.

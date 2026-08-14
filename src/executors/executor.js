@@ -3,6 +3,16 @@ import { EventEmitter } from "node:events";
 const requiredMethods = ["stop", "on"];
 const executionMethods = ["start", "request", "respond"];
 
+export function formatCliExitError(label, code, stderr = "") {
+  const detail = String(stderr)
+    .replace(/\u001b\[[0-9;]*m/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(-1000);
+  const base = `${label} exited with code ${code}`;
+  return detail ? `${base}: ${detail}` : base;
+}
+
 export function assertExecutor(executor, { execution = false } = {}) {
   if (!executor || typeof executor !== "object") {
     throw new TypeError("Executor must be an object");

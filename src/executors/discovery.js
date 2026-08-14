@@ -11,6 +11,26 @@ function executableNames(command) {
   return extensions.map((extension) => `${command}${extension}`);
 }
 
+function resolveWindowsShimTarget(candidate) {
+  if (process.platform !== "win32" || !/\.cmd$/i.test(candidate)) {
+    return fs.realpathSync.native(candidate);
+  }
+  try {
+    const source = fs.readFileSync(candidate, "utf8");
+    const match = source.match(/"%dp0%\\([^"\r\n]+\.exe)"/i);
+    if (match) {
+      const target = path.resolve(
+        path.dirname(candidate),
+        match[1].replaceAll("\\", path.sep),
+      );
+      if (fs.statSync(target).isFile()) return fs.realpathSync.native(target);
+    }
+  } catch {
+    // Fall back to the shim itself when it cannot be inspected.
+  }
+  return fs.realpathSync.native(candidate);
+}
+
 export function resolveExecutable(command, environmentPath = process.env.PATH) {
   if (!command || typeof command !== "string") return null;
   if (/[\\/]/.test(command)) {
@@ -32,7 +52,7 @@ export function resolveExecutable(command, environmentPath = process.env.PATH) {
       const candidate = path.resolve(directory, name);
       try {
         if (fs.statSync(candidate).isFile()) {
-          return fs.realpathSync.native(candidate);
+          return resolveWindowsShimTarget(candidate);
         }
       } catch {
         // Keep searching.
@@ -164,6 +184,9 @@ export async function discoverExecutor(executor) {
       typeof executor.probe === "function"
         ? await executor.probe()
         : { available: true, status: "available", reason: null };
+    if (result.command && typeof executor.command === "string") {
+      executor.command = result.command;
+    }
     return save(result);
   } catch (error) {
     return save({
