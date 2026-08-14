@@ -47,6 +47,44 @@ try {
   createPanel({ adapterId: adapter.id, handlers: {} });
   check(Boolean(document.querySelector("#agent-control-plane-companion")), "ACP panel injected");
 
+  document.querySelector("article").remove();
+  document.querySelector("form").remove();
+  const cases = [
+    {
+      id: "chatgpt",
+      url: "https://chatgpt.com/c/test",
+      html: '<div data-message-author-role="assistant">chatgpt reply</div><div id="prompt-textarea" contenteditable="true"></div><button data-testid="send-button">Send</button>',
+    },
+    {
+      id: "deepseek",
+      url: "https://chat.deepseek.com/a/chat/s/test",
+      html: '<div class="ds-markdown">deepseek reply</div><textarea></textarea><button aria-label="Send message">Send</button>',
+    },
+    {
+      id: "claude",
+      url: "https://claude.ai/chat/test",
+      html: '<div data-testid="assistant-message">claude reply</div><div class="ProseMirror" contenteditable="true"></div><button aria-label="Send message">Send</button>',
+    },
+  ];
+  for (const item of cases) {
+    const fixture = document.createElement("section");
+    fixture.innerHTML = item.html;
+    document.body.append(fixture);
+    const selected = detectAdapter(item.url);
+    check(selected.id === item.id, `${item.id} adapter selected`);
+    check(
+      latestAssistantText(document, selected) === `${item.id} reply`,
+      `${item.id} assistant reply detected`,
+    );
+    const siteComposer = findComposer(document, selected);
+    writeComposer(siteComposer, `${item.id} result`);
+    let siteSent = 0;
+    fixture.querySelector("button").addEventListener("click", () => siteSent++);
+    submitComposer(document, selected, siteComposer);
+    check(siteSent === 1, `${item.id} send button activated`);
+    fixture.remove();
+  }
+
   const output = document.querySelector("#result");
   output.className = "pass";
   output.textContent = `PASS · ${checks.length} browser DOM checks`;

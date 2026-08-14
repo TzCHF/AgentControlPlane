@@ -26,4 +26,16 @@ for (const file of files) {
     throw new Error(`${file} failed syntax validation:\n${result.stderr}`);
   }
 }
-console.log(`Browser companion validated (${files.length} scripts)`);
+const harness = path.resolve(
+  "tests",
+  "fixtures",
+  "companion-harness",
+  "harness.js",
+);
+const harnessResult = spawnSync(process.execPath, ["--check", harness], {
+  encoding: "utf8",
+});
+if (harnessResult.status !== 0) {
+  throw new Error(`Browser harness failed syntax validation:\n${harnessResult.stderr}`);
+}
+console.log(`Browser companion validated (${files.length + 1} scripts)`);
