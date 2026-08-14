@@ -1,6 +1,26 @@
 # AgentControlPlane
 
+<div align="center">
+
+[![CI](https://img.shields.io/github/actions/workflow/status/Ya-KARAS/AgentControlPlane/ci.yml?branch=main)](https://github.com/Ya-KARAS/AgentControlPlane/actions/workflows/ci.yml)
+[![version](https://img.shields.io/github/v/release/Ya-KARAS/AgentControlPlane?label=version&color=536af5)](https://github.com/Ya-KARAS/AgentControlPlane/releases)
+[![Node](https://img.shields.io/badge/node-%3E%3D22-3c873a)](https://nodejs.org)
+[![license](https://img.shields.io/badge/license-Apache--2.0-d22128)](LICENSE)
+
+</div>
+
 > Experimental, local-first software for single-user evaluation.
+
+## Contents
+
+- [Why it exists](#why-it-exists)
+- [Supported surfaces](#supported-surfaces)
+- [Quickstart](#quickstart)
+- [Dispatch example](#dispatch-example)
+- [Profiles and usage](#profiles-and-usage)
+- [MCP tools](#mcp-tools)
+- [Safety defaults](#safety-defaults)
+- [Documentation](#documentation)
 
 AgentControlPlane connects an MCP-capable web AI to interchangeable engineering
 agents on the user's computer. The web conversation clarifies intent once; the
@@ -38,11 +58,13 @@ HTTPS chat adapter. See [Browser companion](docs/BROWSER-COMPANION.md).
 
 The local executor layer currently includes:
 
-- OpenCode CLI
-- Codex App Server
-- Claude Code CLI
-- OpenAI-compatible local endpoints, including OpenCodex
-- DeepSeek through the OpenAI-compatible adapter
+| Executor | Interface | Availability |
+|---|---|---|
+| OpenCode | CLI | ships with its own configured default model |
+| Codex | App Server | workspace-write execution with network disabled |
+| Claude Code | CLI | optional; needs a Claude Pro/Max login or an Anthropic API key |
+| OpenAI-compatible | local endpoint | includes OpenCodex |
+| DeepSeek | OpenAI-compatible adapter | — |
 
 Claude Code is optional. Installing its CLI is not sufficient by itself: the
 adapter becomes available only after a Claude Pro/Max account login or when the
@@ -113,16 +135,18 @@ For controlled-versus-direct token experiments, see
 
 ## MCP tools
 
-- `dispatch_project` — queue a brief with automatic or explicit executor routing
-- `dispatch_opencode` — compatibility shortcut for OpenCode
-- `task_status` — read state, result, evidence, usage, and optional events
-- `continue_project` — send a correction or follow-up to the same project
-- `cancel_task` — stop queued or active work
-- `list_tasks` — list recent tasks
-- `list_executors` — list discovery, readiness, capabilities, and default route
-- `list_profiles` — list execution policies
-- `list_models` — list the cached catalog for an executor
-- `usage_report` — aggregate measured engineering usage
+| Tool | Purpose |
+|---|---|
+| `dispatch_project` | queue a brief with automatic or explicit executor routing |
+| `dispatch_opencode` | compatibility shortcut for OpenCode |
+| `task_status` | read state, result, evidence, usage, and optional events |
+| `continue_project` | send a correction or follow-up to the same project |
+| `cancel_task` | stop queued or active work |
+| `list_tasks` | list recent tasks |
+| `list_executors` | list discovery, readiness, capabilities, and default route |
+| `list_profiles` | list execution policies |
+| `list_models` | list the cached catalog for an executor |
+| `usage_report` | aggregate measured engineering usage |
 
 ## Safety defaults
 
