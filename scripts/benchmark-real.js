@@ -12,8 +12,9 @@ const resultsPath =
   process.argv[2] ??
   path.join(projectRoot, "benchmark", "real-results.json");
 
+const runAt = new Date().toISOString();
 const output = {
-  generated_at: new Date().toISOString(),
+  generated_at: runAt,
   cases: [],
 };
 
@@ -303,6 +304,7 @@ async function main() {
       ...output,
       summary: buildBenchmarkReport(output.cases),
     };
+    report.generated_at = report.summary.generated_at;
     const summaryPath = path.join(projectRoot, "benchmark", "real-summary.json");
     const reportPath = path.join(projectRoot, "benchmark", "real-report.json");
     fs.writeFileSync(resultsPath, JSON.stringify(report, null, 2), "utf8");

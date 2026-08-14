@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-08-14T18:27:40.294Z",
+  "generated_at": "2026-08-14T18:38:31.227Z",
   "cases": [
     {
       "id": "pair-opencode-1",
       "category": "opencode",
       "direct": {
         "success": false,
-        "duration_ms": 76098,
+        "duration_ms": 75610,
         "executor_usage": {
           "input_tokens": 0,
           "cached_input_tokens": 0,
@@ -38,7 +38,7 @@
       },
       "errors": [
         "direct_failed:unknown",
-        "opencode exited with code 1: seek modelID=deepseek-v4-pro session.id=ses_ffe78510cffeNabNPJy7K7XQ7f small=false agent=build mode=primary error.error=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url? (cause: Error: Unable to connect. Is the computer able to access the url?)\" timestamp=2026-08-14T18:28:56.262Z level=ERROR run=8095b353 message=process session.id=ses_ffe78510cffeNabNPJy7K7XQ7f messageID=msg_00187b29d001w8p7bYDU6mgUSO error=\"Cannot connect to API: Unable to connect. Is the computer able to access the url?\" stack=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url?\\n at e (B:/~BUN/root/chunk-aaw76hgx.js:2:6248)\\n at <anonymous> (B:/~BUN/root/chunk-aaw76hgx.js:6:13321)\\n at processTicksAndRejections (native:7:39)\" timestamp=2026-08-14T18:28:57.142Z level=INFO run=8095b353 message=\"disposing instance\" directory=\"C:\\\\Users\\\\45928\\\\Documents\\\\Github\\\\AgentControlPlane\\\\.benchmark-opencode-1-1786732061545-6zDFAm\""
+        "opencode exited with code 1: seek modelID=deepseek-v4-pro session.id=ses_ffe6e643affeU5LNOB1eLQFEYM small=false agent=build mode=primary error.error=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url? (cause: Error: Unable to connect. Is the computer able to access the url?)\" timestamp=2026-08-14T18:39:46.662Z level=ERROR run=105b1f3f message=process session.id=ses_ffe6e643affeU5LNOB1eLQFEYM messageID=msg_001919f2e001Wt4g96SQG8UiAQ error=\"Cannot connect to API: Unable to connect. Is the computer able to access the url?\" stack=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url?\\n at e (B:/~BUN/root/chunk-aaw76hgx.js:2:6248)\\n at <anonymous> (B:/~BUN/root/chunk-aaw76hgx.js:6:13321)\\n at processTicksAndRejections (native:7:39)\" timestamp=2026-08-14T18:39:47.499Z level=INFO run=105b1f3f message=\"disposing instance\" directory=\"C:\\\\Users\\\\45928\\\\Documents\\\\Github\\\\AgentControlPlane\\\\.benchmark-opencode-1-1786732712226-HF9LgA\""
       ]
     },
     {
@@ -46,7 +46,7 @@
       "category": "opencode",
       "direct": {
         "success": false,
-        "duration_ms": 75177,
+        "duration_ms": 71694,
         "executor_usage": {
           "input_tokens": 0,
           "cached_input_tokens": 0,
@@ -78,7 +78,7 @@
       },
       "errors": [
         "direct_failed:unknown",
-        "opencode exited with code 1: seek modelID=deepseek-v4-pro session.id=ses_ffe7726a2ffe61RX6VKqin31zc small=false agent=build mode=primary error.error=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url? (cause: Error: Unable to connect. Is the computer able to access the url?)\" timestamp=2026-08-14T18:30:12.395Z level=ERROR run=af85ff53 message=process session.id=ses_ffe7726a2ffe61RX6VKqin31zc messageID=msg_00188dc23001M6UDulg20E0Xti error=\"Cannot connect to API: Unable to connect. Is the computer able to access the url?\" stack=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url?\\n at e (B:/~BUN/root/chunk-aaw76hgx.js:2:6248)\\n at <anonymous> (B:/~BUN/root/chunk-aaw76hgx.js:6:13321)\\n at processTicksAndRejections (native:7:39)\" timestamp=2026-08-14T18:30:13.074Z level=INFO run=af85ff53 message=\"disposing instance\" directory=\"C:\\\\Users\\\\45928\\\\Documents\\\\Github\\\\AgentControlPlane\\\\.benchmark-opencode-2-1786732061545-Lxja8i\""
+        "opencode exited with code 1: seek modelID=deepseek-v4-pro session.id=ses_ffe6d3c45ffeUzqBNuiVaciCoQ small=false agent=build mode=primary error.error=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url? (cause: Error: Unable to connect. Is the computer able to access the url?)\" timestamp=2026-08-14T18:40:58.696Z level=ERROR run=244b695d message=process session.id=ses_ffe6d3c45ffeUzqBNuiVaciCoQ messageID=msg_00192c6360010tjjoU4KKJhJVv error=\"Cannot connect to API: Unable to connect. Is the computer able to access the url?\" stack=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url?\\n at e (B:/~BUN/root/chunk-aaw76hgx.js:2:6248)\\n at <anonymous> (B:/~BUN/root/chunk-aaw76hgx.js:6:13321)\\n at processTicksAndRejections (native:7:39)\" timestamp=2026-08-14T18:40:59.640Z level=INFO run=244b695d message=\"disposing instance\" directory=\"C:\\\\Users\\\\45928\\\\Documents\\\\Github\\\\AgentControlPlane\\\\.benchmark-opencode-2-1786732712226-DvPkMG\""
       ]
     },
     {
@@ -86,7 +86,7 @@
       "category": "opencode",
       "direct": {
         "success": false,
-        "duration_ms": 77132,
+        "duration_ms": 72037,
         "executor_usage": {
           "input_tokens": 0,
           "cached_input_tokens": 0,
@@ -118,13 +118,13 @@
       },
       "errors": [
         "direct_failed:unknown",
-        "opencode exited with code 1: seek modelID=deepseek-v4-pro session.id=ses_ffe75dcc1ffeeZzlZPHwy7Wy1W small=false agent=build mode=primary error.error=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url? (cause: Error: Unable to connect. Is the computer able to access the url?)\" timestamp=2026-08-14T18:31:34.314Z level=ERROR run=0075e25a message=process session.id=ses_ffe75dcc1ffeeZzlZPHwy7Wy1W messageID=msg_0018a274a001M4M78EdbAqOxh0 error=\"Cannot connect to API: Unable to connect. Is the computer able to access the url?\" stack=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url?\\n at e (B:/~BUN/root/chunk-aaw76hgx.js:2:6248)\\n at <anonymous> (B:/~BUN/root/chunk-aaw76hgx.js:6:13321)\\n at processTicksAndRejections (native:7:39)\" timestamp=2026-08-14T18:31:35.233Z level=INFO run=0075e25a message=\"disposing instance\" directory=\"C:\\\\Users\\\\45928\\\\Documents\\\\Github\\\\AgentControlPlane\\\\.benchmark-opencode-3-1786732061545-2MwjOa\""
+        "opencode exited with code 1: seek modelID=deepseek-v4-pro session.id=ses_ffe6c2213ffewibFQW7rx8Qpqf small=false agent=build mode=primary error.error=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url? (cause: Error: Unable to connect. Is the computer able to access the url?)\" timestamp=2026-08-14T18:42:11.021Z level=ERROR run=17cc0f12 message=process session.id=ses_ffe6c2213ffewibFQW7rx8Qpqf messageID=msg_00193e28b001ywLX06cXhp56Vt error=\"Cannot connect to API: Unable to connect. Is the computer able to access the url?\" stack=\"AI_APICallError: Cannot connect to API: Unable to connect. Is the computer able to access the url?\\n at e (B:/~BUN/root/chunk-aaw76hgx.js:2:6248)\\n at <anonymous> (B:/~BUN/root/chunk-aaw76hgx.js:6:13321)\\n at processTicksAndRejections (native:7:39)\" timestamp=2026-08-14T18:42:11.754Z level=INFO run=17cc0f12 message=\"disposing instance\" directory=\"C:\\\\Users\\\\45928\\\\Documents\\\\Github\\\\AgentControlPlane\\\\.benchmark-opencode-3-1786732712226-P7ooa8\""
       ]
     }
   ],
   "summary": {
     "schema_version": 1,
-    "generated_at": "2026-08-14T18:31:37.294Z",
+    "generated_at": "2026-08-14T18:42:12.813Z",
     "case_count": 3,
     "comparable_case_count": 0,
     "average_execution_savings_rate": null,
@@ -155,7 +155,7 @@
         "total_savings_rate": null,
         "direct_success": false,
         "controlled_success": false,
-        "direct_duration_ms": 76098,
+        "direct_duration_ms": 75610,
         "controlled_duration_ms": 0
       },
       {
@@ -181,7 +181,7 @@
         "total_savings_rate": null,
         "direct_success": false,
         "controlled_success": false,
-        "direct_duration_ms": 75177,
+        "direct_duration_ms": 71694,
         "controlled_duration_ms": 0
       },
       {
@@ -207,7 +207,7 @@
         "total_savings_rate": null,
         "direct_success": false,
         "controlled_success": false,
-        "direct_duration_ms": 77132,
+        "direct_duration_ms": 72037,
         "controlled_duration_ms": 0
       }
     ]
