@@ -27,6 +27,11 @@
 `openai-compatible`, or `deepseek`. `auto` resolves to an actual executor before
 the task is persisted, so status and audit records always show where work ran.
 
+Persistent project identity is scoped by both workspace and executor. The same
+repository can therefore keep an independent Codex thread, OpenCode session,
+and Claude Code session without attempting to resume one executor's thread id in
+another executor.
+
 ## Compact result
 
 ```json
@@ -49,16 +54,27 @@ the task is persisted, so status and audit records always show where work ran.
 ```
 
 The web controller should poll until terminal status. When the result is
-`blocked`, `partial`, or `failed`, it should use the structured blocker and
-evidence to correct the brief or explain why user input is required. This is the
-automatic feedback loop that replaces copying output between two conversations.
+`blocked`, `partial`, or `failed`, it should choose one of two explicit follow-up
+semantics:
+
+- `continue_project` keeps the same executor and persistent executor thread. Use
+  it when the same engineering agent should correct or extend its own work.
+- `handoff_project` creates a new task for another selected executor. It carries
+  only compact source evidence (source executor/status, summary, changed files,
+  verification results, blockers, and error summary) plus the new objective. It
+  does not replay the web conversation or copy the source executor's thread.
+
+This distinction lets a web AI run flows such as Codex implementation → OpenCode
+verification → Claude Code review while keeping each engineering runtime's
+project identity isolated.
 
 ## MCP tools
 
 - `dispatch_project` — create an asynchronous task with auto or explicit route.
 - `dispatch_opencode` — backwards-compatible OpenCode shortcut.
 - `task_status` — read compact state, result, usage, and optional recent events.
-- `continue_project` — send a correction or follow-up to the same project.
+- `continue_project` — send a correction or follow-up to the same executor thread.
+- `handoff_project` — send compact source evidence to a selected different executor.
 - `cancel_task` — interrupt queued or active work.
 - `list_tasks` — list recent tasks.
 - `list_executors` — inspect discovery, capabilities, and current default.

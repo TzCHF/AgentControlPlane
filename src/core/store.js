@@ -109,11 +109,19 @@ export class TaskStore {
     return null;
   }
 
-  createTask({ workspace, brief, policy, parentTaskId = null, executor = null }) {
+  createTask({
+    workspace,
+    brief,
+    policy,
+    parentTaskId = null,
+    executor = null,
+    kind = "dispatch",
+  }) {
     this.#pruneTasks();
     const id = crypto.randomUUID();
     const task = {
       id,
+      kind,
       parentTaskId,
       workspace,
       brief,
@@ -136,8 +144,11 @@ export class TaskStore {
     this.persist();
     this.audit("task.created", {
       taskId: id,
+      kind,
       workspace,
+      executor,
       policy: policy.name,
+      parentTaskId,
     });
     return structuredClone(task);
   }
@@ -191,23 +202,37 @@ export class TaskStore {
       .map((task) => structuredClone(task));
   }
 
-  getProject(workspace) {
-    return structuredClone(this.state.projects[workspace] ?? null);
+  getProject(workspace, executor = null) {
+    const project = this.state.projects[workspace];
+    if (!project) return null;
+    if (!executor) return structuredClone(project);
+
+    const threadId = project.threads?.[executor]
+      ?? (project.executor === executor ? project.threadId : null)
+      ?? (executor === "codex" && !project.executor && !project.threads
+        ? project.threadId
+        : null);
+    if (!threadId) return null;
+    return structuredClone({ ...project, executor, threadId });
   }
 
-  setProject(workspace, patch) {
+  setProject(workspace, patch, executor = null) {
     const current = this.state.projects[workspace] ?? {
       workspace,
       threadId: null,
+      threads: {},
       createdAt: now(),
     };
+    const threads = { ...(current.threads ?? {}) };
+    if (executor && patch.threadId) threads[executor] = patch.threadId;
     this.state.projects[workspace] = {
       ...current,
       ...patch,
+      ...(executor ? { executor, threads } : {}),
       updatedAt: now(),
     };
     this.persist();
-    return structuredClone(this.state.projects[workspace]);
+    return this.getProject(workspace, executor);
   }
 
   usageReport() {

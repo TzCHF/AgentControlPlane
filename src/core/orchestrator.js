@@ -99,6 +99,36 @@ function extractReport(turn, cachedFinalMessage = null) {
   }
 }
 
+function compactHandoffContext(parent) {
+  const report = parent.result ?? {};
+  const lines = [
+    `Source task: ${parent.id}`,
+    `Source executor: ${parent.executor ?? "unknown"}`,
+    `Source status: ${parent.status}`,
+  ];
+  if (report.summary) {
+    lines.push(`Source summary: ${String(report.summary).slice(0, 4000)}`);
+  }
+  if (Array.isArray(report.changed_files) && report.changed_files.length) {
+    lines.push(`Changed files: ${report.changed_files.slice(0, 100).join(", ")}`);
+  }
+  if (Array.isArray(report.tests) && report.tests.length) {
+    const tests = report.tests.slice(0, 20).map((entry) => {
+      const command = String(entry.command ?? "unknown");
+      const status = String(entry.status ?? "unknown");
+      return `${command} => ${status}`;
+    });
+    lines.push(`Verification: ${tests.join("; ")}`);
+  }
+  if (Array.isArray(report.blockers) && report.blockers.length) {
+    lines.push(`Source blockers: ${report.blockers.slice(0, 20).join("; ")}`);
+  }
+  if (parent.error?.message) {
+    lines.push(`Source error: ${String(parent.error.message).slice(0, 2000)}`);
+  }
+  return lines;
+}
+
 export class Orchestrator extends EventEmitter {
   constructor({
     config,
@@ -279,6 +309,7 @@ export class Orchestrator extends EventEmitter {
       brief,
       policy,
       executor: provider,
+      kind: "dispatch",
     });
     this.queue.push({ taskId: task.id, followUp: false });
     queueMicrotask(() => this.#drain());
@@ -294,7 +325,7 @@ export class Orchestrator extends EventEmitter {
     if (!parent.threadId) {
       throw new ControlPlaneError(
         "task_not_started",
-        "The original task has no Codex thread yet",
+        "The original task has no executor thread yet",
       );
     }
     const brief = normalizeBrief(
@@ -321,11 +352,73 @@ export class Orchestrator extends EventEmitter {
       policy,
       parentTaskId: parent.id,
       executor: parent.executor ?? this.defaultProvider,
+      kind: "continue",
     });
     this.store.updateTask(task.id, { threadId: parent.threadId });
     this.queue.push({ taskId: task.id, followUp: true });
     queueMicrotask(() => this.#drain());
     return this.store.getTask(task.id);
+  }
+
+  handoffTask(taskId, request) {
+    this.#assertQueueCapacity();
+    const parent = this.store.getTask(taskId);
+    if (!parent) {
+      throw new ControlPlaneError("task_not_found", `Unknown task: ${taskId}`);
+    }
+    const terminal = new Set([
+      "completed",
+      "partial",
+      "blocked",
+      "failed",
+      "interrupted",
+      "cancelled",
+    ]);
+    if (!terminal.has(parent.status)) {
+      throw new ControlPlaneError(
+        "task_not_terminal",
+        "A handoff requires the source task to reach a terminal state",
+        { taskId: parent.id, status: parent.status },
+      );
+    }
+
+    const { id: provider } = this.#executorEntry({
+      executor: request.executor ?? "auto",
+      profile: request.profile ?? parent.policy?.name,
+    });
+    const brief = normalizeBrief(
+      {
+        objective: request.objective,
+        constraints: request.constraints,
+        acceptance_criteria: request.acceptance_criteria,
+        context: [
+          ...compactHandoffContext(parent),
+          ...(Array.isArray(request.context) ? request.context : []),
+        ],
+        evidence_required: request.evidence_required,
+      },
+      this.config.limits.maxBriefCharacters,
+    );
+    const catalog = this.modelCatalogs.get(provider) ?? [];
+    const policy = resolveProfile(this.config, {
+      profile: request.profile ?? parent.policy?.name ?? "balanced",
+      model: request.model,
+      reasoning_effort: request.reasoning_effort,
+      max_subagents: request.max_subagents,
+      token_budget: request.token_budget,
+    }, catalog);
+    if (provider !== "codex" && !request.model) policy.model = null;
+    const task = this.store.createTask({
+      workspace: parent.workspace,
+      brief,
+      policy,
+      parentTaskId: parent.id,
+      executor: provider,
+      kind: "handoff",
+    });
+    this.queue.push({ taskId: task.id, followUp: false });
+    queueMicrotask(() => this.#drain());
+    return task;
   }
 
   async cancel(taskId) {
@@ -419,7 +512,7 @@ export class Orchestrator extends EventEmitter {
           );
         }
       }
-      const project = this.store.getProject(task.workspace);
+      const project = this.store.getProject(task.workspace, task.executor);
       let threadId = task.threadId ?? project?.threadId ?? null;
 
       if (threadId) {
@@ -460,7 +553,7 @@ export class Orchestrator extends EventEmitter {
           },
         });
         threadId = started.thread.id;
-        this.store.setProject(workspace, { threadId });
+        this.store.setProject(workspace, { threadId }, task.executor);
       }
 
       this.store.updateTask(taskId, { threadId });
@@ -690,10 +783,10 @@ export class Orchestrator extends EventEmitter {
     const stale = this.store.listByStatus(["queued", "running"]);
     for (const task of stale) {
       if (task.status === "queued") {
-        this.queue.push({
-          taskId: task.id,
-          followUp: Boolean(task.parentTaskId),
-        });
+        const followUp =
+          task.kind === "continue" ||
+          (!task.kind && Boolean(task.parentTaskId));
+        this.queue.push({ taskId: task.id, followUp });
         continue;
       }
 
