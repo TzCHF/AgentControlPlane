@@ -20,7 +20,7 @@ npm.cmd run benchmark:report -- benchmark/real-results.json
 
 ## 最新一次结果（2026-08-14）
 
-- `generated_at`: `2026-08-14T17:34:55.358Z`
+- `generated_at`: `2026-08-14T17:42:24.568Z`
 - `case_count`: `3`
 - 直接路径成功率：`0`
 - 编排路径成功率：`0`
