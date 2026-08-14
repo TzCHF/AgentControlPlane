@@ -98,7 +98,7 @@ export function readCommandVersion(command, args = ["--version"], timeoutMs = 30
         child = spawn(command, args, options);
       }
     } catch (error) {
-      resolve({ ok: false, version: null, error: error.message });
+      resolve({ ok: false, version: null, output: "", error: error.message });
       return;
     }
 
@@ -115,18 +115,24 @@ export function readCommandVersion(command, args = ["--version"], timeoutMs = 30
       output += chunk.toString("utf8");
     });
     child.on("error", (error) =>
-      finish({ ok: false, version: null, error: error.message }),
+      finish({ ok: false, version: null, output, error: error.message }),
     );
     child.on("close", (code) =>
       finish({
         ok: code === 0,
         version: output.trim().split(/\r?\n/, 1)[0]?.slice(0, 200) || null,
+        output: output.slice(-4000),
         error: code === 0 ? null : `Version command exited with code ${code}`,
       }),
     );
     timer = setTimeout(() => {
       child.kill();
-      finish({ ok: false, version: null, error: "Version check timed out" });
+      finish({
+        ok: false,
+        version: null,
+        output: output.slice(-4000),
+        error: "Version check timed out",
+      });
     }, timeoutMs);
     timer.unref?.();
   });

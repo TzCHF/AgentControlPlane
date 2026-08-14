@@ -10,7 +10,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { asErrorPayload } from "../core/errors.js";
 import { publicModels } from "../core/profiles.js";
 
-const SERVER_INFO = { name: "agent-control-plane", version: "0.3.1" };
+const SERVER_INFO = { name: "agent-control-plane", version: "0.3.2" };
 
 // OpenAI negotiates this protocol version through its connector flow.
 // Prefer it over the SDK's latest so the discovery handshake matches what

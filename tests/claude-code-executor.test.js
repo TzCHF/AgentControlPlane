@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  classifyClaudeAuthentication,
   ClaudeCodeExecutor,
   normalizeClaudeResult,
 } from "../src/executors/claude-code-executor.js";
@@ -9,6 +10,26 @@ import { assertLifecycle } from "../src/executors/lifecycle.js";
 test("ClaudeCodeExecutor satisfies the agent lifecycle contract", () => {
   const executor = new ClaudeCodeExecutor();
   assert.equal(assertLifecycle(executor), executor);
+});
+
+test("classifies Claude Code account and API-key authentication", () => {
+  assert.deepEqual(
+    classifyClaudeAuthentication(
+      '{"loggedIn":true,"authMethod":"claude.ai"}',
+    ),
+    { authenticated: true, authMethod: "claude.ai" },
+  );
+  assert.deepEqual(
+    classifyClaudeAuthentication(
+      '{"loggedIn":false,"authMethod":"none"}',
+    ),
+    { authenticated: false, authMethod: "none" },
+  );
+  assert.deepEqual(
+    classifyClaudeAuthentication("", { apiKeyConfigured: true }),
+    { authenticated: true, authMethod: "api_key" },
+  );
+  assert.equal(classifyClaudeAuthentication("unsupported output"), null);
 });
 
 test("normalizes a successful claude stream-json result", () => {
