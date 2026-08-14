@@ -44,20 +44,15 @@ npm.cmd run benchmark:report -- benchmark/real-results.json
 - `scripts/smoke.js`（包含 `smoke_execution_status`，可在环境受限时给出 `partial`）
 - `CHANGELOG.md`（v0.4.0 与真实对照说明已补充）
 
-## 需要联网后执行的发布动作
+## 发布动作（已完成 2026-08-14）
 
-```powershell
-cd C:\Users\45928\Documents\Github\AgentControlPlane
-git push origin main
-git push origin --tags
-```
-
-然后在 GitHub 创建 Release（建议）：
-
-1. Tag：`v0.4.0`（或 `v0.4.1` 递增新版本）
-2. 标题：`AgentControlPlane v0.4.0`
-3. 说明：使用 `CHANGELOG.md` 中 v0.4.0 条目 + `docs/REAL-TOKEN-COMPARISON-RESULTS.md`
-4. 附加说明：`benchmark/real-summary.json`
+- `git push origin main`：完成，`origin/main` 与本地 `main` 同步，v0.4 全部提交已上传。
+- `git push origin --tags`：完成，`v0.4.0` 标签已上传。
+- GitHub Release：已创建
+  [AgentControlPlane v0.4.0](https://github.com/Ya-KARAS/AgentControlPlane/releases/tag/v0.4.0)，
+  说明取自 `CHANGELOG.md` 的 v0.4.0 条目，并附 `benchmark/real-summary.json` 作为发布资产。
+- 发布前本地验证：`npm test` 72/72 通过；`npm run check` 通过
+  （`Browser companion validated`）；`npm run smoke:companion` 返回 `status: "passed"`。
 
 ## v0.3.2 状态
 

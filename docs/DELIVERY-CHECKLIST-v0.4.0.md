@@ -41,19 +41,21 @@
 
 ## 当前仓库状态（本地）
 
-- 分支：`main`
-- 领先：`ahead`（相对 `origin/main`，请用你的本地 git status/log 核对）
-- 头提交：`(请用 git rev-parse --short HEAD)`
-- 本地未提交改动：无
+- 分支：`main`，与 `origin/main` 同步（以 `git status` 为准）。
+- 本地未提交改动：无（发布后如有更新，以 `git status` 为准）。
 
-## 最后发布动作（当前环境限制）
+## 最后发布动作（已完成 2026-08-14）
 
-- 已尝试（当前环境）：
-  - `git push origin main`（失败：`Failed to connect to github.com:443`）
-  - `git push origin --tags`（失败：`Failed to connect to github.com:443`）
-- 在 GitHub 创建 `v0.4.0` Release（可复用 `RELEASE-DRAFT-v0.4.0.md`）
+- `git push origin main`：完成，v0.3.2 之后的全部 v0.4 提交已上传。
+- `git push origin --tags`：完成，`v0.4.0` 标签已上传。
+- GitHub Release：已创建
+  [AgentControlPlane v0.4.0](https://github.com/Ya-KARAS/AgentControlPlane/releases/tag/v0.4.0)，
+  说明复用 `CHANGELOG.md` 的 v0.4.0 条目，并附 `benchmark/real-summary.json` 作为发布资产。
+- 发布前本地验证：`npm test` 72/72 通过；`npm run check` 通过
+  （`Browser companion validated`）；`npm run smoke:companion` 返回 `status: "passed"`。
 
-> 备注：`git push` 当前会话环境无法访问 `github.com:443`，外部发布动作需要在你可联网/可认证环境执行。
+> 早前无网络会话的推送失败记录：`git push` 曾因无法访问 `github.com:443` 失败；
+> 现已联网完成推送，外部发布动作全部执行完毕。
 
 
 
