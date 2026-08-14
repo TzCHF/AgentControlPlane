@@ -10,6 +10,8 @@
 </div>
 
 > Experimental, local-first software for single-user evaluation.
+>
+> [中文文档](README.zh-CN.md)
 
 ## Contents
 
