@@ -164,6 +164,25 @@ export function loadConfig(configPath = process.env.AGENT_CONTROL_CONFIG) {
       "server.mcpSessionIdleMinutes must be at least 1",
     );
   }
+  if (typeof config.companion?.enabled !== "boolean") {
+    throw new ControlPlaneError(
+      "invalid_config",
+      "companion.enabled must be a boolean",
+    );
+  }
+  for (const [field, minimum, maximum] of [
+    ["pairingTtlMinutes", 1, 60],
+    ["maxClients", 1, 256],
+    ["maxPending", 1, 128],
+  ]) {
+    const value = config.companion?.[field];
+    if (!Number.isInteger(value) || value < minimum || value > maximum) {
+      throw new ControlPlaneError(
+        "invalid_config",
+        `companion.${field} must be an integer from ${minimum} to ${maximum}`,
+      );
+    }
+  }
   if (typeof config.codex.networkAccess !== "boolean") {
     throw new ControlPlaneError(
       "invalid_config",

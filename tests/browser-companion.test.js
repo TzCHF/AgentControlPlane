@@ -1,0 +1,101 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import test from "node:test";
+import {
+  controllerPrompt,
+  extractTaskEnvelope,
+  formatTaskResult,
+  normalizeDispatch,
+  stableEnvelopeId,
+} from "../browser-companion/src/protocol.js";
+import {
+  detectAdapter,
+  supportedAdapters,
+} from "../browser-companion/src/site-adapters.js";
+
+test("extracts and normalizes a local ACP task envelope", () => {
+  const envelope = {
+    workspace: "DEFAULT",
+    objective: "Create hello.txt",
+    acceptance_criteria: ["Content is exact"],
+    profile: "economy",
+  };
+  const text = `Ready.\n<ACP_TASK>\n${JSON.stringify(envelope)}\n</ACP_TASK>`;
+  assert.deepEqual(extractTaskEnvelope(text), envelope);
+  assert.deepEqual(
+    normalizeDispatch(envelope, {
+      workspace: "C:\\work\\demo",
+      executor: "opencode",
+    }),
+    {
+      workspace: "C:\\work\\demo",
+      objective: "Create hello.txt",
+      profile: "economy",
+      executor: "opencode",
+      acceptance_criteria: ["Content is exact"],
+    },
+  );
+});
+
+test("controller prompt keeps local paths out of the web conversation", () => {
+  const prompt = controllerPrompt({
+    workspace: "C:\\Users\\private\\project",
+    profile: "balanced",
+    executor: "auto",
+  });
+  assert.match(prompt, /"workspace": "DEFAULT"/);
+  assert.doesNotMatch(prompt, /Users\\private/);
+});
+
+test("web envelopes cannot override the locally selected workspace", () => {
+  const request = normalizeDispatch(
+    { workspace: "C:\\other-project", objective: "Try another project" },
+    { workspace: "C:\\approved-project", executor: "auto" },
+  );
+  assert.equal(request.workspace, "C:\\approved-project");
+});
+
+test("formats terminal results and creates stable envelope identifiers", () => {
+  const task = {
+    id: "task-1",
+    status: "completed",
+    executor: "opencode",
+    result: { summary: "Done" },
+    error: null,
+    usage: { total_tokens: 10 },
+  };
+  const result = formatTaskResult(task);
+  assert.match(result, /<ACP_RESULT>/);
+  assert.match(result, /"summary": "Done"/);
+  assert.equal(
+    stableEnvelopeId({ objective: "same" }),
+    stableEnvelopeId({ objective: "same" }),
+  );
+});
+
+test("selects built-in web AI adapters and falls back to generic", () => {
+  assert.equal(detectAdapter("https://chatgpt.com/c/1").id, "chatgpt");
+  assert.equal(detectAdapter("https://chat.deepseek.com/a/chat/s/1").id, "deepseek");
+  assert.equal(detectAdapter("https://claude.ai/new").id, "claude");
+  assert.equal(detectAdapter("https://example.ai/chat").id, "generic");
+  assert.deepEqual(
+    supportedAdapters.map((entry) => entry.id),
+    ["chatgpt", "deepseek", "claude", "generic"],
+  );
+});
+
+test("manifest grants only known AI sites by default", () => {
+  const manifest = JSON.parse(
+    fs.readFileSync(
+      path.resolve("browser-companion", "manifest.json"),
+      "utf8",
+    ),
+  );
+  assert.equal(manifest.manifest_version, 3);
+  assert.equal(manifest.version, "0.4.0");
+  assert.ok(manifest.host_permissions.includes("https://chatgpt.com/*"));
+  assert.ok(manifest.host_permissions.includes("https://chat.deepseek.com/*"));
+  assert.ok(manifest.optional_host_permissions.includes("https://*/*"));
+  assert.equal(manifest.host_permissions.includes("https://*/*"), false);
+});

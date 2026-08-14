@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ACP Web AI Adapter Harness</title>
+    <style>body{font:16px system-ui;max-width:820px;margin:40px auto;padding:0 20px;background:#0d1117;color:#e6edf3}article,form,#result{padding:16px;border:1px solid #30363d;border-radius:10px;margin:14px 0;background:#161b22}textarea{width:100%;min-height:100px}button{padding:8px 14px}#result.pass{color:#3fb950}#result.fail{color:#f85149}</style>
+  </head>
+  <body>
+    <h1>Mock web AI</h1>
+    <article data-role="assistant">
+      <p>Implementation plan ready.</p>
+      <pre>&lt;ACP_TASK&gt;
+{"workspace":"DEFAULT","objective":"Create hello.txt","profile":"economy","executor":"auto"}
+&lt;/ACP_TASK&gt;</pre>
+    </article>
+    <form><textarea placeholder="Message the AI"></textarea><button type="button" aria-label="Send message">Send</button></form>
+    <div id="result">Running adapter checks…</div>
+    <script type="module" src="/harness.js"></script>
+  </body>
+</html>

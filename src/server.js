@@ -14,6 +14,8 @@ import { OpenAICompatibleExecutor } from "./executors/openai-compatible-executor
 import { assertExecutor } from "./executors/executor.js";
 import { assertLifecycle } from "./executors/lifecycle.js";
 import { createMcpHandler } from "./mcp/server.js";
+import { PairingManager } from "./companion/pairing-manager.js";
+import { CompanionRouter } from "./companion/router.js";
 
 export function buildExecutor(config, provider) {
   if (provider === "openai-compatible") {
@@ -138,6 +140,21 @@ export async function createApplication(overrides = {}) {
     await orchestrator.start();
   }
   const handleMcp = createMcpHandler({ orchestrator, store, config });
+  const pairingManager =
+    overrides.pairingManager ??
+    new PairingManager({
+      stateDir: config.stateDir,
+      pairingTtlMs:
+        Number(config.companion?.pairingTtlMinutes ?? 10) * 60 * 1000,
+      maxClients: Number(config.companion?.maxClients ?? 32),
+      maxPending: Number(config.companion?.maxPending ?? 16),
+    });
+  const companion = new CompanionRouter({
+    pairingManager,
+    orchestrator,
+    store,
+    config,
+  });
 
   function tokenMatches(request) {
     if (!config.server.authToken) return true;
@@ -163,7 +180,7 @@ export async function createApplication(overrides = {}) {
     try {
       const { url, parts } = routeParts(request);
 
-      if (!originAllowed(request)) {
+      if (!originAllowed(request) && !companion.originAllowed(request, url)) {
         sendJson(response, 403, {
           error: { code: "origin_denied", message: "Origin is not allowed" },
         });
@@ -195,6 +212,10 @@ export async function createApplication(overrides = {}) {
           return;
         }
       }
+      if (companion.matches(url)) {
+        await companion.handle(request, response, url, parts);
+        return;
+      }
       if (!isHealth && !isProtectedResourceMetadata && !tokenMatches(request)) {
         sendJson(
           response,
@@ -216,12 +237,13 @@ export async function createApplication(overrides = {}) {
         sendJson(response, 200, {
           status: "ok",
           service: "agent-control-plane",
-          version: "0.3.2",
+          version: "0.4.0",
           default_executor: defaultExecutor,
           executor_ready:
             executors.find((executor) => executor.id === defaultExecutor)?.ready ??
             Boolean(codex.ready),
           codex_ready: Boolean(codex.ready),
+          companion_enabled: config.companion?.enabled !== false,
         });
         return;
       }
@@ -352,6 +374,14 @@ export async function createApplication(overrides = {}) {
         error: { code: "not_found", message: "Route not found" },
       });
     } catch (error) {
+      try {
+        const { url } = routeParts(request);
+        if (companion.matches(url) && companion.sendError(request, response, error)) {
+          return;
+        }
+      } catch {
+        // Fall through to the standard error response.
+      }
       sendError(response, error);
     }
   });
@@ -361,6 +391,7 @@ export async function createApplication(overrides = {}) {
     store,
     codex,
     orchestrator,
+    pairingManager,
     server,
     async close() {
       for (const executor of executors.values()) {

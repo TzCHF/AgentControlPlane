@@ -31,6 +31,11 @@ The northbound interface is standard MCP and is not tied to one model. ChatGPT
 custom apps are the currently documented connection; other MCP-capable web AI
 clients can use the same tools.
 
+For accounts or web AI products that do not expose custom MCP connections, the
+v0.4 browser companion provides a local, provider-neutral bridge. It includes
+built-in adapters for ChatGPT, DeepSeek, and Claude, plus an optional generic
+HTTPS chat adapter. See [Browser companion](docs/BROWSER-COMPANION.md).
+
 The local executor layer currently includes:
 
 - OpenCode CLI
@@ -65,6 +70,11 @@ npm.cmd start
 The service binds to `http://127.0.0.1:4318`. `npm.cmd run doctor` lists every
 discovered executor and the automatic default. No executor selection is needed
 when an installed CLI or configured local endpoint is detected.
+
+To use a web AI without its own MCP connector, load
+[`browser-companion`](browser-companion) as an unpacked Manifest V3 extension,
+open the ACP panel on the web AI page, and approve the one-time local pairing
+code. The extension never needs the main control-plane bearer token.
 
 To connect ChatGPT, follow
 [docs/CHATGPT-CONNECTION.md](docs/CHATGPT-CONNECTION.md). A web provider may
