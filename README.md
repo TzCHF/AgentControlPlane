@@ -1,5 +1,7 @@
 # AgentControlPlane
 
+**English** | [简体中文](docs/i18n/zh-CN/README.md) | [繁體中文](docs/i18n/zh-TW/README.md) | [Français](docs/i18n/fr/README.md) | [Español](docs/i18n/es/README.md) | [日本語](docs/i18n/ja/README.md)
+
 > Experimental, local-first software for single-user evaluation.
 
 AgentControlPlane connects an MCP-capable web AI to interchangeable engineering
@@ -49,6 +51,11 @@ and selects the first available entry from `executor.routing.order`. A task may
 override that decision with `executor: "opencode"`, `"codex"`, `"claude"`,
 `"openai-compatible"`, or `"deepseek"`.
 
+Persistent project threads are isolated per executor, so the same workspace can
+keep independent Codex, OpenCode, and Claude Code sessions. A web AI can also
+handoff completed work from one executor to another using compact evidence
+instead of replaying the entire conversation.
+
 ## Quickstart
 
 Prerequisites: Node.js 22 or newer and at least one supported local executor.
@@ -79,11 +86,13 @@ Ask the connected web AI:
 Use the balanced profile and automatic executor selection. Inspect the project,
 implement a tested GET /hello endpoint, verify it, and return changed files plus
 test evidence. If execution reports a blocker or misunderstanding, correct the
-brief and continue the same project.
+brief and continue the same project. If another executor should independently
+review or verify the result, hand the completed task off to that executor.
 ```
 
-The conversation calls `dispatch_project`, polls `task_status`, and uses
-`continue_project` when the structured result requires correction.
+The conversation calls `dispatch_project`, polls `task_status`, uses
+`continue_project` for same-executor corrections, and can use `handoff_project`
+for cross-executor review or continuation.
 
 ## Profiles and usage
 
@@ -106,7 +115,8 @@ For controlled-versus-direct token experiments, see
 - `dispatch_project` — queue a brief with automatic or explicit executor routing
 - `dispatch_opencode` — compatibility shortcut for OpenCode
 - `task_status` — read state, result, evidence, usage, and optional events
-- `continue_project` — send a correction or follow-up to the same project
+- `continue_project` — send a correction or follow-up to the same executor thread
+- `handoff_project` — pass compact evidence to another executor for review or continuation
 - `cancel_task` — stop queued or active work
 - `list_tasks` — list recent tasks
 - `list_executors` — list discovery, readiness, capabilities, and default route
