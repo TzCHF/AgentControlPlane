@@ -128,6 +128,11 @@ export function loadConfig(configPath = process.env.AGENT_CONTROL_CONFIG) {
     config = merge(defaults, parseJsonFile(absolute));
   }
 
+  const localPath = path.join(projectRoot, "config", "local.json");
+  if (fs.existsSync(localPath)) {
+    config = merge(config, parseJsonFile(localPath));
+  }
+
   if (process.env.AGENT_CONTROL_PORT) {
     config.server.port = Number(process.env.AGENT_CONTROL_PORT);
   }

@@ -1,6 +1,7 @@
 {
   "workspaceRoots": [
-    "D:\\Projects"
+    "C:\\Users\\YOUR_USER\\Documents\\Github\\AgentControlPlane",
+    "C:\\Users\\YOUR_USER\\Documents\\Github\\acp-live-test"
   ],
   "server": {
     "host": "127.0.0.1",
@@ -8,5 +9,14 @@
     "allowedOrigins": [],
     "maxMcpSessions": 32,
     "mcpSessionIdleMinutes": 30
+  },
+  "executor": {
+    "openaiCompat": {
+      "baseUrl": "http://127.0.0.1:10100/v1",
+      "apiKey": null,
+      "model": "deepseek/deepseek-v4-pro",
+      "protocol": "responses",
+      "models": ["deepseek/deepseek-v4-pro", "deepseek-v4-pro"]
+    }
   }
 }

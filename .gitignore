@@ -9,3 +9,4 @@ docs/app-server-schema/
 .live-smoke-state*/
 .smoke-workspace*/
 .benchmark-*/
+config/local.json

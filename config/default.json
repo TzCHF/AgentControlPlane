@@ -39,11 +39,10 @@
       ]
     },
     "openaiCompat": {
-      "baseUrl": "http://127.0.0.1:10100/v1",
+      "baseUrl": null,
       "apiKey": null,
-      "model": "deepseek/deepseek-v4-pro",
-      "protocol": "responses",
-      "models": ["deepseek/deepseek-v4-pro", "deepseek-v4-pro"]
+      "model": null,
+      "protocol": "responses"
     },
     "deepseek": {
       "baseUrl": "https://api.deepseek.com/v1",

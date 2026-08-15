@@ -131,13 +131,11 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         subagents: false,
       },
     });
-    if (!baseUrl || typeof baseUrl !== "string") {
-      throw new ControlPlaneError(
-        "invalid_config",
-        "openaiCompatible.baseUrl is required",
-      );
+    if (baseUrl && typeof baseUrl === "string") {
+      this.baseUrl = baseUrl.replace(/\/+$/, "");
+    } else {
+      this.baseUrl = null;
     }
-    this.baseUrl = baseUrl.replace(/\/+$/, "");
     this.apiKey = apiKey ?? null;
     this.model = model;
     this.protocol = protocol === "chat" ? "chat" : "responses";
