@@ -2,6 +2,7 @@ import { publicProfiles } from "../core/profiles.js";
 import { asErrorPayload, ControlPlaneError } from "../core/errors.js";
 import { readJson, sendJson } from "../core/http.js";
 import { isCompanionOrigin } from "./pairing-manager.js";
+import path from "node:path";
 
 const TERMINAL_STATUSES = new Set([
   "completed",
@@ -252,10 +253,17 @@ export class CompanionRouter {
     }
 
     if (request.method === "GET" && url.pathname === "/v1/companion/options") {
+      const roots = this.config.workspaceRoots ?? [];
+      const insideRoots = (workspace) =>
+        roots.some(
+          (root) =>
+            workspace === root ||
+            workspace.startsWith(`${root.replace(/[\\/]+$/, "")}${path.sep}`),
+        );
       const recent = this.store
         .listTasks(100)
         .map((task) => task.workspace)
-        .filter(Boolean);
+        .filter((workspace) => Boolean(workspace) && insideRoots(workspace));
       sendJson(
         response,
         200,
