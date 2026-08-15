@@ -69,9 +69,17 @@ function extractReport(turn, cachedFinalMessage = null) {
     messages.findLast((item) => item.phase === "final_answer") ?? messages.at(-1);
   const finalText = preferred?.text ?? cachedFinalMessage;
   if (!finalText) {
+    const turnError =
+      turn?.error?.message ??
+      turn?.error?.error?.message ??
+      turn?.error?.error?.message?.message;
+    const summary =
+      typeof turnError === "string" && turnError
+        ? turnError
+        : "Executor completed without a final agent message.";
     return {
       status: turn?.status === "completed" ? "completed" : "failed",
-      summary: "Executor completed without a final agent message.",
+      summary,
       changed_files: [],
       tests: [],
       blockers: [],

@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.4.7 — 2026-08-16
+
+Failed executor turns surface their real error.
+
+### Fixed
+
+- A failed executor turn records its error message in the task result
+  summary and the task error field; panels and companions then display
+  the endpoint's message (for example a relay 503).
+
+### Verified
+
+- 90 tests pass locally, including a failed-turn error-surfacing test.
+
 ## v0.4.6 — 2026-08-16
 
 Multiple AI relay endpoints.
