@@ -5,7 +5,7 @@
 [![CI](https://github.com/Ya-KARAS/AgentControlPlane/actions/workflows/ci.yml/badge.svg)](https://github.com/Ya-KARAS/AgentControlPlane/actions/workflows/ci.yml)
 [![version](https://img.shields.io/github/v/release/Ya-KARAS/AgentControlPlane?label=version&color=536af5)](https://github.com/Ya-KARAS/AgentControlPlane/releases)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-3c873a)](https://nodejs.org)
-[![license](https://img.shields.io/badge/license-Apache--2.0-d22128)](LICENSE)
+[![license](https://img.shields.io/badge/license-AGPL--3.0-d22128)](LICENSE)
 
 </div>
 
@@ -29,9 +29,14 @@ agents on the user's computer. The web conversation clarifies intent once; the
 control plane sends a compact structured brief, preserves task state, returns
 evidence, and supports follow-up without manual copy-and-paste loops.
 
-The local AgentControlPlane core is open source under the
-[Apache License 2.0](LICENSE). A separately operated hosted relay, managed
-service, branding, and enterprise operations may be distributed independently.
+The AgentControlPlane source is offered under the
+[GNU Affero General Public License 3.0](LICENSE). Released versions v0.1.0
+through v0.4.2 remain available under the Apache License 2.0, archived in
+[docs/LEGACY-LICENSE-APACHE-2.0.md](docs/LEGACY-LICENSE-APACHE-2.0.md).
+Operating AgentControlPlane as part of a commercial service requires a
+separate written agreement with the copyright holder; the "AgentControlPlane"
+name and logo are trademarks and carry no license. See
+[docs/COMMERCIALIZATION.md](docs/COMMERCIALIZATION.md).
 
 ## Why it exists
 
@@ -176,6 +181,7 @@ authenticated private tunnel or a separately hardened relay.
 - [docs/BENCHMARKING.md](docs/BENCHMARKING.md) ([中文](docs/BENCHMARKING.zh-CN.md))
 - [docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md) ([中文](docs/SECURITY-REVIEW.zh-CN.md))
 - [docs/COMMERCIALIZATION.md](docs/COMMERCIALIZATION.md) ([中文](docs/COMMERCIALIZATION.zh-CN.md))
+- [docs/AI-RELAY-INTEGRATION.md](docs/AI-RELAY-INTEGRATION.md) ([中文](docs/AI-RELAY-INTEGRATION.zh-CN.md))
 - [SECURITY.md](SECURITY.md) ([中文](SECURITY.zh-CN.md))
 - [CHANGELOG.md](CHANGELOG.md)
 

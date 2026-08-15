@@ -2,6 +2,18 @@
 
 > [中文文档](COMMERCIALIZATION.zh-CN.md)
 
+## Licensing and cooperation policy
+
+- Current source: GNU Affero General Public License 3.0 (`LICENSE`). Released
+  versions v0.1.0 through v0.4.2 remain Apache License 2.0
+  (`docs/LEGACY-LICENSE-APACHE-2.0.md`).
+- Commercial operation of AgentControlPlane as a service requires a written
+  agreement with the copyright holder. Contact the repository owner for terms.
+- "AgentControlPlane" and its logo are trademarks. The licenses grant no
+  trademark rights.
+- An AI API relay pairs with AgentControlPlane as the model supply layer; see
+  [docs/AI-RELAY-INTEGRATION.md](AI-RELAY-INTEGRATION.md).
+
 ## Recommended product split
 
 Use an open local agent plus a hosted relay:

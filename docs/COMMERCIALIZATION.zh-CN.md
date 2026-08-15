@@ -46,11 +46,13 @@ local AgentControlPlane (workspace, executors, state, audit)
 
 ## 许可模式
 
-本地 AgentControlPlane 仓库以 Apache-2.0 许可开源，署名信息位于 `NOTICE`。这有利于采用、集成与外部贡献，并包含 Apache 的明示专利授权。
+当前源码按 GNU Affero General Public License 3.0（`LICENSE`）提供。已发布版本 v0.1.0 至 v0.4.2 继续按 Apache License 2.0 提供，原文存档于 `docs/LEGACY-LICENSE-APACHE-2.0.md`。
+
+将 AgentControlPlane 作为商业服务运营，需要与版权方签署书面协议；请联系仓库所有者获取商业条款。"AgentControlPlane"名称与标志为商标，各许可证均不授予商标使用权。AI 中转站与 AgentControlPlane 的配对方式见 `docs/AI-RELAY-INTEGRATION.zh-CN.md`。
 
 托管中继应位于独立的仓库和独立的法律分发边界内。中继运营、托管身份、计费、企业策略、品牌、支持与托管基础设施，不会仅仅因为与该仓库的公共协议互操作，就自动获得该仓库的许可。
 
-Apache-2.0 允许第三方运行竞争性的托管服务。因此，商业差异化来自受管网络、可信分发、支持、兼容性认证、企业管控和运营可靠性。
+商业差异化来自受管网络、可信分发、支持、兼容性认证、企业管控和运营可靠性。
 
 ## 宣传主张与经济效益
 

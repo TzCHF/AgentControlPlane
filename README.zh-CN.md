@@ -5,7 +5,7 @@
 [![CI](https://github.com/Ya-KARAS/AgentControlPlane/actions/workflows/ci.yml/badge.svg)](https://github.com/Ya-KARAS/AgentControlPlane/actions/workflows/ci.yml)
 [![version](https://img.shields.io/github/v/release/Ya-KARAS/AgentControlPlane?label=version&color=536af5)](https://github.com/Ya-KARAS/AgentControlPlane/releases)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-3c873a)](https://nodejs.org)
-[![license](https://img.shields.io/badge/license-Apache--2.0-d22128)](LICENSE)
+[![license](https://img.shields.io/badge/license-AGPL--3.0-d22128)](LICENSE)
 
 </div>
 
@@ -26,7 +26,7 @@
 
 AgentControlPlane 把支持 MCP 的网页 AI 与用户电脑上可互换的工程执行器连接起来。网页对话只澄清一次意图；控制平面发送精简的结构化简报，保存任务状态，返回证据，并支持后续跟进，无需人工复制粘贴。
 
-AgentControlPlane 的本地核心按 [Apache License 2.0](LICENSE) 开源。独立运营的托管中继、托管服务、品牌与企业运营可另行分发。
+AgentControlPlane 的源码按 [GNU Affero General Public License 3.0](LICENSE) 提供。已发布版本 v0.1.0 至 v0.4.2 继续按 Apache License 2.0 提供，原文存档于 [docs/LEGACY-LICENSE-APACHE-2.0.md](docs/LEGACY-LICENSE-APACHE-2.0.md)。将 AgentControlPlane 作为商业服务运营需要与版权方另行签署书面协议；"AgentControlPlane"名称与标志为商标，授权不包含商标使用权。见 [docs/COMMERCIALIZATION.zh-CN.md](docs/COMMERCIALIZATION.zh-CN.md)。
 
 ## 为什么存在
 
@@ -139,6 +139,7 @@ brief and continue the same project.
 - [docs/BENCHMARKING.zh-CN.md](docs/BENCHMARKING.zh-CN.md)（基准测试）
 - [docs/SECURITY-REVIEW.zh-CN.md](docs/SECURITY-REVIEW.zh-CN.md)（安全审查）
 - [docs/COMMERCIALIZATION.zh-CN.md](docs/COMMERCIALIZATION.zh-CN.md)（商业化）
+- [docs/AI-RELAY-INTEGRATION.zh-CN.md](docs/AI-RELAY-INTEGRATION.zh-CN.md)（AI 中转站集成）
 - [SECURITY.zh-CN.md](SECURITY.zh-CN.md)（安全）
 - [CHANGELOG.md](CHANGELOG.md)（变更记录）
 

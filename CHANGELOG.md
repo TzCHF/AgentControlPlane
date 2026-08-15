@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- License policy: current source moves to AGPL-3.0 with a commercial
+  cooperation requirement; released versions v0.1.0 through v0.4.2 remain
+  Apache-2.0 (`docs/LEGACY-LICENSE-APACHE-2.0.md`).
+- AI relay integration: live model catalogs are read from OpenAI-compatible
+  relay endpoints (`/v1/models`) every 60 seconds and used for `list_models`
+  and dispatch-time model validation, with the static allowlist as fallback.
+- New guide: `docs/AI-RELAY-INTEGRATION.md`.
+
 ## v0.4.2 — 2026-08-15
 
 Companion i18n, one-click dispatch confirmation, and executor correctness fixes.

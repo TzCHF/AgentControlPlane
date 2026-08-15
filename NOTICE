@@ -2,3 +2,15 @@ AgentControlPlane
 Copyright 2026 KARAS
 
 This product includes software developed by the AgentControlPlane contributors.
+
+Licensing: the current code in this repository is offered under the GNU Affero
+General Public License version 3 (AGPL-3.0, see LICENSE). Released versions
+v0.1.0 through v0.4.2 remain available under the Apache License 2.0, archived
+in docs/LEGACY-LICENSE-APACHE-2.0.md.
+
+Commercial use: operating or offering AgentControlPlane as part of a
+commercial service requires a separate written agreement with the copyright
+holder. Contact the repository owner for commercial terms.
+
+Trademark: "AgentControlPlane" is a trademark of KARAS. The license grants no
+right to use the name or logo for products, services, or derivative works.
