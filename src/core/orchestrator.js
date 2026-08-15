@@ -20,6 +20,14 @@ function zeroUsage() {
   };
 }
 
+function marginalTokens(usage) {
+  return (
+    Number(usage?.uncached_input_tokens ?? usage?.input_tokens ?? 0) +
+    Number(usage?.output_tokens ?? 0) +
+    Number(usage?.reasoning_output_tokens ?? 0)
+  );
+}
+
 function mapUsage(tokenUsage) {
   const source = tokenUsage?.last ?? tokenUsage?.total;
   if (!source) return zeroUsage();
@@ -686,7 +694,7 @@ export class Orchestrator extends EventEmitter {
 
       const latest = this.store.getTask(taskId);
       const overBudget =
-        usage.total_tokens >= latest.policy.tokenBudget ||
+        marginalTokens(usage) >= latest.policy.tokenBudget ||
         goal.status === "budgetLimited";
       if (
         enforceBudget &&
@@ -697,11 +705,11 @@ export class Orchestrator extends EventEmitter {
         !active.budgetInterruptRequested
       ) {
         active.budgetInterruptRequested = true;
-        active.budgetMeasuredTokens = usage.total_tokens;
+        active.budgetMeasuredTokens = marginalTokens(usage);
         this.store.addEvent(taskId, {
           type: "task.token_budget_exceeded",
           budget: latest.policy.tokenBudget,
-          measured: usage.total_tokens,
+          measured: marginalTokens(usage),
           source: "thread_goal",
         });
         try {
@@ -845,14 +853,14 @@ export class Orchestrator extends EventEmitter {
       const task = this.store.getTask(taskId);
       if (
         !active.budgetInterruptRequested &&
-        usage.total_tokens > task.policy.tokenBudget
+        marginalTokens(usage) > task.policy.tokenBudget
       ) {
         active.budgetInterruptRequested = true;
-        active.budgetMeasuredTokens = usage.total_tokens;
+        active.budgetMeasuredTokens = marginalTokens(usage);
         this.store.addEvent(taskId, {
           type: "task.token_budget_exceeded",
           budget: task.policy.tokenBudget,
-          measured: usage.total_tokens,
+          measured: marginalTokens(usage),
           source: "token_usage_notification",
         });
         executor

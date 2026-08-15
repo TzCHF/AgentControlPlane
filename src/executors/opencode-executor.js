@@ -6,13 +6,17 @@ import { ExecutorAdapter, formatCliExitError } from "./executor.js";
 import { probeCommandExecutor } from "./discovery.js";
 
 // Matches `opencode run --format json`: newline-delimited JSON events with a
-// top-level `type` and a `part` object. Text parts carry `part.text`; the
-// final `step_finish` part carries the cumulative `part.tokens`.
+// top-level `type` and a `part` object. Text parts carry `part.text`; each
+// `step_finish` part carries per-step marginal `part.tokens` (input/output/
+// reasoning) plus a cumulative `total` that includes KV-cache reads. Marginal
+// components are accumulated; the latest cache read and cumulative total are
+// kept for transparency.
 export function normalizeOpenCodeEvents(events) {
   let finalText = "";
   let inputTokens = 0;
   let outputTokens = 0;
   let reasoningTokens = 0;
+  let cachedInputTokens = 0;
   let totalTokens = 0;
 
   for (const event of events) {
@@ -22,10 +26,14 @@ export function normalizeOpenCodeEvents(events) {
       if (typeof part.text === "string" && part.text) finalText = part.text;
     }
     if (part.tokens && typeof part.tokens === "object") {
-      inputTokens = Number(part.tokens.input ?? 0);
-      outputTokens = Number(part.tokens.output ?? 0);
-      reasoningTokens = Number(part.tokens.reasoning ?? 0);
-      totalTokens = Number(part.tokens.total ?? inputTokens + outputTokens);
+      inputTokens += Number(part.tokens.input ?? 0);
+      outputTokens += Number(part.tokens.output ?? 0);
+      reasoningTokens += Number(part.tokens.reasoning ?? 0);
+      cachedInputTokens = Number(part.tokens.cache?.read ?? 0);
+      totalTokens = Number(
+        part.tokens.total ??
+          inputTokens + outputTokens + reasoningTokens + cachedInputTokens,
+      );
     }
   }
 
@@ -33,11 +41,21 @@ export function normalizeOpenCodeEvents(events) {
     finalText,
     usage: {
       input_tokens: inputTokens,
+      cached_input_tokens: cachedInputTokens,
+      uncached_input_tokens: inputTokens,
       output_tokens: outputTokens,
       reasoning_output_tokens: reasoningTokens,
       total_tokens: totalTokens,
     },
   };
+}
+
+function marginalTokens(usage) {
+  return (
+    Number(usage?.uncached_input_tokens ?? usage?.input_tokens ?? 0) +
+    Number(usage?.output_tokens ?? 0) +
+    Number(usage?.reasoning_output_tokens ?? 0)
+  );
 }
 
 export class OpenCodeExecutor extends ExecutorAdapter {
@@ -266,7 +284,7 @@ export class OpenCodeExecutor extends ExecutorAdapter {
   ) {
     const goal = this.goals.get(threadId);
     if (goal) {
-      goal.tokensUsed = Math.max(goal.tokensUsed, usage?.total_tokens ?? 0);
+      goal.tokensUsed = Math.max(goal.tokensUsed, marginalTokens(usage));
     }
     const notified = this.#notifiedUsage(usage ?? this.#zeroUsage());
     this.emit("notification", {

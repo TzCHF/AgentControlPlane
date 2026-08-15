@@ -62,3 +62,41 @@ test("normalizeOpenCodeEvents tolerates unknown shapes", () => {
   assert.equal(normalizeOpenCodeEvents([{ foo: "bar" }]).finalText, "");
   assert.equal(normalizeOpenCodeEvents([]).usage.total_tokens, 0);
 });
+
+test("accumulates marginal tokens and separates cache reads", () => {
+  const events = [
+    {
+      type: "step_finish",
+      part: {
+        type: "step-finish",
+        tokens: {
+          total: 1000,
+          input: 100,
+          output: 50,
+          reasoning: 20,
+          cache: { write: 0, read: 830 },
+        },
+      },
+    },
+    {
+      type: "step_finish",
+      part: {
+        type: "step-finish",
+        tokens: {
+          total: 1500,
+          input: 40,
+          output: 60,
+          reasoning: 10,
+          cache: { write: 0, read: 1390 },
+        },
+      },
+    },
+  ];
+  const usage = normalizeOpenCodeEvents(events).usage;
+  assert.equal(usage.input_tokens, 140);
+  assert.equal(usage.output_tokens, 110);
+  assert.equal(usage.reasoning_output_tokens, 30);
+  assert.equal(usage.cached_input_tokens, 1390);
+  assert.equal(usage.uncached_input_tokens, 140);
+  assert.equal(usage.total_tokens, 1500);
+});
