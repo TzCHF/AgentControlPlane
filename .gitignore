@@ -10,3 +10,5 @@ docs/app-server-schema/
 .smoke-workspace*/
 .benchmark-*/
 config/local.json
+acp-*.txt
+scripts/random-smoke.py
