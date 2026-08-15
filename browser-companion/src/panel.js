@@ -13,12 +13,13 @@ export function createPanel({ adapterId, handlers }) {
       <p class="hint">① 点「配对」，在自动打开的批准页点「批准」<br>② 点「教导网页 AI」，发送插入的控制器指令<br>③ 网页 AI 输出任务块后暂存，回复「执行」确认派发</p>
       <div class="actions"><button class="primary" data-action="connect">Pair 配对</button><button data-action="teach">Teach web AI 教导网页 AI</button><button data-action="dispatch">Dispatch 派发</button></div>
       <details class="advanced"><summary>Advanced settings 高级设置</summary>
+        <p class="hint">以下设置为任务信封未指定字段时的默认值</p>
         <div class="actions"><button data-action="latest">Use latest reply 使用最新回复</button><button data-action="disconnect">Disconnect 断开</button></div>
-        <div class="stack"><label>Workspace 工作区</label><select data-field="workspace"><option value="">Select after pairing 配对后选择</option></select></div>
-        <div class="row"><div><label>Profile 配置档</label><select data-field="profile"><option>balanced</option></select></div><div><label>Executor 执行器</label><select data-field="executor"><option>auto</option></select></div></div>
-        <div class="stack"><label>Objective or ACP_TASK envelope 目标或 ACP_TASK 信封</label><textarea data-field="objective" placeholder="Describe the engineering task 描述工程任务"></textarea></div>
-        <div class="stack"><label>Confirm words 自定义确认词（逗号分隔）</label><input data-field="confirmWords" placeholder="e.g. 开始干, 冲"></div>
-        <label class="toggle"><input type="checkbox" data-field="autoSubmitResults"> Automatically send ACP_RESULT back to this web AI 自动将 ACP_RESULT 回传给该网页 AI</label>
+        <div class="stack"><label>Workspace 工作区（默认执行目录）</label><select data-field="workspace"><option value="">Select after pairing 配对后选择</option></select></div>
+        <div class="row"><div><label>Profile 配置档</label><select data-field="profile"><option value="economy">economy 小任务</option><option value="balanced">balanced 常规</option><option value="deep">deep 架构级</option></select></div><div><label>Executor 执行器</label><select data-field="executor"><option value="auto">auto 自动</option></select></div></div>
+        <div class="stack"><label>Objective or ACP_TASK envelope 目标或信封（通常自动填入）</label><textarea data-field="objective" placeholder="Describe the engineering task 描述工程任务"></textarea></div>
+        <div class="stack"><label>Confirm words 自定义确认词（逗号分隔；默认已含 执行/开始/是/yes…）</label><input data-field="confirmWords" placeholder="e.g. 开始干, 冲"></div>
+        <label class="toggle"><input type="checkbox" data-field="autoSubmitResults"> Automatically send ACP_RESULT back to this web AI 自动回传结果（含本地路径，谨慎开启）</label>
       </details>
     </section>
     <button class="launcher" title="AgentControlPlane Companion 浏览器伴侣">ACP</button>`;
@@ -63,17 +64,41 @@ export function createPanel({ adapterId, handlers }) {
     fields.autoSubmitResults.checked = Boolean(settings?.autoSubmitResults);
   }
 
+  const PROFILE_LABELS = {
+    economy: "economy 小任务",
+    balanced: "balanced 常规",
+    deep: "deep 架构级",
+  };
+
   function setOptions(options, settings) {
     const workspaces = options?.workspaces ?? [];
     fields.workspace.innerHTML = workspaces
       .map((value) => `<option value="${escapeAttribute(value)}">${escapeText(value)}</option>`)
       .join("");
     fields.profile.innerHTML = Object.keys(options?.profiles ?? {})
-      .map((value) => `<option value="${escapeAttribute(value)}">${escapeText(value)}</option>`)
+      .map(
+        (value) =>
+          `<option value="${escapeAttribute(value)}">${escapeText(PROFILE_LABELS[value] ?? value)}</option>`,
+      )
       .join("");
-    fields.executor.innerHTML = ["auto", ...(options?.executors ?? []).filter((entry) => entry.discovery?.available !== false).map((entry) => entry.id)]
-      .map((value) => `<option value="${escapeAttribute(value)}">${escapeText(value)}</option>`)
-      .join("");
+    const executors = options?.executors ?? [];
+    const available = executors
+      .filter((entry) => entry.discovery?.available !== false)
+      .map((entry) => entry.id);
+    const unavailable = executors
+      .filter((entry) => entry.discovery?.available === false)
+      .map((entry) => entry.id);
+    fields.executor.innerHTML = [
+      `<option value="auto">auto 自动</option>`,
+      ...available.map(
+        (value) =>
+          `<option value="${escapeAttribute(value)}">${escapeText(value)}</option>`,
+      ),
+      ...unavailable.map(
+        (value) =>
+          `<option value="${escapeAttribute(value)}" disabled>${escapeText(value)}（不可用）</option>`,
+      ),
+    ].join("");
     setSettings(settings);
   }
 
