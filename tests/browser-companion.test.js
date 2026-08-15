@@ -152,6 +152,29 @@ test("selects built-in web AI adapters and falls back to generic", () => {
   );
 });
 
+test("companion panel and popup display the service version", () => {
+  const panel = fs.readFileSync(
+    path.resolve("browser-companion", "src", "panel.js"),
+    "utf8",
+  );
+  assert.match(panel, /class="version"/);
+  assert.match(panel, /options\?\.version/);
+
+  const popupHtml = fs.readFileSync(
+    path.resolve("browser-companion", "popup", "popup.html"),
+    "utf8",
+  );
+  assert.match(popupHtml, /id="serviceVersion"/);
+  assert.doesNotMatch(popupHtml, />v0\.4\.1</);
+
+  const popupJs = fs.readFileSync(
+    path.resolve("browser-companion", "popup", "popup.js"),
+    "utf8",
+  );
+  assert.match(popupJs, /available\.version/);
+  assert.match(popupJs, /serviceVersion\.textContent/);
+});
+
 test("manifest grants only known AI sites by default", () => {
   const manifest = JSON.parse(
     fs.readFileSync(
@@ -160,7 +183,7 @@ test("manifest grants only known AI sites by default", () => {
     ),
   );
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, "0.4.7");
+  assert.equal(manifest.version, "0.4.8");
   assert.ok(manifest.host_permissions.includes("https://chatgpt.com/*"));
   assert.ok(manifest.host_permissions.includes("https://chat.deepseek.com/*"));
   assert.ok(manifest.optional_host_permissions.includes("https://*/*"));

@@ -1,7 +1,7 @@
 import { makeT } from "../src/i18n.js";
 
 const elements = Object.fromEntries(
-  ["status", "language", "workspace", "profile", "executor", "autoSubmitResults", "pair", "enable", "refresh"].map(
+  ["status", "serviceVersion", "language", "workspace", "profile", "executor", "autoSubmitResults", "pair", "enable", "refresh"].map(
     (id) => [id, document.getElementById(id)],
   ),
 );
@@ -69,10 +69,13 @@ async function refresh() {
     return;
   }
   const available = await message("ACP_OPTIONS");
+  elements.serviceVersion.textContent = available.version ? `v${available.version}` : "";
   options(elements.workspace, available.workspaces, current.settings.workspace);
   options(elements.profile, ["auto", ...Object.keys(available.profiles)], current.settings.profile);
   const executors = available.executors;
   const ENDPOINT_IDS = new Set(["openai-compatible", "deepseek"]);
+  const isEndpoint = (entry) =>
+    entry.kind === "model-endpoint" || ENDPOINT_IDS.has(entry.id);
   const buildOptions = (ids) =>
     executors
       .filter((entry) => ids.has(entry.id))
@@ -90,12 +93,14 @@ async function refresh() {
   agentGroup.label = t("executorGroupAgents");
   agentGroup.append(
     ...buildOptions(
-      new Set(executors.filter((entry) => !ENDPOINT_IDS.has(entry.id)).map((entry) => entry.id)),
+      new Set(executors.filter((entry) => !isEndpoint(entry)).map((entry) => entry.id)),
     ),
   );
   const endpointGroup = document.createElement("optgroup");
   endpointGroup.label = t("executorGroupEndpoints");
-  endpointGroup.append(...buildOptions(ENDPOINT_IDS));
+  endpointGroup.append(
+    ...buildOptions(new Set(executors.filter((entry) => isEndpoint(entry)).map((entry) => entry.id))),
+  );
   elements.executor.replaceChildren(autoOption, agentGroup, endpointGroup);
   elements.executor.value = current.settings.executor;
   status(t("popupConnected", { executor: available.default_executor }), "success");

@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.4.8 — 2026-08-16
+
+Service version markers in the companion UI.
+
+### Added
+
+- The companion panel header and the extension popup show the local
+  service version reported by `/v1/companion/options` (for example
+  `v0.4.8`). The popup previously carried a hard-coded version label.
+- The popup executor list groups relay endpoints under model endpoints
+  using the executor kind, matching the in-page panel.
+
+### Verified
+
+- 91 tests pass locally, including version-marker source checks.
+- Companion copy passes the grounded-copy gate with 0 findings.
+
 ## v0.4.7 — 2026-08-16
 
 Failed executor turns surface their real error.
