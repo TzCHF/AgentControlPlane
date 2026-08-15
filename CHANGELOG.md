@@ -1,14 +1,47 @@
 # Changelog
 
-## Unreleased
+## v0.4.3 — 2026-08-15
 
-- License policy: current source moves to AGPL-3.0 with a commercial
-  cooperation requirement; released versions v0.1.0 through v0.4.2 remain
-  Apache-2.0 (`docs/LEGACY-LICENSE-APACHE-2.0.md`).
-- AI relay integration: live model catalogs are read from OpenAI-compatible
-  relay endpoints (`/v1/models`) every 60 seconds and used for `list_models`
-  and dispatch-time model validation, with the static allowlist as fallback.
-- New guide: `docs/AI-RELAY-INTEGRATION.md`.
+Token accounting correctness, task time controls, and license policy.
+
+### Added
+
+- Per-task `time_limit_minutes` field (1 to 240) with runtime enforcement and
+  validation.
+- Estimated completion minutes at dispatch, actual duration at terminal, a
+  per-second live timer, and a percentage progress bar in the companion panel.
+- Machine-specific configuration through `config/local.json` with automatic
+  merging; `default.json` carries neutral values.
+- Live model catalogs read from OpenAI-compatible relay endpoints every 60
+  seconds, used for `list_models` and dispatch-time validation with a static
+  fallback.
+- License policy: current source under AGPL-3.0 with a commercial cooperation
+  requirement; released versions v0.1.0 through v0.4.2 remain Apache-2.0
+  (`docs/LEGACY-LICENSE-APACHE-2.0.md`), trademark statement in `NOTICE`.
+- AI relay integration guide (`docs/AI-RELAY-INTEGRATION.md`, Chinese version
+  included).
+
+### Fixed
+
+- Budget monitoring for opencode tasks counts marginal tokens; KV-cache reads
+  are recorded as `cached_input_tokens` and excluded from budget comparisons.
+- Tasks keep their completed status when the executor delivered its final
+  report before a late budget interrupt; the exceedance is recorded as an
+  event.
+- `uncached_input_tokens` computed correctly when cached reads exceed the
+  input figure.
+- Cached input tokens thread through opencode usage notifications.
+- Workspace lists show only directories inside configured roots.
+- Service version derives from `package.json` across health, companion
+  options, and the MCP handshake.
+- Real username paths replaced with `YOUR_USER` placeholders in docs and
+  evidence.
+
+### Verified
+
+- 80 tests pass locally and on GitHub Actions CI.
+- Four consecutive real end-to-end runs through the opencode executor complete
+  with no budget interrupts; files verified on disk.
 
 ## v0.4.2 — 2026-08-15
 
