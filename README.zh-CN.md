@@ -55,6 +55,8 @@ AgentControlPlane 的本地核心按 [Apache License 2.0](LICENSE) 开源。独�
 | OpenCodex | 模型端点（ACP agent 循环） | 本地 OpenAI-compatible 端点，模型 `deepseek/deepseek-v4-pro` |
 | DeepSeek Harness | 模型端点（ACP agent 循环） | 直连 DeepSeek 官方 API，模型 `deepseek-chat` |
 
+以上五类均为执行器：前三类是第三方 agent 执行器，后两类是模型端点执行器——由 ACP 自己的 agent 循环对接可更换的模型后端。
+
 Claude Code 是可选的。仅安装其 CLI 不够：只有完成 Claude Pro/Max 账号登录、或为 CLI 配置 Anthropic API 密钥后，适配器才可用。否则发现结果报告 `not_authenticated`，自动路由会跳过它。
 
 启动时，`executor.provider: "auto"` 发现已安装/已配置的后端，并从 `executor.routing.order` 中选择第一个可用项。任务可以用 `executor: "opencode"`、`"codex"`、`"claude"`、`"openai-compatible"` 或 `"deepseek"` 覆盖该决定。

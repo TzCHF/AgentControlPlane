@@ -68,6 +68,10 @@ The local executor layer currently includes:
 | OpenCodex | model endpoint (ACP agent loop) | local OpenAI-compatible endpoint, model `deepseek/deepseek-v4-pro` |
 | DeepSeek Harness | model endpoint (ACP agent loop) | direct DeepSeek API, model `deepseek-chat` |
 
+All five entries are executors. The first three are third-party agent
+executors; the last two are model-endpoint executors that run the ACP agent
+loop against a swappable model backend.
+
 Claude Code is optional. Installing its CLI is not sufficient by itself: the
 adapter becomes available only after a Claude Pro/Max account login or when the
 CLI is configured with an Anthropic API key. Otherwise discovery reports
