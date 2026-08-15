@@ -265,11 +265,6 @@
         );
       }
     }
-      const envelope = pendingEnvelope;
-      pendingEnvelope = null;
-      await executeEnvelope(envelope).catch(reportError);
-      return;
-    }
 
     const text = adapters.latestAssistantText(document, adapter);
     const envelope = protocol.extractTaskEnvelope(text);
