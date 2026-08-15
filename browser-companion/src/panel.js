@@ -80,7 +80,6 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     if (currentOptions) applyOptions(currentOptions, currentSettings);
     else applySettings(currentSettings);
     fields.objective.value = currentObjective;
-    panel.classList.add("open");
   }
 
   function getValues() {

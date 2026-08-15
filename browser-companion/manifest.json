@@ -44,7 +44,8 @@
       "resources": [
         "src/protocol.js",
         "src/site-adapters.js",
-        "src/panel.js"
+        "src/panel.js",
+        "src/i18n.js"
       ],
       "matches": [
         "https://*/*"

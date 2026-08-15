@@ -16,6 +16,7 @@ const files = [
   "src/panel.js",
   "src/protocol.js",
   "src/site-adapters.js",
+  "src/i18n.js",
   "popup/popup.js",
 ];
 for (const file of files) {
