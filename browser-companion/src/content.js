@@ -210,6 +210,10 @@
       const id = task.id.slice(0, 8);
       const eta = task.estimated_minutes;
       const session = task.executor_session_id;
+      const baseline = Date.parse(task.started_at ?? task.created_at);
+      const elapsed = Number.isFinite(baseline)
+        ? formatElapsed(Date.now() - baseline)
+        : "00:00:00";
       const statusKey =
         eta != null
           ? session
@@ -219,7 +223,7 @@
             ? "taskStatusSession"
             : "taskStatus";
       panel.setStatus(
-        t(statusKey, { id, status: task.status, eta, session }),
+        t(statusKey, { id, status: task.status, eta, session, elapsed }),
       );
       if (task.terminal) {
         const result = protocol.formatTaskResult(task);
@@ -375,6 +379,16 @@
 
   function formatCode(code) {
     return `${String(code).slice(0, 3)}-${String(code).slice(3)}`;
+  }
+
+  function formatElapsed(milliseconds) {
+    const total = Math.max(0, Math.floor(milliseconds / 1000));
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
+    return [hours, minutes, seconds]
+      .map((value) => String(value).padStart(2, "0"))
+      .join(":");
   }
 
   function tryJson(value) {
