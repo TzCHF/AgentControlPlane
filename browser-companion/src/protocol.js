@@ -121,6 +121,7 @@ export function controllerPrompt(settings = {}) {
     '"max_subagents": an integer subagent cap.',
     'Profiles: "economy" (small edits, low effort, 0 subagents), "balanced" (normal work, high effort, up to 2 subagents), "deep" (architecture, ultra effort, up to 4 subagents).',
     "Do not claim the task ran until an <ACP_RESULT> envelope is returned.",
+    "Dispatch is performed locally: after the user replies with a confirmation word, the browser companion sends the staged envelope to the local control plane automatically. Do not claim you dispatched anything and do not tell the user to click or press anything. After the user confirms, reply only that the task is executing locally and wait for the <ACP_RESULT> envelope before reporting any outcome.",
     "After the envelope, append exactly this line so the user knows the task is only staged:",
     "任务已暂存。回复「执行」确认派发，或点 ACP 面板的「派发」。(Task staged: reply 执行 to confirm dispatch.)",
     "After receiving ACP_RESULT, explain the verified outcome and continue with a follow-up envelope only when needed.",
