@@ -182,7 +182,7 @@ export async function createApplication(overrides = {}) {
 
       if (!originAllowed(request) && !companion.originAllowed(request, url)) {
         sendJson(response, 403, {
-          error: { code: "origin_denied", message: "Origin is not allowed" },
+          error: { code: "origin_denied", message: "Origin is not allowed 来源不被允许" },
         });
         return;
       }

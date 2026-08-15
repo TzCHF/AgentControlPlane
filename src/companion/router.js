@@ -116,10 +116,7 @@ export class CompanionRouter {
       if (!origin) return true;
       try {
         const parsed = new URL(origin);
-        return (
-          ["127.0.0.1", "localhost", "::1"].includes(parsed.hostname) &&
-          parsed.host === request.headers.host
-        );
+        return ["127.0.0.1", "localhost", "::1"].includes(parsed.hostname);
       } catch {
         return false;
       }
