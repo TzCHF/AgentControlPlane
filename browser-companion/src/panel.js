@@ -150,6 +150,8 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     render();
   }
 
+  render();
+
   return {
     getValues,
     setSettings(settings) {
