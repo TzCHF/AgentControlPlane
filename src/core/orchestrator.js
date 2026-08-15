@@ -195,17 +195,8 @@ export class Orchestrator extends EventEmitter {
     const { id, executor: primary } = this.#executorEntry({});
     this.primaryProvider = id;
     await primary.start();
-    try {
-      const models = await primary.listModels({
-        limit: 100,
-        includeHidden: false,
-      });
-      this.modelCatalog = models.data ?? [];
-      this.modelCatalogs.set(id, this.modelCatalog);
-    } catch (error) {
-      this.modelCatalog = [];
-      this.emit("diagnostic", { source: `${id}-models`, text: error.message });
-    }
+    await this.#refreshModelCatalogs();
+    this.modelCatalog = this.modelCatalogs.get(id) ?? [];
     if (process.platform === "win32" && primary.requiresWindowsSandbox) {
       try {
         const readiness = await primary.getSandboxReadiness({});
@@ -243,6 +234,22 @@ export class Orchestrator extends EventEmitter {
     const next = await discoverExecutors(this.executors);
     this.executorDiscovery = next;
     this.runtimeHealth.executors = structuredClone(next);
+    await this.#refreshModelCatalogs();
+  }
+
+  async #refreshModelCatalogs() {
+    for (const [id, executor] of this.executors) {
+      if (typeof executor.listModels !== "function") continue;
+      try {
+        const models = await executor.listModels({
+          limit: 200,
+          includeHidden: false,
+        });
+        this.modelCatalogs.set(id, models.data ?? []);
+      } catch (error) {
+        this.emit("diagnostic", { source: `${id}-models`, text: error.message });
+      }
+    }
   }
 
   getModels(executorId = null) {
@@ -296,11 +303,12 @@ export class Orchestrator extends EventEmitter {
     if (provider !== "codex" && !request.model) policy.model = null;
     if (["deepseek", "openai-compatible"].includes(provider) && request.model) {
       const endpointKey = provider === "deepseek" ? "deepseek" : "openaiCompat";
-      resolveEndpointModel(
-        provider,
-        request.model,
-        this.config.executor[endpointKey]?.models ?? [],
-      );
+      const liveCatalog = this.modelCatalogs.get(provider) ?? [];
+      const allowed =
+        liveCatalog.length > 0
+          ? liveCatalog.map((model) => model.model ?? model.id)
+          : this.config.executor[endpointKey]?.models ?? [];
+      resolveEndpointModel(provider, request.model, allowed);
     }
     const task = this.store.createTask({
       workspace,

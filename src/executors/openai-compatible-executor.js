@@ -206,7 +206,20 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
   async listModels() {
     try {
       const body = await this.#fetchJson("GET", "/models");
-      return { data: Array.isArray(body?.data) ? body.data : [] };
+      const data = Array.isArray(body?.data) ? body.data : [];
+      return {
+        data: data
+          .map((entry) => {
+            const id = String(entry?.id ?? entry?.model ?? "");
+            return {
+              id,
+              model: id,
+              displayName: id,
+              isDefault: Boolean(id && id === this.model),
+            };
+          })
+          .filter((entry) => entry.id),
+      };
     } catch {
       return { data: [] };
     }
