@@ -41,6 +41,7 @@
       teach: () => teach().catch(reportError),
       latest: () => useLatest().catch(reportError),
       dispatch: () => dispatchFromPanel().catch(reportError),
+      confirmDispatch: () => confirmFromPanel().catch(reportError),
       disconnect: () => disconnect().catch(reportError),
       settings: (values) => saveSettings(values).catch(reportError),
     },
@@ -155,6 +156,14 @@
       tryJson(values.objective) ??
       { objective: values.objective };
     await dispatchEnvelope(envelope, values);
+  }
+
+  async function confirmFromPanel() {
+    if (!pendingEnvelope) throw new Error(t("staged"));
+    const envelope = pendingEnvelope;
+    pendingEnvelope = null;
+    panel.setConfirmVisible(false);
+    await executeEnvelope(envelope);
   }
 
   async function dispatchEnvelope(envelope, settings = currentState?.settings) {
@@ -312,11 +321,13 @@
 
     pendingEnvelope = envelope;
     panel.setObjective(JSON.stringify(envelope, null, 2));
+    panel.setConfirmVisible(true);
     panel.open();
     panel.setStatus(t("staged"), "success");
   }
 
   async function executeEnvelope(envelope) {
+    panel.setConfirmVisible(false);
     const id = protocol.stableEnvelopeId(envelope);
     const claim = await message("ACP_CLAIM_ENVELOPE", {
       pageUrl: location.href,

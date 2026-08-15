@@ -20,6 +20,7 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
   let status = null;
   let hint = null;
   let badge = null;
+  let confirmButton = null;
 
   function render() {
     shadow.innerHTML = `
@@ -30,6 +31,7 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
         <div class="title"><strong>AgentControlPlane</strong><span class="badge"></span><select data-field="language"><option value="zh">中文</option><option value="en">English</option></select></div>
         <div class="status"></div>
         <p class="hint"></p>
+        <div class="actions"><button class="primary" data-action="confirmDispatch" hidden>${t("confirmDispatch")}</button></div>
         <div class="actions"><button class="primary" data-action="connect">${t("pair")}</button><button data-action="teach">${t("teach")}</button><button data-action="dispatch">${t("dispatch")}</button></div>
         <details class="advanced"><summary>${t("advancedSummary")}</summary>
           <p class="hint">${t("defaultsHint")}</p>
@@ -47,6 +49,7 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     status = shadow.querySelector(".status");
     hint = shadow.querySelector(".hint");
     badge = shadow.querySelector(".badge");
+    confirmButton = shadow.querySelector('[data-action="confirmDispatch"]');
     fields = Object.fromEntries(
       [...shadow.querySelectorAll("[data-field]")].map((element) => [
         element.dataset.field,
@@ -185,6 +188,9 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     setHint(html) {
       currentHint = html;
       if (hint) hint.innerHTML = html;
+    },
+    setConfirmVisible(visible) {
+      if (confirmButton) confirmButton.hidden = !visible;
     },
     open() {
       panel?.classList.add("open");

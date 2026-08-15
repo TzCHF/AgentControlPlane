@@ -27,6 +27,7 @@ export const STRINGS = {
     pair: "Pair",
     teach: "Teach web AI",
     dispatch: "Dispatch",
+    confirmDispatch: "Confirm dispatch",
     languageLabel: "Language",
     launcherTitle: "AgentControlPlane Companion",
     hintUnpaired:
@@ -51,9 +52,9 @@ export const STRINGS = {
       "Task finished, but the web AI composer was not found",
     localUnavailable: "Local service unavailable: {message}",
     staged:
-      "Task envelope staged: reply 执行 / yes to confirm, or click Dispatch",
+      "Task envelope staged: click Confirm dispatch or reply 执行 / yes",
     notConfirmWord:
-      "Not a confirm word: reply 执行 / 开始 / yes, or click Dispatch",
+      "Not a confirm word: click Confirm dispatch or reply 执行 / 开始 / yes",
     controllerInserted: "Controller prompt inserted for review",
     pairedButNoTeach:
       "Paired, but the controller prompt could not be inserted: {message}. Click Teach web AI.",
@@ -98,6 +99,7 @@ export const STRINGS = {
     pair: "配对",
     teach: "教导网页 AI",
     dispatch: "派发",
+    confirmDispatch: "确认派发",
     languageLabel: "语言",
     launcherTitle: "AgentControlPlane Companion 浏览器伴侣",
     hintUnpaired: "点「配对」→ 批准页点「批准」，控制器指令会自动放进输入框",
@@ -118,8 +120,8 @@ export const STRINGS = {
     monitorTimeout: "任务监控超时",
     taskFinishedNoComposer: "任务已完成，但未找到网页 AI 输入框",
     localUnavailable: "本地服务不可用：{message}",
-    staged: "任务块已暂存：回复「执行 / 是否派发」确认，或点「派发」",
-    notConfirmWord: "未识别为确认词：回复「执行 / 开始 / 是」或点「派发」",
+    staged: "任务块已暂存：点「确认派发」或回复「执行」",
+    notConfirmWord: "未识别为确认词：点「确认派发」或回复「执行 / 开始 / 是」",
     controllerInserted: "控制器指令已插入，待审阅",
     pairedButNoTeach: "已配对，但未能自动插入控制器指令：{message}，请点「教导网页 AI」",
     disconnected: "已断开。任务历史保留，随时可重新配对。",
