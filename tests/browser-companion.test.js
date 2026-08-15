@@ -46,6 +46,7 @@ test("controller prompt keeps local paths out of the web conversation", () => {
   });
   assert.match(prompt, /"workspace": "DEFAULT"/);
   assert.doesNotMatch(prompt, /Users\\private/);
+  assert.match(prompt, /任务已暂存/);
 });
 
 test("web envelopes cannot override the locally selected workspace", () => {

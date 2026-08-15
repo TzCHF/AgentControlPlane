@@ -121,6 +121,8 @@ export function controllerPrompt(settings = {}) {
     '"max_subagents": an integer subagent cap.',
     'Profiles: "economy" (small edits, low effort, 0 subagents), "balanced" (normal work, high effort, up to 2 subagents), "deep" (architecture, ultra effort, up to 4 subagents).',
     "Do not claim the task ran until an <ACP_RESULT> envelope is returned.",
+    "After the envelope, append exactly this line so the user knows the task is only staged:",
+    "任务已暂存。回复「执行」确认派发，或点 ACP 面板的「派发」。(Task staged: reply 执行 to confirm dispatch.)",
     "After receiving ACP_RESULT, explain the verified outcome and continue with a follow-up envelope only when needed.",
   ].join("\n");
 }
