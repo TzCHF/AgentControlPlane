@@ -250,12 +250,41 @@
   }
 
   let pendingEnvelope = null;
+  let lastSubmittedText = "";
+  let sendCaptureWired = false;
+
+  function wireSendCapture() {
+    if (sendCaptureWired) return;
+    sendCaptureWired = true;
+    const captureFromComposer = () => {
+      const composer = adapters.findComposer(document, adapter);
+      if (composer) {
+        const text = adapters.readComposer(composer).trim();
+        if (text) lastSubmittedText = text;
+      }
+    };
+    const button = adapters.findSendButton(document, adapter);
+    button?.addEventListener("click", captureFromComposer, true);
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key !== "Enter" || event.shiftKey) return;
+        const composer = adapters.findComposer(document, adapter);
+        if (composer && composer.contains(document.activeElement)) {
+          captureFromComposer();
+        }
+      },
+      true,
+    );
+  }
 
   async function inspectConversation() {
     monitorTimer = null;
     if (!currentState?.connected) return;
+    wireSendCapture();
 
-    const userText = adapters.latestUserText(document, adapter).trim();
+    const domUserText = adapters.latestUserText(document, adapter).trim();
+    const userText = (domUserText || lastSubmittedText).trim();
     if (userText) {
       const normalized = normalizeConfirmText(userText);
       if (pendingEnvelope && confirmWordsRegex(currentState.settings).test(normalized)) {

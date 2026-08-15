@@ -126,6 +126,17 @@ export function latestUserText(document, adapter) {
   return candidates.at(-1)?.innerText?.trim() ?? "";
 }
 
+export function readComposer(composer) {
+  if (!composer) return "";
+  if (
+    composer instanceof HTMLTextAreaElement ||
+    composer instanceof HTMLInputElement
+  ) {
+    return composer.value ?? "";
+  }
+  return composer.innerText ?? composer.textContent ?? "";
+}
+
 export function writeComposer(composer, text) {
   composer.focus();
   if (composer instanceof HTMLTextAreaElement) {
