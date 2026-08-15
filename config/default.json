@@ -99,6 +99,7 @@
     "maxAuditBytes": 10485760,
     "maxTaskRuntimeMinutes": 240,
     "tokenUsagePollIntervalMs": 1000,
+    "discoveryRefreshMs": 60000,
     "rateLimit": {
       "enabled": true,
       "windowMs": 60000,

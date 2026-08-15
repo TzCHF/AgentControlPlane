@@ -223,6 +223,26 @@ export class Orchestrator extends EventEmitter {
     this.runtimeHealth.defaultExecutor = id;
     this.runtimeHealth.executors = structuredClone(this.executorDiscovery);
     await this.#recoverInterruptedTasks();
+    const refreshMs = Number(
+      this.config.limits?.discoveryRefreshMs ?? 60000,
+    );
+    if (refreshMs > 0 && !this.discoveryTimer) {
+      this.discoveryTimer = setInterval(() => {
+        this.#refreshDiscovery().catch((error) => {
+          this.emit("diagnostic", {
+            source: "discovery-refresh",
+            text: error.message,
+          });
+        });
+      }, refreshMs);
+      this.discoveryTimer.unref?.();
+    }
+  }
+
+  async #refreshDiscovery() {
+    const next = await discoverExecutors(this.executors);
+    this.executorDiscovery = next;
+    this.runtimeHealth.executors = structuredClone(next);
   }
 
   getModels(executorId = null) {
