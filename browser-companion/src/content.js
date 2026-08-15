@@ -47,9 +47,9 @@
   }
 
   const UNPAIRED_HINT =
-    "① 点「配对」，在自动打开的批准页点「批准」<br>② 批准后控制器指令会自动放进输入框，点发送<br>③ 网页 AI 输出任务块后自动派发，结果在此显示";
+    "点「配对」→ 批准页点「批准」，控制器指令会自动放进输入框";
   const CONNECTED_HINT =
-    "已连接。新对话：控制器指令已自动放入输入框，发送即可。<br>旧对话：直接描述需求；网页 AI 输出任务块后，回复「执行」确认派发。";
+    "新对话：点「教导网页 AI」后发送指令。<br>任务块暂存后，回复「执行」确认派发。";
 
   async function refreshState() {
     currentState = await message("ACP_STATE");

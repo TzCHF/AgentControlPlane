@@ -11,8 +11,9 @@ export function createPanel({ adapterId, handlers }) {
       <div class="title"><strong>AgentControlPlane</strong><span class="badge"></span></div>
       <div class="status">Checking local connection… 正在检查本地连接…</div>
       <p class="hint">① 点「配对」，在自动打开的批准页点「批准」<br>② 点「教导网页 AI」，发送插入的控制器指令<br>③ 网页 AI 输出任务块后暂存，回复「执行」确认派发</p>
-      <div class="actions"><button class="primary" data-action="connect">Pair 配对</button><button data-action="teach">Teach web AI 教导网页 AI</button><button data-action="latest">Use latest reply 使用最新回复</button><button data-action="dispatch">Dispatch 派发</button><button data-action="disconnect">Disconnect 断开</button></div>
+      <div class="actions"><button class="primary" data-action="connect">Pair 配对</button><button data-action="teach">Teach web AI 教导网页 AI</button><button data-action="dispatch">Dispatch 派发</button></div>
       <details class="advanced"><summary>Advanced settings 高级设置</summary>
+        <div class="actions"><button data-action="latest">Use latest reply 使用最新回复</button><button data-action="disconnect">Disconnect 断开</button></div>
         <div class="stack"><label>Workspace 工作区</label><select data-field="workspace"><option value="">Select after pairing 配对后选择</option></select></div>
         <div class="row"><div><label>Profile 配置档</label><select data-field="profile"><option>balanced</option></select></div><div><label>Executor 执行器</label><select data-field="executor"><option>auto</option></select></div></div>
         <div class="stack"><label>Objective or ACP_TASK envelope 目标或 ACP_TASK 信封</label><textarea data-field="objective" placeholder="Describe the engineering task 描述工程任务"></textarea></div>
