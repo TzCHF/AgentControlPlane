@@ -16,6 +16,7 @@ export function createPanel({ adapterId, handlers }) {
         <div class="stack"><label>Workspace 工作区</label><select data-field="workspace"><option value="">Select after pairing 配对后选择</option></select></div>
         <div class="row"><div><label>Profile 配置档</label><select data-field="profile"><option>balanced</option></select></div><div><label>Executor 执行器</label><select data-field="executor"><option>auto</option></select></div></div>
         <div class="stack"><label>Objective or ACP_TASK envelope 目标或 ACP_TASK 信封</label><textarea data-field="objective" placeholder="Describe the engineering task 描述工程任务"></textarea></div>
+        <div class="stack"><label>Confirm words 自定义确认词（逗号分隔）</label><input data-field="confirmWords" placeholder="e.g. 开始干, 冲"></div>
         <label class="toggle"><input type="checkbox" data-field="autoSubmitResults"> Automatically send ACP_RESULT back to this web AI 自动将 ACP_RESULT 回传给该网页 AI</label>
       </details>
     </section>
@@ -39,7 +40,7 @@ export function createPanel({ adapterId, handlers }) {
   for (const button of shadow.querySelectorAll("[data-action]")) {
     button.addEventListener("click", () => handlers[button.dataset.action]?.());
   }
-  for (const name of ["workspace", "profile", "executor", "autoSubmitResults"]) {
+  for (const name of ["workspace", "profile", "executor", "confirmWords", "autoSubmitResults"]) {
     fields[name].addEventListener("change", () => handlers.settings?.(getValues()));
   }
 
@@ -48,13 +49,14 @@ export function createPanel({ adapterId, handlers }) {
       workspace: fields.workspace.value,
       profile: fields.profile.value,
       executor: fields.executor.value,
+      confirmWords: fields.confirmWords.value,
       autoSubmitResults: fields.autoSubmitResults.checked,
       objective: fields.objective.value,
     };
   }
 
   function setSettings(settings) {
-    for (const name of ["workspace", "profile", "executor"]) {
+    for (const name of ["workspace", "profile", "executor", "confirmWords"]) {
       if (settings?.[name] != null) fields[name].value = settings[name];
     }
     fields.autoSubmitResults.checked = Boolean(settings?.autoSubmitResults);

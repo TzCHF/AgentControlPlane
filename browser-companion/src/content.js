@@ -75,6 +75,7 @@
       workspace: values.workspace,
       profile: values.profile,
       executor: values.executor,
+      confirmWords: values.confirmWords,
       autoSubmitResults: values.autoSubmitResults,
     };
     const response = await message("ACP_SETTINGS", { patch });
@@ -211,8 +212,25 @@
     }
   }
 
-  const CONFIRM_WORDS =
-    /^(yes|y|ok|okay|go|run|执行|确认|批准|好的|可以|是|对|派发|派发吧|派发吗|执行吧|确认派发|确认执行|是否派发)$/i;
+  const DEFAULT_CONFIRM_WORDS = [
+    "yes", "y", "ok", "okay", "go", "run", "do it", "send", "execute",
+    "confirm", "approve", "执行", "确认", "批准", "同意", "好的", "可以",
+    "行", "干", "开始", "派发", "派发吧", "派发吗", "执行吧", "确认派发",
+    "确认执行", "是否派发", "是", "对",
+  ];
+
+  function confirmWordsRegex(settings) {
+    const extra = String(settings?.confirmWords ?? "")
+      .split(/[,，\s]+/)
+      .map((word) => word.trim())
+      .filter(Boolean);
+    const words = [...new Set([...DEFAULT_CONFIRM_WORDS, ...extra])];
+    const escaped = words.map((word) =>
+      word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+    );
+    return new RegExp(`^(?:${escaped.join("|")})$`, "i");
+  }
+
   let pendingEnvelope = null;
 
   async function inspectConversation() {
@@ -220,7 +238,7 @@
     if (!currentState?.connected) return;
 
     const userText = adapters.latestUserText(document, adapter).trim();
-    if (pendingEnvelope && userText && CONFIRM_WORDS.test(userText)) {
+    if (pendingEnvelope && userText && confirmWordsRegex(currentState.settings).test(userText)) {
       const envelope = pendingEnvelope;
       pendingEnvelope = null;
       await executeEnvelope(envelope).catch(reportError);

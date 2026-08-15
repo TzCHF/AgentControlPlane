@@ -9,6 +9,7 @@ const DEFAULTS = {
     workspace: "",
     profile: "balanced",
     executor: "auto",
+    confirmWords: "",
     autoSubmitResults: false,
   },
 };
