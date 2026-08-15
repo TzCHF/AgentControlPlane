@@ -6,4 +6,7 @@
 - Preserve compact structured task results and token-usage accounting.
 - Treat MCP as the control-plane boundary; Codex app-server is the execution-plane boundary.
 - Tests must not consume model quota unless explicitly marked as live tests.
+- Relay stations (for example AsterRoute) are separate projects. ACP interacts
+  with them only as an API client using the keys in `config/local.json`; never
+  modify relay-side code, deployment, routes, or admin settings.
 
