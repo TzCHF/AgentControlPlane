@@ -10,8 +10,7 @@ export function createPanel({ adapterId, handlers }) {
     <section class="panel">
       <div class="title"><strong>AgentControlPlane</strong><span class="badge"></span></div>
       <div class="status">Checking local connection… 正在检查本地连接…</div>
-      <p class="hint">① 点「配对」，在自动打开的批准页点「批准」<br>② 点「教导网页 AI」，发送插入的控制器指令<br>③ 网页 AI 输出任务块后自动派发，结果在此显示</p>
-      <div class="row"><div><label>Dispatch mode 派发模式</label><select data-field="dispatchMode"><option value="auto">Auto 自动派发</option><option value="confirm">Confirm word 回复「执行」确认</option><option value="manual">Manual 手动（按钮）</option></select></div></div>
+      <p class="hint">① 点「配对」，在自动打开的批准页点「批准」<br>② 点「教导网页 AI」，发送插入的控制器指令<br>③ 网页 AI 输出任务块后暂存，回复「执行」确认派发</p>
       <div class="actions"><button class="primary" data-action="connect">Pair 配对</button><button data-action="teach">Teach web AI 教导网页 AI</button><button data-action="latest">Use latest reply 使用最新回复</button><button data-action="dispatch">Dispatch 派发</button><button data-action="disconnect">Disconnect 断开</button></div>
       <details class="advanced"><summary>Advanced settings 高级设置</summary>
         <div class="stack"><label>Workspace 工作区</label><select data-field="workspace"><option value="">Select after pairing 配对后选择</option></select></div>
@@ -40,7 +39,7 @@ export function createPanel({ adapterId, handlers }) {
   for (const button of shadow.querySelectorAll("[data-action]")) {
     button.addEventListener("click", () => handlers[button.dataset.action]?.());
   }
-  for (const name of ["workspace", "profile", "executor", "dispatchMode", "autoSubmitResults"]) {
+  for (const name of ["workspace", "profile", "executor", "autoSubmitResults"]) {
     fields[name].addEventListener("change", () => handlers.settings?.(getValues()));
   }
 
@@ -49,7 +48,6 @@ export function createPanel({ adapterId, handlers }) {
       workspace: fields.workspace.value,
       profile: fields.profile.value,
       executor: fields.executor.value,
-      dispatchMode: fields.dispatchMode.value,
       autoSubmitResults: fields.autoSubmitResults.checked,
       objective: fields.objective.value,
     };
@@ -59,7 +57,6 @@ export function createPanel({ adapterId, handlers }) {
     for (const name of ["workspace", "profile", "executor"]) {
       if (settings?.[name] != null) fields[name].value = settings[name];
     }
-    fields.dispatchMode.value = settings?.dispatchMode ?? "auto";
     fields.autoSubmitResults.checked = Boolean(settings?.autoSubmitResults);
   }
 

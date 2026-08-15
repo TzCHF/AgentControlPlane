@@ -49,7 +49,7 @@
   const UNPAIRED_HINT =
     "① 点「配对」，在自动打开的批准页点「批准」<br>② 批准后控制器指令会自动放进输入框，点发送<br>③ 网页 AI 输出任务块后自动派发，结果在此显示";
   const CONNECTED_HINT =
-    "已连接。新对话：控制器指令已自动放入输入框，发送即可。<br>旧对话：直接描述需求，网页 AI 输出任务块后自动派发。";
+    "已连接。新对话：控制器指令已自动放入输入框，发送即可。<br>旧对话：直接描述需求；网页 AI 输出任务块后，回复「执行」确认派发。";
 
   async function refreshState() {
     currentState = await message("ACP_STATE");
@@ -75,7 +75,6 @@
       workspace: values.workspace,
       profile: values.profile,
       executor: values.executor,
-      dispatchMode: values.dispatchMode,
       autoSubmitResults: values.autoSubmitResults,
     };
     const response = await message("ACP_SETTINGS", { patch });
@@ -219,15 +218,9 @@
   async function inspectConversation() {
     monitorTimer = null;
     if (!currentState?.connected) return;
-    const mode = currentState.settings.dispatchMode ?? "auto";
 
     const userText = adapters.latestUserText(document, adapter).trim();
-    if (
-      mode === "confirm" &&
-      pendingEnvelope &&
-      userText &&
-      CONFIRM_WORDS.test(userText)
-    ) {
+    if (pendingEnvelope && userText && CONFIRM_WORDS.test(userText)) {
       const envelope = pendingEnvelope;
       pendingEnvelope = null;
       await executeEnvelope(envelope).catch(reportError);
@@ -242,28 +235,13 @@
     seen.add(id);
     if (seen.size > 100) seen.delete(seen.values().next().value);
 
-    if (mode === "manual") {
-      panel.setObjective(JSON.stringify(envelope, null, 2));
-      panel.open();
-      panel.setStatus(
-        "Task envelope detected 检测到任务块：点「派发」执行",
-        "success",
-      );
-      return;
-    }
-
-    if (mode === "confirm") {
-      pendingEnvelope = envelope;
-      panel.setObjective(JSON.stringify(envelope, null, 2));
-      panel.open();
-      panel.setStatus(
-        "Task envelope staged 任务块已暂存：回复「执行 / 是否派发」确认，或点「派发」",
-        "success",
-      );
-      return;
-    }
-
-    await executeEnvelope(envelope).catch(reportError);
+    pendingEnvelope = envelope;
+    panel.setObjective(JSON.stringify(envelope, null, 2));
+    panel.open();
+    panel.setStatus(
+      "Task envelope staged 任务块已暂存：回复「执行 / 是否派发」确认，或点「派发」",
+      "success",
+    );
   }
 
   async function executeEnvelope(envelope) {
