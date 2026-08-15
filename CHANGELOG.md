@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.4.4 — 2026-08-16
+
+Local read-only web panel.
+
+### Added
+
+- A self-contained web panel at `http://127.0.0.1:4318/` (also `/dashboard`)
+  showing executor readiness, live model catalogs per executor, recent tasks
+  with status, time used, token counts, and budget bars, plus the aggregate
+  token usage report.
+- The panel is read-only: it performs same-origin GET requests only. It is
+  served without a bearer token and shows a token input when the server
+  requires one; a strict content security policy and frame denial headers
+  apply.
+- Chinese and English panel strings in one dictionary (`src/dashboard.js`)
+  with a language switcher; Chinese is the default.
+- The panel refreshes every 5 seconds.
+
+### Verified
+
+- 85 tests pass locally, including 5 panel tests (route serving, security
+  headers, i18n key parity, token exemption).
+- Panel copy passes the grounded-copy gate with 0 findings.
+
 ## v0.4.3 — 2026-08-15
 
 Token accounting correctness, task time controls, and license policy.

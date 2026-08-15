@@ -33,6 +33,21 @@ export function sendJson(response, statusCode, payload, headers = {}) {
   response.end(body);
 }
 
+export function sendHtml(response, statusCode, body) {
+  response.writeHead(statusCode, {
+    "content-type": "text/html; charset=utf-8",
+    "content-length": Buffer.byteLength(body),
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "no-referrer",
+    "x-frame-options": "DENY",
+    "content-security-policy":
+      "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; " +
+      "connect-src 'self'; img-src data:; base-uri 'none'; frame-ancestors 'none'",
+  });
+  response.end(body);
+}
+
 export function sendError(response, error) {
   const payload = asErrorPayload(error);
   const status =

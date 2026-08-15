@@ -2,7 +2,7 @@ import http from "node:http";
 import crypto from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { loadConfig } from "./core/config.js";
-import { sendError, sendJson, readJson, routeParts } from "./core/http.js";
+import { sendError, sendJson, sendHtml, readJson, routeParts } from "./core/http.js";
 import { Orchestrator } from "./core/orchestrator.js";
 import { publicModels, publicProfiles } from "./core/profiles.js";
 import { RateLimiter } from "./core/rate-limit.js";
@@ -16,6 +16,7 @@ import { assertLifecycle } from "./executors/lifecycle.js";
 import { createMcpHandler } from "./mcp/server.js";
 import { PairingManager } from "./companion/pairing-manager.js";
 import { CompanionRouter } from "./companion/router.js";
+import { dashboardHtml } from "./dashboard.js";
 
 export function buildExecutor(config, provider) {
   if (provider === "openai-compatible") {
@@ -188,6 +189,9 @@ export async function createApplication(overrides = {}) {
       }
 
       const isHealth = request.method === "GET" && url.pathname === "/health";
+      const isDashboard =
+        request.method === "GET" &&
+        (url.pathname === "/" || url.pathname === "/dashboard");
       const isProtectedResourceMetadata =
         request.method === "GET" &&
         [
@@ -216,7 +220,12 @@ export async function createApplication(overrides = {}) {
         await companion.handle(request, response, url, parts);
         return;
       }
-      if (!isHealth && !isProtectedResourceMetadata && !tokenMatches(request)) {
+      if (
+        !isHealth &&
+        !isDashboard &&
+        !isProtectedResourceMetadata &&
+        !tokenMatches(request)
+      ) {
         sendJson(
           response,
           401,
@@ -245,6 +254,11 @@ export async function createApplication(overrides = {}) {
           codex_ready: Boolean(codex.ready),
           companion_enabled: config.companion?.enabled !== false,
         });
+        return;
+      }
+
+      if (isDashboard) {
+        sendHtml(response, 200, dashboardHtml(config));
         return;
       }
 

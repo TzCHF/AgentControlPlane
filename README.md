@@ -102,7 +102,9 @@ npm.cmd start
 
 The service binds to `http://127.0.0.1:4318`. `npm.cmd run doctor` lists every
 discovered executor and the automatic default. No executor selection is needed
-when an installed CLI or configured local endpoint is detected.
+when an installed CLI or configured local endpoint is detected. Opening
+`http://127.0.0.1:4318/` in a browser shows the local read-only panel with
+executor readiness, model catalogs, recent tasks, and the token usage report.
 
 To use a web AI without its own MCP connector, load
 [`browser-companion`](browser-companion) as an unpacked Manifest V3 extension,

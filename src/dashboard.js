@@ -1,0 +1,689 @@
+// Local read-only web panel. Serves one self-contained page at "/" that
+// renders task, executor, model-catalog, and usage state from the existing
+// /v1 endpoints. All strings live in DASHBOARD_STRINGS so tests and the copy
+// gate can read them; the page itself makes no network calls beyond
+// same-origin GETs and stores nothing on the server.
+
+export const DASHBOARD_STRINGS = {
+  zh: {
+    title: "AgentControlPlane 本地面板",
+    subtitle: "本机工程任务、执行器与令牌用量的只读视图。",
+    healthOk: "运行正常",
+    healthBad: "状态异常",
+    executors: "执行器",
+    default: "默认",
+    ready: "就绪",
+    notReady: "未就绪",
+    modelsInCatalog: "模型目录 {n} 个",
+    models: "模型目录",
+    modelFilter: "输入模型名过滤",
+    noModels: "该执行器暂无模型目录。",
+    tasks: "任务",
+    noTasks: "暂无任务记录。",
+    colTime: "时间",
+    colTask: "任务",
+    colStatus: "状态",
+    colExecutor: "执行器",
+    colModel: "模型",
+    colProfile: "档位",
+    colTimeUsed: "用时",
+    colTokens: "令牌（入/出/推理）",
+    colBudget: "预算",
+    statusQueued: "排队",
+    statusRunning: "运行中",
+    statusCompleted: "已完成",
+    statusFailed: "失败",
+    statusBlocked: "受阻",
+    statusPartial: "部分完成",
+    statusCancelled: "已取消",
+    statusInterrupted: "已中断",
+    minActual: "{n} 分钟",
+    minRunning: "{n} 分钟（进行中）",
+    queuedTime: "排队中",
+    tokensTitle: "输入 {in} · 输出 {out} · 推理 {reason}",
+    budget: "预算 {used} / {total}（{pct}%）",
+    usage: "用量汇总",
+    usageTasks: "记录用量的任务",
+    usageInput: "输入令牌",
+    usageCached: "缓存命中输入",
+    usageUncached: "未缓存输入",
+    usageOutput: "输出令牌",
+    usageReasoning: "推理令牌",
+    usageTotal: "令牌合计",
+    version: "版本",
+    tokenPrompt: "该服务要求 Bearer 访问令牌。",
+    tokenPlaceholder: "粘贴访问令牌",
+    tokenSave: "保存并重试",
+    refreshNote: "每 5 秒自动刷新",
+    footer: "仅监听 {host}:{port} · 任务状态保存在本机 {stateDir}",
+    errorBanner: "加载失败：{message}",
+  },
+  en: {
+    title: "AgentControlPlane local panel",
+    subtitle: "A read-only view of local engineering tasks, executors, and token usage.",
+    healthOk: "Healthy",
+    healthBad: "Unhealthy",
+    executors: "Executors",
+    default: "Default",
+    ready: "Ready",
+    notReady: "Not ready",
+    modelsInCatalog: "{n} models in catalog",
+    models: "Model catalog",
+    modelFilter: "Filter by model name",
+    noModels: "This executor has no model catalog.",
+    tasks: "Tasks",
+    noTasks: "No task records yet.",
+    colTime: "Time",
+    colTask: "Task",
+    colStatus: "Status",
+    colExecutor: "Executor",
+    colModel: "Model",
+    colProfile: "Profile",
+    colTimeUsed: "Time used",
+    colTokens: "Tokens (in/out/reasoning)",
+    colBudget: "Budget",
+    statusQueued: "Queued",
+    statusRunning: "Running",
+    statusCompleted: "Completed",
+    statusFailed: "Failed",
+    statusBlocked: "Blocked",
+    statusPartial: "Partial",
+    statusCancelled: "Cancelled",
+    statusInterrupted: "Interrupted",
+    minActual: "{n} min",
+    minRunning: "{n} min (running)",
+    queuedTime: "Queued",
+    tokensTitle: "In {in} · Out {out} · Reasoning {reason}",
+    budget: "Budget {used} / {total} ({pct}%)",
+    usage: "Usage summary",
+    usageTasks: "Tasks with usage",
+    usageInput: "Input tokens",
+    usageCached: "Cached input",
+    usageUncached: "Uncached input",
+    usageOutput: "Output tokens",
+    usageReasoning: "Reasoning tokens",
+    usageTotal: "Total tokens",
+    version: "Version",
+    tokenPrompt: "This server requires a bearer access token.",
+    tokenPlaceholder: "Paste the access token",
+    tokenSave: "Save and retry",
+    refreshNote: "Refreshes every 5 seconds",
+    footer: "Bound to {host}:{port} · Task state is stored locally at {stateDir}",
+    errorBanner: "Load failed: {message}",
+  },
+};
+
+export function dashboardHtml(config) {
+  const info = {
+    version: config.version ?? "0.0.0",
+    host: config.server?.host ?? "127.0.0.1",
+    port: config.server?.port ?? 4318,
+    stateDir: config.stateDir ?? "",
+  };
+  return `<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentControlPlane</title>
+<style>
+:root {
+  --bg: #0f1115;
+  --card: #161a20;
+  --line: #232a33;
+  --text: #e6e8eb;
+  --muted: #8b93a1;
+  --accent: #4f8cff;
+  --ok: #34c26b;
+  --warn: #e0a53e;
+  --bad: #e0564f;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+}
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.ok { background: var(--ok); }
+.dot.bad { background: var(--bad); }
+h1 { font-size: 16px; margin: 0; white-space: nowrap; }
+.muted { color: var(--muted); }
+.lang button {
+  background: var(--card);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.lang button.active { color: var(--text); border-color: var(--accent); }
+main { padding: 16px 20px 24px; max-width: 1180px; margin: 0 auto; }
+section { margin-bottom: 26px; }
+h2 { font-size: 14px; margin: 0 0 10px; color: var(--muted); font-weight: 600; text-transform: none; letter-spacing: 0; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+.exec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.exec-name { font-weight: 600; }
+.exec-id { font-family: Consolas, monospace; font-size: 12px; color: var(--muted); }
+.badge {
+  display: inline-block;
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-size: 12px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.badge.ready { color: var(--ok); border-color: var(--ok); }
+.badge.notready { color: var(--bad); border-color: var(--bad); }
+.badge.default { color: var(--accent); border-color: var(--accent); }
+.exec-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.exec-detail { font-size: 12px; color: var(--muted); margin-top: 6px; word-break: break-all; }
+.row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+select, input[type="text"] {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+input[type="text"] { min-width: 220px; }
+.model-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.model-list li {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--line);
+  font-family: Consolas, monospace;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.model-list li:last-child { border-bottom: none; }
+.model-list .tag { color: var(--accent); font-size: 12px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap; }
+td.mono { font-family: Consolas, monospace; font-size: 12.5px; }
+td.objective { max-width: 380px; }
+td.objective div { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.st-q { color: var(--muted); }
+.st-r { color: var(--accent); }
+.st-c { color: var(--ok); }
+.st-p { color: var(--warn); }
+.st-f, .st-i { color: var(--bad); }
+.st-b, .st-x { color: var(--muted); }
+.budget-bar { width: 110px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 3px; }
+.budget-fill { height: 100%; background: var(--ok); }
+.budget-fill.warn { background: var(--warn); }
+.budget-fill.over { background: var(--bad); }
+.budget-label { font-size: 11px; color: var(--muted); }
+.usage td:first-child { color: var(--muted); }
+.usage td:last-child { font-family: Consolas, monospace; text-align: right; }
+.hidden { display: none; }
+#tokenBar, #errorBar {
+  border: 1px solid var(--warn);
+  background: var(--card);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+#errorBar { border-color: var(--bad); }
+#tokenBar input { flex: 1; min-width: 240px; }
+button.save {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+footer { padding: 10px 20px 18px; color: var(--muted); font-size: 12px; max-width: 1180px; margin: 0 auto; }
+@media (max-width: 760px) {
+  td.objective { max-width: 200px; }
+  .hide-sm { display: none; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <span class="dot" id="healthDot"></span>
+    <h1 id="title"></h1>
+    <span class="muted" id="version"></span>
+  </div>
+  <div class="lang">
+    <button id="langZh">中文</button>
+    <button id="langEn">EN</button>
+  </div>
+</header>
+<main>
+  <div id="tokenBar" class="hidden">
+    <span id="tokenPrompt"></span>
+    <input type="text" id="tokenInput" autocomplete="off">
+    <button class="save" id="tokenSave"></button>
+  </div>
+  <div id="errorBar" class="hidden"></div>
+
+  <section>
+    <h2 id="kExecutors"></h2>
+    <div class="exec-grid" id="executors"></div>
+  </section>
+
+  <section>
+    <h2 id="kModels"></h2>
+    <div class="row">
+      <select id="execSelect"></select>
+      <span class="muted" id="modelCount"></span>
+      <input type="text" id="modelFilter">
+    </div>
+    <ul class="model-list" id="models"></ul>
+  </section>
+
+  <section>
+    <h2 id="kTasks"></h2>
+    <div id="tasks"></div>
+  </section>
+
+  <section>
+    <h2 id="kUsage"></h2>
+    <table class="usage" id="usage"></table>
+  </section>
+</main>
+<footer>
+  <span id="footerText"></span>
+  <span class="muted"> · <span id="refreshNote"></span></span>
+</footer>
+<script>
+"use strict";
+var STRINGS = ${JSON.stringify(DASHBOARD_STRINGS)};
+var CFG = ${JSON.stringify(info)};
+
+function fmt(template, values) {
+  return template.replace(/\\{([a-z]+)\\}/g, function (_, key) {
+    return values[key] !== undefined ? values[key] : key;
+  });
+}
+function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+function clock(iso) {
+  var date = new Date(iso);
+  return pad2(date.getHours()) + ":" + pad2(date.getMinutes());
+}
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+function number(value) {
+  return (value ?? 0).toLocaleString();
+}
+
+var lang = localStorage.getItem("acp-dash-lang") || "zh";
+var token = localStorage.getItem("acp-dash-token") || "";
+var modelFilter = "";
+var selectedExecutor = null;
+var catalogs = {};
+var lastData = { executors: [], tasks: [], usage: null, health: null };
+var liveSeconds = 0;
+
+function t(key) {
+  return STRINGS[lang][key] || STRINGS.zh[key] || key;
+}
+
+function statusKey(status) {
+  var map = {
+    queued: "statusQueued",
+    running: "statusRunning",
+    completed: "statusCompleted",
+    failed: "statusFailed",
+    blocked: "statusBlocked",
+    partial: "statusPartial",
+    cancelled: "statusCancelled",
+    interrupted: "statusInterrupted",
+  };
+  return map[status] ? t(map[status]) : status;
+}
+function statusClass(status) {
+  var map = {
+    queued: "st-q",
+    running: "st-r",
+    completed: "st-c",
+    partial: "st-p",
+    failed: "st-f",
+    interrupted: "st-i",
+  };
+  return map[status] || "st-x";
+}
+
+async function api(path) {
+  var headers = {};
+  if (token) headers["authorization"] = "Bearer " + token;
+  var response = await fetch(path, { headers: headers });
+  if (response.status === 401) {
+    document.getElementById("tokenBar").classList.remove("hidden");
+    throw new Error("unauthorized");
+  }
+  if (!response.ok) throw new Error("HTTP " + response.status);
+  return response.json();
+}
+
+function setLang(next) {
+  lang = next;
+  localStorage.setItem("acp-dash-lang", lang);
+  document.documentElement.lang = lang;
+  document.getElementById("langZh").classList.toggle("active", lang === "zh");
+  document.getElementById("langEn").classList.toggle("active", lang === "en");
+  document.getElementById("title").textContent = t("title");
+  document.getElementById("version").textContent = t("version") + " " + CFG.version;
+  document.getElementById("kExecutors").textContent = t("executors");
+  document.getElementById("kModels").textContent = t("models");
+  document.getElementById("kTasks").textContent = t("tasks");
+  document.getElementById("kUsage").textContent = t("usage");
+  document.getElementById("modelFilter").placeholder = t("modelFilter");
+  document.getElementById("tokenPrompt").textContent = t("tokenPrompt");
+  document.getElementById("tokenInput").placeholder = t("tokenPlaceholder");
+  document.getElementById("tokenSave").textContent = t("tokenSave");
+  document.getElementById("refreshNote").textContent = t("refreshNote");
+  document.getElementById("footerText").textContent = fmt(t("footer"), CFG);
+  renderExecutors();
+  renderModels();
+  renderTasks();
+  renderUsage();
+}
+
+function renderExecutors() {
+  var box = document.getElementById("executors");
+  var items = lastData.executors;
+  if (!items || !items.length) {
+    box.textContent = "";
+    return;
+  }
+  box.innerHTML = items
+    .map(function (executor) {
+      var ready = Boolean(executor.ready);
+      var count = (catalogs[executor.id] || []).length;
+      var detail = executor.discovery && executor.discovery.error
+        ? '<div class="exec-detail">' + escapeHtml(String(executor.discovery.error)) + "</div>"
+        : "";
+      return (
+        '<div class="card">' +
+        '<div class="exec-name">' + escapeHtml(executor.display_name || executor.id) + "</div>" +
+        '<div class="exec-id">' + escapeHtml(executor.id) + "</div>" +
+        '<div class="exec-row">' +
+        '<span class="badge ' + (ready ? "ready" : "notready") + '">' + t(ready ? "ready" : "notReady") + "</span>" +
+        (executor.selected ? '<span class="badge default">' + t("default") + "</span>" : "") +
+        '<span class="muted">' + fmt(t("modelsInCatalog"), { n: count }) + "</span>" +
+        "</div>" +
+        detail +
+        "</div>"
+      );
+    })
+    .join("");
+}
+
+function renderModels() {
+  var box = document.getElementById("models");
+  var select = document.getElementById("execSelect");
+  var list = (selectedExecutor && catalogs[selectedExecutor]) || [];
+  if (select.options.length !== lastData.executors.length) {
+    select.innerHTML = lastData.executors
+      .map(function (executor) {
+        var name = escapeHtml(executor.display_name || executor.id);
+        return '<option value="' + escapeHtml(executor.id) + '">' + name + "</option>";
+      })
+      .join("");
+  }
+  if (selectedExecutor && select.value !== selectedExecutor) {
+    select.value = selectedExecutor;
+  }
+  var filtered = modelFilter
+    ? list.filter(function (model) {
+        return String(model.id).toLowerCase().includes(modelFilter.toLowerCase());
+      })
+    : list;
+  document.getElementById("modelCount").textContent = fmt(t("modelsInCatalog"), {
+    n: filtered.length,
+  });
+  if (!list.length) {
+    box.innerHTML = '<li class="muted">' + escapeHtml(t("noModels")) + "</li>";
+    return;
+  }
+  box.innerHTML = filtered
+    .map(function (model) {
+      var efforts = model.supported_reasoning_efforts || [];
+      var tag =
+        efforts.length > 0
+          ? '<span class="tag">' + escapeHtml(efforts.join(", ")) + "</span>"
+          : "";
+      return (
+        "<li><span>" +
+        escapeHtml(model.id || model.model) +
+        "</span>" +
+        tag +
+        "</li>"
+      );
+    })
+    .join("");
+}
+
+function minutesBetween(startIso, endIso) {
+  var start = new Date(startIso).getTime();
+  var end = endIso ? new Date(endIso).getTime() : Date.now();
+  if (!start) return null;
+  return Math.round(((end - start) / 60000) * 10) / 10;
+}
+
+function renderTasks() {
+  var box = document.getElementById("tasks");
+  var tasks = lastData.tasks || [];
+  if (!tasks.length) {
+    box.innerHTML =
+      '<div class="card muted">' + escapeHtml(t("noTasks")) + "</div>";
+    return;
+  }
+  var head =
+    "<table><thead><tr>" +
+    "<th>" + t("colTime") + "</th>" +
+    "<th>" + t("colTask") + "</th>" +
+    "<th>" + t("colStatus") + "</th>" +
+    '<th class="hide-sm">' + t("colExecutor") + "</th>" +
+    '<th class="hide-sm">' + t("colModel") + "</th>" +
+    '<th class="hide-sm">' + t("colProfile") + "</th>" +
+    "<th>" + t("colTimeUsed") + "</th>" +
+    "<th>" + t("colTokens") + "</th>" +
+    "<th>" + t("colBudget") + "</th>" +
+    "</tr></thead><tbody>";
+  var rows = tasks
+    .map(function (task) {
+      var objective = escapeHtml(
+        (task.brief && task.brief.objective) || task.objective || task.id,
+      );
+      var usage = task.usage || {};
+      var tokens = usage.total_tokens
+        ? fmt(t("tokensTitle"), {
+            "in": number(usage.input_tokens),
+            out: number(usage.output_tokens),
+            reason: number(usage.reasoning_output_tokens),
+          })
+        : "—";
+      var timeCell;
+      if (task.status === "queued" && !task.startedAt) {
+        timeCell = '<span class="muted">' + t("queuedTime") + "</span>";
+      } else if (task.completedAt) {
+        var actual = minutesBetween(task.startedAt, task.completedAt);
+        timeCell = actual === null ? "—" : fmt(t("minActual"), { n: actual });
+      } else {
+        var live = minutesBetween(task.startedAt, null);
+        timeCell = live === null ? "—" : fmt(t("minRunning"), { n: live });
+      }
+      var budgetCell = "—";
+      var budget = task.policy && task.policy.tokenBudget;
+      if (budget && usage.total_tokens) {
+        var pct = Math.min(100, Math.round((usage.total_tokens / budget) * 100));
+        var cls = pct >= 100 ? "over" : pct >= 70 ? "warn" : "";
+        budgetCell =
+          '<div class="budget-label">' +
+          escapeHtml(
+            fmt(t("budget"), {
+              used: number(usage.total_tokens),
+              total: number(budget),
+              pct: pct,
+            }),
+          ) +
+          "</div>" +
+          '<div class="budget-bar"><div class="budget-fill ' + cls + '" style="width:' + pct + '%"></div></div>';
+      }
+      return (
+        "<tr>" +
+        '<td class="mono">' + clock(task.createdAt) + "</td>" +
+        '<td class="objective"><div title="' + objective + '">' + objective + "</div></td>" +
+        '<td class="' + statusClass(task.status) + '">' + statusKey(task.status) + "</td>" +
+        '<td class="hide-sm">' + escapeHtml(task.executor || "") + "</td>" +
+        '<td class="hide-sm mono">' + escapeHtml((task.policy && task.policy.model) || "") + "</td>" +
+        '<td class="hide-sm">' + escapeHtml((task.policy && task.policy.name) || "") + "</td>" +
+        "<td>" + timeCell + "</td>" +
+        '<td class="mono">' + tokens + "</td>" +
+        "<td>" + budgetCell + "</td>" +
+        "</tr>"
+      );
+    })
+    .join("");
+  box.innerHTML = '<div class="card" style="overflow-x:auto; padding:0">' + head + rows + "</tbody></table></div>";
+}
+
+function renderUsage() {
+  var box = document.getElementById("usage");
+  var usage = lastData.usage;
+  if (!usage) {
+    box.innerHTML = "";
+    return;
+  }
+  var rows = [
+    [t("usageTasks"), number(usage.tasks_with_usage)],
+    [t("usageInput"), number(usage.input_tokens)],
+    [t("usageCached"), number(usage.cached_input_tokens)],
+    [t("usageUncached"), number(usage.uncached_input_tokens)],
+    [t("usageOutput"), number(usage.output_tokens)],
+    [t("usageReasoning"), number(usage.reasoning_output_tokens)],
+    [t("usageTotal"), number(usage.total_tokens)],
+  ];
+  box.innerHTML =
+    "<tbody>" +
+    rows
+      .map(function (row) {
+        return "<tr><td>" + row[0] + "</td><td>" + row[1] + "</td></tr>";
+      })
+      .join("") +
+    "</tbody>";
+}
+
+function renderAll() {
+  setLang(lang);
+  var dot = document.getElementById("healthDot");
+  var healthy = lastData.health && lastData.health.status === "ok";
+  dot.className = "dot " + (healthy ? "ok" : "bad");
+  dot.title = healthy ? t("healthOk") : t("healthBad");
+}
+
+async function refresh() {
+  try {
+    var executorList = await api("/v1/executors");
+    var [health, tasksRes, usageRes] = await Promise.all([
+      api("/health"),
+      api("/v1/tasks?limit=30"),
+      api("/v1/usage"),
+    ]);
+    lastData.health = health;
+    lastData.executors = executorList.executors || [];
+    if (!selectedExecutor) {
+      selectedExecutor =
+        executorList.default_executor ||
+        (lastData.executors[0] && lastData.executors[0].id) ||
+        null;
+    }
+    var catalogJobs = lastData.executors.map(function (executor) {
+      return api("/v1/models?executor=" + encodeURIComponent(executor.id))
+        .then(function (res) {
+          catalogs[executor.id] = res.models || [];
+        })
+        .catch(function () {
+          catalogs[executor.id] = [];
+        });
+    });
+    await Promise.all(catalogJobs);
+    lastData.tasks = tasksRes.tasks || [];
+    lastData.usage = usageRes.usage || null;
+    document.getElementById("errorBar").classList.add("hidden");
+    renderAll();
+  } catch (error) {
+    if (error.message === "unauthorized") return;
+    var bar = document.getElementById("errorBar");
+    bar.textContent = fmt(t("errorBanner"), { message: error.message });
+    bar.classList.remove("hidden");
+  }
+}
+
+document.getElementById("langZh").addEventListener("click", function () {
+  setLang("zh");
+});
+document.getElementById("langEn").addEventListener("click", function () {
+  setLang("en");
+});
+document.getElementById("execSelect").addEventListener("change", function (event) {
+  selectedExecutor = event.target.value;
+  renderModels();
+});
+document.getElementById("modelFilter").addEventListener("input", function (event) {
+  modelFilter = event.target.value.trim();
+  renderModels();
+});
+document.getElementById("tokenSave").addEventListener("click", function () {
+  token = document.getElementById("tokenInput").value.trim();
+  if (!token) return;
+  localStorage.setItem("acp-dash-token", token);
+  document.getElementById("tokenBar").classList.add("hidden");
+  refresh();
+});
+
+renderAll();
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>`;
+}
