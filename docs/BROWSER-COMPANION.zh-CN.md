@@ -18,7 +18,7 @@
 1. 启动 AgentControlPlane：
 
    ```powershell
-   cd C:\Users\45928\Documents\Github\AgentControlPlane
+   cd C:\Users\YOUR_USER\Documents\Github\AgentControlPlane
    npm.cmd start
    ```
 
@@ -101,7 +101,7 @@ npm.cmd run companion:check
 1. 在测试 `profile` 中启动 AgentControlPlane：
 
    ```powershell
-   cd C:\Users\45928\Documents\Github\AgentControlPlane
+   cd C:\Users\YOUR_USER\Documents\Github\AgentControlPlane
    npm.cmd start
    ```
 

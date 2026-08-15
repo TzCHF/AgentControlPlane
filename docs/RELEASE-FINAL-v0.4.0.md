@@ -52,7 +52,7 @@
 
 ## 5) 网页 AI 端到端结果（请用实测替换）
 
-> 运行模板：见 [docs/WEB-AI-E2E-VALIDATION-TEMPLATE.md](/C:/Users/45928/Documents/Github/AgentControlPlane/docs/WEB-AI-E2E-VALIDATION-TEMPLATE.md)
+> 运行模板：见 [docs/WEB-AI-E2E-VALIDATION-TEMPLATE.md](/C:/Users/YOUR_USER/Documents/Github/AgentControlPlane/docs/WEB-AI-E2E-VALIDATION-TEMPLATE.md)
 
 | 时间 | 页面 | executor | task_id | status | changed_files | usage.total_tokens | result.summary | 备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- |

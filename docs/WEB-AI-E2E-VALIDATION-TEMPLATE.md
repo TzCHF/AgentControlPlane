@@ -6,7 +6,7 @@
 ## 一、验收前置
 
 ```powershell
-cd C:\Users\45928\Documents\Github\AgentControlPlane
+cd C:\Users\YOUR_USER\Documents\Github\AgentControlPlane
 npm.cmd start
 ```
 

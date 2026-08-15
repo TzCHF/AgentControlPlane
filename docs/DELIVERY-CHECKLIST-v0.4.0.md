@@ -20,8 +20,8 @@
 ### 3) 完成网页 AI 到多执行器端到端适配
 
 - 说明：
-  - [docs/WEB-AI-E2E-VALIDATION-TEMPLATE.md](/C:/Users/45928/Documents/Github/AgentControlPlane/docs/WEB-AI-E2E-VALIDATION-TEMPLATE.md)
-  - [docs/BROWSER-COMPANION.md](/C:/Users/45928/Documents/Github/AgentControlPlane/docs/BROWSER-COMPANION.md)
+  - [docs/WEB-AI-E2E-VALIDATION-TEMPLATE.md](/C:/Users/YOUR_USER/Documents/Github/AgentControlPlane/docs/WEB-AI-E2E-VALIDATION-TEMPLATE.md)
+  - [docs/BROWSER-COMPANION.md](/C:/Users/YOUR_USER/Documents/Github/AgentControlPlane/docs/BROWSER-COMPANION.md)
 - 适配站点：chatgpt.com / chat.deepseek.com / claude.ai
 - 执行器方向：auto/opencode/deepseek/claude（见模板）
 - 状态：文档与测试脚本已齐，需在你的环境按模板复测实际 task_id/任务结果后补完结果表
@@ -29,15 +29,15 @@
 ### 4) 完成真实 Token 对照测试并交付验证结果
 
 - 对照脚本：
-  - [scripts/benchmark-real.js](/C:/Users/45928/Documents/Github/AgentControlPlane/scripts/benchmark-real.js)
+  - [scripts/benchmark-real.js](/C:/Users/YOUR_USER/Documents/Github/AgentControlPlane/scripts/benchmark-real.js)
 - 结果文件：
-  - [benchmark/real-results.json](/C:/Users/45928/Documents/Github/AgentControlPlane/benchmark/real-results.json)
-  - [benchmark/real-summary.json](/C:/Users/45928/Documents/Github/AgentControlPlane/benchmark/real-summary.json)
-  - [benchmark/real-report.json](/C:/Users/45928/Documents/Github/AgentControlPlane/benchmark/real-report.json)
+  - [benchmark/real-results.json](/C:/Users/YOUR_USER/Documents/Github/AgentControlPlane/benchmark/real-results.json)
+  - [benchmark/real-summary.json](/C:/Users/YOUR_USER/Documents/Github/AgentControlPlane/benchmark/real-summary.json)
+  - [benchmark/real-report.json](/C:/Users/YOUR_USER/Documents/Github/AgentControlPlane/benchmark/real-report.json)
 - 结果说明：
-  - [docs/REAL-TOKEN-COMPARISON-RESULTS.md](/C:/Users/45928/Documents/Github/AgentControlPlane/docs/REAL-TOKEN-COMPARISON-RESULTS.md)
+  - [docs/REAL-TOKEN-COMPARISON-RESULTS.md](/C:/Users/YOUR_USER/Documents/Github/AgentControlPlane/docs/REAL-TOKEN-COMPARISON-RESULTS.md)
 - 发布说明草稿：
-  - [docs/RELEASE-DRAFT-v0.4.0.md](/C:/Users/45928/Documents/Github/AgentControlPlane/docs/RELEASE-DRAFT-v0.4.0.md)
+  - [docs/RELEASE-DRAFT-v0.4.0.md](/C:/Users/YOUR_USER/Documents/Github/AgentControlPlane/docs/RELEASE-DRAFT-v0.4.0.md)
 
 ## 当前仓库状态（本地）
 

@@ -2,7 +2,7 @@
 
 ## 现在仓库状态（本地）
 
-- 分支：`main`（路径 `C:\Users\45928\Documents\Github\AgentControlPlane`）
+- 分支：`main`（路径 `C:\Users\YOUR_USER\Documents\Github\AgentControlPlane`）
 - 本地领先 origin/main 的提交数：请以你的本地 git log 为准。
 - 关键提交：
   - `586bde0`（`v0.3.2`）
@@ -18,7 +18,7 @@
 执行：
 
 ```powershell
-cd C:\Users\45928\Documents\Github\AgentControlPlane
+cd C:\Users\YOUR_USER\Documents\Github\AgentControlPlane
 npm.cmd test
 npm.cmd run check
 npm.cmd run smoke:companion

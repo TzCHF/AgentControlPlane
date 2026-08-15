@@ -24,7 +24,7 @@ failures are reported in the page panel.
 1. Start AgentControlPlane:
 
    ```powershell
-   cd C:\Users\45928\Documents\Github\AgentControlPlane
+   cd C:\Users\YOUR_USER\Documents\Github\AgentControlPlane
    npm.cmd start
    ```
 
@@ -127,7 +127,7 @@ After setup, validate true end-to-end integration from each supported web page:
 1. Start AgentControlPlane in the test profile:
 
    ```powershell
-   cd C:\Users\45928\Documents\Github\AgentControlPlane
+   cd C:\Users\YOUR_USER\Documents\Github\AgentControlPlane
    npm.cmd start
    ```
 

@@ -12,7 +12,7 @@ v0.4.0 完成了“网页 AI 到本地工程执行器”的补强体验层：
 - `v0.4.0`：实现 Browser Companion 核心能力与站点适配器（ChatGPT / DeepSeek / Claude）。  
 - MCP 工具补充说明更新：`dispatch_project` 与执行器可见性、`list_executors`/`list_models` 说明一致化。  
 - 真实对照脚本与输出：`benchmark-real.js`、`benchmark/real-results.json`、`benchmark/real-summary.json`、`benchmark/real-report.json`。  
-- 真实对照结果文档：[`REAL-TOKEN-COMPARISON-RESULTS.md`](/C:/Users/45928/Documents/Github/AgentControlPlane/docs/REAL-TOKEN-COMPARISON-RESULTS.md)。  
+- 真实对照结果文档：[`REAL-TOKEN-COMPARISON-RESULTS.md`](/C:/Users/YOUR_USER/Documents/Github/AgentControlPlane/docs/REAL-TOKEN-COMPARISON-RESULTS.md)。  
 - 烟雾链路与发布清单增强：`smoke` 可返回可归档的部分执行结果、release checklist 指南完整化。  
 
 ## 验证清单
@@ -30,7 +30,7 @@ v0.4.0 完成了“网页 AI 到本地工程执行器”的补强体验层：
 
 ### 3) 网页 AI → 多执行器端到端
 
-请按照 [`WEB-AI-E2E-VALIDATION-TEMPLATE.md`](/C:/Users/45928/Documents/Github/AgentControlPlane/docs/WEB-AI-E2E-VALIDATION-TEMPLATE.md) 运行：
+请按照 [`WEB-AI-E2E-VALIDATION-TEMPLATE.md`](/C:/Users/YOUR_USER/Documents/Github/AgentControlPlane/docs/WEB-AI-E2E-VALIDATION-TEMPLATE.md) 运行：
 - Web 页面：`chatgpt.com`、`chat.deepseek.com`、`claude.ai`  
 - 执行器：`auto`（优先）以及所需的明确 executor 覆测  
 - 记录 `task_id / status / changed_files / usage`  
