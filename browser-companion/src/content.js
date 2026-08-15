@@ -281,7 +281,6 @@
   async function inspectConversation() {
     monitorTimer = null;
     if (!currentState?.connected) return;
-    wireSendCapture();
 
     const domUserText = adapters.latestUserText(document, adapter).trim();
     const userText = (domUserText || lastSubmittedText).trim();
@@ -341,6 +340,7 @@
     monitorTimer = setTimeout(inspectConversation, 800);
   });
   observer.observe(document.body, { childList: true, subtree: true });
+  wireSendCapture();
 
   function delay(milliseconds) {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
