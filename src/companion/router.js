@@ -261,7 +261,7 @@ export class CompanionRouter {
         200,
         {
           service: "agent-control-plane",
-          version: "0.4.0",
+          version: this.config.version ?? "0.0.0",
           default_executor: this.orchestrator.getDefaultExecutorId?.() ?? "auto",
           executors: this.orchestrator.getExecutors?.() ?? [],
           profiles: publicProfiles(this.config),

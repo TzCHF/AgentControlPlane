@@ -237,7 +237,7 @@ export async function createApplication(overrides = {}) {
         sendJson(response, 200, {
           status: "ok",
           service: "agent-control-plane",
-          version: "0.4.0",
+          version: config.version ?? "0.0.0",
           default_executor: defaultExecutor,
           executor_ready:
             executors.find((executor) => executor.id === defaultExecutor)?.ready ??

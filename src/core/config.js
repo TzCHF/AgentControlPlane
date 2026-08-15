@@ -7,6 +7,17 @@ import { ControlPlaneError } from "./errors.js";
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(moduleDir, "..", "..");
 
+export function readPackageVersion() {
+  try {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(projectRoot, "package.json"), "utf8"),
+    );
+    return typeof pkg.version === "string" ? pkg.version : "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+
 function versionParts(name) {
   const match = name.match(/^(\d+)\.(\d+)\.(\d+)-x86_64-pc-windows-msvc$/);
   return match ? match.slice(1).map(Number) : null;
@@ -297,6 +308,7 @@ export function loadConfig(configPath = process.env.AGENT_CONTROL_CONFIG) {
   config.stateDir = path.resolve(
     process.env.AGENT_CONTROL_STATE_DIR ?? defaultStateDir,
   );
+  config.version = readPackageVersion();
   if (
     config.workspaceRoots.some(
       (root) => isInside(root, config.stateDir) || isInside(config.stateDir, root),

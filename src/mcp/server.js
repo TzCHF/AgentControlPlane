@@ -9,8 +9,9 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { asErrorPayload } from "../core/errors.js";
 import { publicModels } from "../core/profiles.js";
+import { readPackageVersion } from "../core/config.js";
 
-const SERVER_INFO = { name: "agent-control-plane", version: "0.4.0" };
+const SERVER_INFO = { name: "agent-control-plane" };
 
 // OpenAI negotiates this protocol version through its connector flow.
 // Prefer it over the SDK's latest so the discovery handshake matches what
@@ -312,9 +313,13 @@ export function createMcpHandler({ orchestrator, store, config }) {
   const transports = new Map();
   const idleTimeoutMs = config.server.mcpSessionIdleMinutes * 60 * 1000;
   const toolSpecs = buildToolSpecs({ orchestrator, store, config });
+  const serverInfo = {
+    ...SERVER_INFO,
+    version: config.version ?? readPackageVersion(),
+  };
 
   function buildServer() {
-    const server = new McpServer(SERVER_INFO);
+    const server = new McpServer(serverInfo);
     for (const spec of toolSpecs) {
       server.registerTool(
         spec.name,
@@ -337,7 +342,7 @@ export function createMcpHandler({ orchestrator, store, config }) {
   function discoverResult() {
     return {
       protocolVersion: DISCOVERY_PROTOCOL_VERSION,
-      serverInfo: SERVER_INFO,
+      serverInfo,
       capabilities: {
         tools: { listChanged: false },
         resources: { listChanged: false, subscribe: false },
