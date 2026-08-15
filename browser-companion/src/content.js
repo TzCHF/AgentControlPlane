@@ -44,6 +44,9 @@
       confirmDispatch: () => confirmFromPanel().catch(reportError),
       disconnect: () => disconnect().catch(reportError),
       settings: (values) => saveSettings(values).catch(reportError),
+      history: () => loadHistory().catch(reportError),
+      continueProject: (taskId) => startFollowUp(taskId),
+      sendFollowUp: () => sendFollowUp().catch(reportError),
     },
   });
 
@@ -70,6 +73,47 @@
     panel.setOptions(options, currentState.settings);
     panel.setHint(t("hintConnected"));
     panel.setStatus(t("connected", { executor: options.default_executor }), "success");
+    message("ACP_TASK_LIST", { limit: 20 })
+      .then((response) => panel.setTasks(response.tasks ?? []))
+      .catch(() => null);
+  }
+
+  async function loadHistory() {
+    if (!currentState?.connected) await refreshState();
+    if (!currentState?.connected) throw new Error(t("pairBeforeDispatch"));
+    const response = await message("ACP_TASK_LIST", { limit: 20 });
+    const tasks = response.tasks ?? [];
+    panel.setTasks(tasks);
+    panel.open();
+    panel.setStatus(t("historyLoaded", { count: tasks.length }), "success");
+  }
+
+  let followUpTaskId = null;
+
+  function startFollowUp(taskId) {
+    followUpTaskId = taskId;
+    panel.open();
+    panel.setFollowUpVisible(true);
+    panel.setStatus(t("followUpPrompt"), "normal");
+  }
+
+  async function sendFollowUp() {
+    if (!followUpTaskId) throw new Error(t("followUpEmpty"));
+    const objective = String(panel.getValues().followUp ?? "").trim();
+    if (!objective) throw new Error(t("followUpEmpty"));
+    const response = await message("ACP_FOLLOW_UP", {
+      taskId: followUpTaskId,
+      request: { objective },
+    });
+    followUpTaskId = null;
+    panel.setFollowUpVisible(false);
+    panel.open();
+    panel.setStatus(
+      t("followUpQueued", { id: response.task.id.slice(0, 8) }),
+      "success",
+    );
+    await pollTask(response.task.id);
+    loadHistory().catch(() => null);
   }
 
   async function saveSettings(values) {
@@ -271,6 +315,9 @@
               : t("taskStatus", { id, status: latest.status }),
             latest.status === "completed" ? "success" : "error",
           );
+          message("ACP_TASK_LIST", { limit: 20 })
+            .then((response) => panel.setTasks(response.tasks ?? []))
+            .catch(() => null);
           return latest;
         }
         await delay(2000);

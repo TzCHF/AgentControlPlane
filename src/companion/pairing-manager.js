@@ -202,6 +202,10 @@ export class PairingManager {
     return Boolean(this.state.clients[clientId]?.task_ids.includes(taskId));
   }
 
+  listTaskIds(clientId) {
+    return structuredClone(this.state.clients[clientId]?.task_ids ?? []);
+  }
+
   revoke(clientId) {
     if (!this.state.clients[clientId]) return false;
     delete this.state.clients[clientId];

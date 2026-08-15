@@ -199,6 +199,10 @@ async function handle(message) {
       if (result.task?.terminal) await forgetActiveTask(message.taskId);
       return result;
     }
+    case "ACP_TASK_LIST": {
+      const limit = Number(message.limit) || 20;
+      return api(`/v1/companion/tasks?limit=${Math.min(50, limit)}`);
+    }
     case "ACP_FOLLOW_UP":
       return api(`/v1/companion/tasks/${encodeURIComponent(message.taskId)}/follow-up`, {
         method: "POST",

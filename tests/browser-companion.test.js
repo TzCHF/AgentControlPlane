@@ -14,6 +14,18 @@ import {
   detectAdapter,
   supportedAdapters,
 } from "../browser-companion/src/site-adapters.js";
+import { STRINGS } from "../browser-companion/src/i18n.js";
+
+test("companion strings have matching zh and en keys", () => {
+  assert.deepEqual(
+    Object.keys(STRINGS.zh).sort(),
+    Object.keys(STRINGS.en).sort(),
+  );
+  for (const key of Object.keys(STRINGS.en)) {
+    assert.ok(STRINGS.zh[key], `zh.${key} is non-empty`);
+    assert.ok(STRINGS.en[key], `en.${key} is non-empty`);
+  }
+});
 
 test("extracts and normalizes a local ACP task envelope", () => {
   const envelope = {
@@ -148,7 +160,7 @@ test("manifest grants only known AI sites by default", () => {
     ),
   );
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, "0.4.3");
+  assert.equal(manifest.version, "0.4.5");
   assert.ok(manifest.host_permissions.includes("https://chatgpt.com/*"));
   assert.ok(manifest.host_permissions.includes("https://chat.deepseek.com/*"));
   assert.ok(manifest.optional_host_permissions.includes("https://*/*"));

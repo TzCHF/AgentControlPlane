@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.4.5 — 2026-08-16
+
+Companion task history and project continuation.
+
+### Added
+
+- The companion panel lists recent tasks dispatched by this paired client,
+  with status, start time, actual minutes, executor, model, profile, token
+  usage, and the result summary (`GET /v1/companion/tasks`, scoped to the
+  paired client's own tasks).
+- Completed tasks carry a Continue project button that accepts a follow-up
+  instruction and dispatches a child task in the same workspace through
+  `continue_project`; the panel then tracks the child task with the live
+  timer and progress bar.
+- Task history refreshes automatically after pairing and after every task
+  reaches a terminal status.
+
+### Verified
+
+- 86 tests pass locally, including companion task-list scoping, client
+  isolation, and i18n key parity.
+- Companion copy passes the grounded-copy gate with 0 findings.
+
 ## v0.4.4 — 2026-08-16
 
 Local read-only web panel.

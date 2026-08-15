@@ -80,10 +80,12 @@ function publicTask(task) {
     terminal: TERMINAL_STATUSES.has(task.status),
     workspace: task.workspace,
     executor: task.executor,
+    objective: task.brief?.objective ?? null,
     executor_session_id: task.executorSessionId ?? null,
     estimated_minutes: task.estimatedMinutes ?? null,
     actual_minutes: actualMinutes,
     profile: task.policy?.name ?? null,
+    model: task.policy?.model ?? null,
     created_at: task.createdAt,
     started_at: task.startedAt,
     completed_at: task.completedAt,
@@ -305,6 +307,21 @@ export class CompanionRouter {
       const task = this.orchestrator.dispatch(body);
       this.pairingManager.rememberTask(client.id, task.id);
       sendJson(response, 202, { task: publicTask(task) }, cors);
+      return true;
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/companion/tasks") {
+      const limit = Math.min(
+        50,
+        Math.max(1, Number(url.searchParams.get("limit") ?? 20)),
+      );
+      const tasks = this.pairingManager
+        .listTaskIds(client.id)
+        .slice(0, limit)
+        .map((taskId) => this.store.getTask(taskId))
+        .filter(Boolean)
+        .map((task) => publicTask(task));
+      sendJson(response, 200, { tasks }, cors);
       return true;
     }
 

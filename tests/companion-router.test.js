@@ -175,6 +175,12 @@ test("pairs, dispatches, reads, follows up, and cancels scoped tasks", async () 
     assert.equal(status.status, 200);
     assert.equal((await status.json()).task.id, dispatched.id);
 
+    const list = await fetch(`${baseUrl}/v1/companion/tasks`, { headers });
+    assert.equal(list.status, 200);
+    const listed = (await list.json()).tasks;
+    assert.equal(listed[0].id, dispatched.id);
+    assert.equal(listed[0].objective, "Create hello.txt");
+
     const followUp = await fetch(
       `${baseUrl}/v1/companion/tasks/${dispatched.id}/follow-up`,
       {
@@ -186,6 +192,21 @@ test("pairs, dispatches, reads, follows up, and cancels scoped tasks", async () 
     assert.equal(followUp.status, 202);
     const child = (await followUp.json()).task;
     assert.equal(child.parent_task_id, dispatched.id);
+
+    const listAfterFollowUp = await fetch(
+      `${baseUrl}/v1/companion/tasks`,
+      { headers },
+    );
+    const afterFollowUp = (await listAfterFollowUp.json()).tasks;
+    assert.equal(afterFollowUp[0].id, child.id);
+    assert.equal(afterFollowUp[0].parent_task_id, dispatched.id);
+
+    const otherToken = await pair(baseUrl);
+    const otherList = await fetch(`${baseUrl}/v1/companion/tasks`, {
+      headers: { origin, authorization: `Bearer ${otherToken}` },
+    });
+    assert.equal(otherList.status, 200);
+    assert.deepEqual((await otherList.json()).tasks, []);
 
     const cancelled = await fetch(
       `${baseUrl}/v1/companion/tasks/${child.id}/cancel`,
