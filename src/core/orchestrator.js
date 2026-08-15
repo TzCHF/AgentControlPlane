@@ -691,6 +691,7 @@ export class Orchestrator extends EventEmitter {
       if (
         enforceBudget &&
         !active.completing &&
+        !active.finalMessage &&
         latest.status === "running" &&
         overBudget &&
         !active.budgetInterruptRequested
@@ -943,21 +944,34 @@ export class Orchestrator extends EventEmitter {
       active?.finalMessage ?? null,
     );
     const budgetInterrupted = Boolean(active?.budgetInterruptRequested);
-    const finalStatus = budgetInterrupted
-      ? "interrupted"
-      : params.turn.status === "completed"
+    const turnFinished = params.turn.status === "completed";
+    const finalStatus =
+      turnFinished && report.status
         ? report.status
-        : params.turn.status;
-    const error = budgetInterrupted
-      ? {
-          code: "token_budget_exceeded",
-          message: `Task exceeded its token budget of ${current.policy.tokenBudget} tokens and was interrupted.`,
-          details: {
-            budget: current.policy.tokenBudget,
-            measured: active?.budgetMeasuredTokens ?? null,
-          },
-        }
-      : params.turn.error ?? null;
+        : budgetInterrupted
+          ? "interrupted"
+          : turnFinished
+            ? report.status
+            : params.turn.status;
+    const error =
+      budgetInterrupted && !(turnFinished && report.status)
+        ? {
+            code: "token_budget_exceeded",
+            message: `Task exceeded its token budget of ${current.policy.tokenBudget} tokens and was interrupted.`,
+            details: {
+              budget: current.policy.tokenBudget,
+              measured: active?.budgetMeasuredTokens ?? null,
+            },
+          }
+        : params.turn.error ?? null;
+    if (budgetInterrupted && turnFinished && report.status) {
+      this.store.addEvent(taskId, {
+        type: "task.budget_exceeded_after_completion",
+        budget: current.policy.tokenBudget,
+        measured: active?.budgetMeasuredTokens ?? null,
+        note: "The executor delivered its final report; the task keeps its completed status.",
+      });
+    }
     this.store.updateTask(taskId, {
       status: finalStatus,
       result: report,
