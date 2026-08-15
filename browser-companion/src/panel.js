@@ -35,7 +35,7 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
           <p class="hint">${t("defaultsHint")}</p>
           <div class="actions"><button data-action="latest">${t("useLatest")}</button><button data-action="disconnect">${t("disconnect")}</button></div>
           <div class="stack"><label>${t("workspaceLabel")}</label><select data-field="workspace"><option value="">${t("selectAfterPairing")}</option></select></div>
-          <div class="row"><div><label>${t("profileLabel")}</label><select data-field="profile"><option value="economy">${t("profileEconomy")}</option><option value="balanced">${t("profileBalanced")}</option><option value="deep">${t("profileDeep")}</option></select></div><div><label>${t("executorLabel")}</label><select data-field="executor"><option value="auto">${t("executorAuto")}</option></select></div></div>
+          <div class="row"><div><label>${t("profileLabel")}</label><select data-field="profile"><option value="auto">${t("profileAuto")}</option><option value="economy">${t("profileEconomy")}</option><option value="balanced">${t("profileBalanced")}</option><option value="deep">${t("profileDeep")}</option></select></div><div><label>${t("executorLabel")}</label><select data-field="executor"><option value="auto">${t("executorAuto")}</option></select></div></div>
           <div class="stack"><label>${t("objectiveLabel")}</label><textarea data-field="objective" placeholder="${t("objectivePlaceholder")}"></textarea></div>
           <div class="stack"><label>${t("confirmLabel")}</label><input data-field="confirmWords" placeholder="${t("confirmPlaceholder")}"></div>
           <label class="toggle"><input type="checkbox" data-field="autoSubmitResults"> ${t("autoSubmitLabel")}</label>

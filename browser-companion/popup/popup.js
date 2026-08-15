@@ -70,7 +70,7 @@ async function refresh() {
   }
   const available = await message("ACP_OPTIONS");
   options(elements.workspace, available.workspaces, current.settings.workspace);
-  options(elements.profile, Object.keys(available.profiles), current.settings.profile);
+  options(elements.profile, ["auto", ...Object.keys(available.profiles)], current.settings.profile);
   options(
     elements.executor,
     ["auto", ...available.executors.filter((entry) => entry.discovery?.available !== false).map((entry) => entry.id)],

@@ -72,6 +72,22 @@ test("string context and constraints from the web AI become string arrays", () =
   assert.deepEqual(request.constraints, ["Touch only hello.txt"]);
 });
 
+test("auto profile resolves from objective difficulty", () => {
+  const base = { workspace: "C:\\approved-project", executor: "auto", profile: "auto" };
+  assert.equal(
+    normalizeDispatch({ objective: "重构整个模块的架构" }, base).profile,
+    "deep",
+  );
+  assert.equal(
+    normalizeDispatch({ objective: "写一个 hello 示例" }, base).profile,
+    "economy",
+  );
+  assert.equal(
+    normalizeDispatch({ objective: "给接口加参数校验" }, base).profile,
+    "balanced",
+  );
+});
+
 test("formats terminal results and creates stable envelope identifiers", () => {
   const task = {
     id: "task-1",

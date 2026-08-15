@@ -24,18 +24,37 @@ export function extractTaskEnvelope(text) {
   }
 }
 
+export function autoProfile(objective) {
+  const text = String(objective ?? "");
+  if (
+    /(架构|重构|迁移|大规模|性能优化|安全审计|全面检查|深度)/.test(text) ||
+    text.length > 400
+  ) {
+    return "deep";
+  }
+  if (
+    /(最小|简单|单文件|一行|小修|微调|示例|hello|demo)/i.test(text) &&
+    text.length < 200
+  ) {
+    return "economy";
+  }
+  return "balanced";
+}
+
 export function normalizeDispatch(envelope, settings = {}) {
   const objective = boundedString(envelope?.objective);
   const workspace = boundedString(settings.workspace, 4096);
   if (!objective) throw new Error("The ACP task has no objective");
   if (!workspace) throw new Error("Select a local workspace before dispatch");
+  const requestedProfile = boundedString(
+    envelope?.profile ?? settings.profile ?? "balanced",
+    40,
+  );
   const request = {
     workspace,
     objective,
-    profile: boundedString(
-      envelope?.profile ?? settings.profile ?? "balanced",
-      40,
-    ),
+    profile:
+      requestedProfile === "auto" ? autoProfile(objective) : requestedProfile,
     executor: boundedString(
       envelope?.executor ?? settings.executor ?? "auto",
       80,
