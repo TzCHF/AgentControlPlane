@@ -45,10 +45,16 @@
     panel.setStatus(error.message, "error");
   }
 
+  const UNPAIRED_HINT =
+    "① 点「配对」，在自动打开的批准页点「批准」<br>② 批准后控制器指令会自动放进输入框，点发送<br>③ 网页 AI 输出任务块后自动派发，结果在此显示";
+  const CONNECTED_HINT =
+    "已连接。新对话：控制器指令已自动放入输入框，发送即可。<br>旧对话：直接描述需求，网页 AI 输出任务块后自动派发。";
+
   async function refreshState() {
     currentState = await message("ACP_STATE");
     panel.setSettings(currentState.settings);
     if (!currentState.connected) {
+      panel.setHint(UNPAIRED_HINT);
       panel.setStatus(
         currentState.pending
           ? `Pairing code ${formatCode(currentState.pending.code)} is waiting for approval 配对码 ${formatCode(currentState.pending.code)} 等待批准`
@@ -57,7 +63,9 @@
       return;
     }
     const options = await message("ACP_OPTIONS");
+    currentState.options = options;
     panel.setOptions(options, currentState.settings);
+    panel.setHint(CONNECTED_HINT);
     panel.setStatus(`Connected · ${options.default_executor} 已连接 · ${options.default_executor}`, "success");
   }
 
@@ -87,11 +95,23 @@
       const pairing = await message("ACP_PAIR_STATUS");
       if (pairing.status === "connected") {
         await refreshState();
+        await autoTeach();
         return;
       }
       if (pairing.status === "expired") break;
     }
     throw new Error("Pairing request expired 配对请求已过期");
+  }
+
+  async function autoTeach() {
+    try {
+      await teach();
+    } catch (error) {
+      panel.setStatus(
+        `Paired, but the controller prompt could not be inserted 已配对，但未能自动插入控制器指令：${error.message}，请点「教导网页 AI」`,
+        "error",
+      );
+    }
   }
 
   async function teach() {
@@ -129,10 +149,14 @@
   async function dispatchEnvelope(envelope, settings = currentState?.settings) {
     if (!currentState?.connected) await refreshState();
     if (!currentState?.connected) throw new Error("Pair the companion before dispatch 派发前请先配对");
-    const request = protocol.normalizeDispatch(envelope, {
+    const resolvedSettings = {
       ...currentState.settings,
       ...settings,
-    });
+    };
+    if (!resolvedSettings.workspace) {
+      resolvedSettings.workspace = currentState.options?.workspaces?.[0] ?? "";
+    }
+    const request = protocol.normalizeDispatch(envelope, resolvedSettings);
     const response = await message("ACP_DISPATCH", {
       request,
       pageUrl: location.href,

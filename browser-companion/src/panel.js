@@ -26,6 +26,7 @@ export function createPanel({ adapterId, handlers }) {
   const panel = shadow.querySelector(".panel");
   const status = shadow.querySelector(".status");
   const badge = shadow.querySelector(".badge");
+  const hint = shadow.querySelector(".hint");
   const fields = Object.fromEntries(
     [...shadow.querySelectorAll("[data-field]")].map((element) => [
       element.dataset.field,
@@ -86,6 +87,9 @@ export function createPanel({ adapterId, handlers }) {
     setStatus(value, kind = "normal") {
       status.textContent = value;
       status.style.color = kind === "error" ? "#f85149" : kind === "success" ? "#3fb950" : "#8b949e";
+    },
+    setHint(html) {
+      hint.innerHTML = html;
     },
     open() {
       panel.classList.add("open");
