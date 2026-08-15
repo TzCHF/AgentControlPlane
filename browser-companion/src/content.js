@@ -208,10 +208,18 @@
       const response = await message("ACP_TASK_STATUS", { taskId });
       const task = response.task;
       const id = task.id.slice(0, 8);
+      const eta = task.estimated_minutes;
+      const session = task.executor_session_id;
+      const statusKey =
+        eta != null
+          ? session
+            ? "taskStatusSessionEta"
+            : "taskStatusEta"
+          : session
+            ? "taskStatusSession"
+            : "taskStatus";
       panel.setStatus(
-        task.executor_session_id
-          ? t("taskStatusSession", { id, status: task.status, session: task.executor_session_id })
-          : t("taskStatus", { id, status: task.status }),
+        t(statusKey, { id, status: task.status, eta, session }),
       );
       if (task.terminal) {
         const result = protocol.formatTaskResult(task);

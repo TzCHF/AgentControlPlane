@@ -48,6 +48,9 @@ export const STRINGS = {
     taskQueuedEta: "Task {id} queued · estimated {eta} min",
     taskStatus: "Task {id} · {status}",
     taskStatusSession: "Task {id} · {status} · session {session}",
+    taskStatusEta: "Task {id} · {status} · estimated {eta} min",
+    taskStatusSessionEta:
+      "Task {id} · {status} · estimated {eta} min · session {session}",
     taskDoneActual: "Task {id} · {status} · took {minutes} min",
     monitorTimeout: "Task monitoring timed out",
     taskFinishedNoComposer:
@@ -120,6 +123,9 @@ export const STRINGS = {
     taskQueuedEta: "任务 {id} 已排队 · 预计约 {eta} 分钟",
     taskStatus: "任务 {id} · {status}",
     taskStatusSession: "任务 {id} · {status} · 会话 {session}",
+    taskStatusEta: "任务 {id} · {status} · 预计约 {eta} 分钟",
+    taskStatusSessionEta:
+      "任务 {id} · {status} · 预计约 {eta} 分钟 · 会话 {session}",
     taskDoneActual: "任务 {id} · {status} · 耗时约 {minutes} 分钟",
     monitorTimeout: "任务监控超时",
     taskFinishedNoComposer: "任务已完成，但未找到网页 AI 输入框",
