@@ -27,7 +27,8 @@
         "apiKey": null,
         "model": null,
         "protocol": "chat",
-        "models": []
+        "models": [],
+        "requestsPerMinute": 10
       }
     ]
   }

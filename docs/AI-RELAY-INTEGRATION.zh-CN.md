@@ -57,7 +57,8 @@ AI 中转站 -> 上游模型（DeepSeek、GLM、OpenAI ...）
         "apiKey": "sk-your-relay-key",
         "model": null,
         "protocol": "chat",
-        "models": []
+        "models": [],
+        "requestsPerMinute": 10
       },
       {
         "id": "secondary",
@@ -75,6 +76,7 @@ AI 中转站 -> 上游模型（DeepSeek、GLM、OpenAI ...）
 
 - `id` 必填，且要与内置执行器 id（`codex`、`openai-compatible`、`deepseek`、`claude`、`opencode`）不同。
 - `apiKeyEnv` 指定环境变量名；当 `apiKey` 为空时从该环境变量取密钥，密钥可以不出现在配置文件里。
+- `requestsPerMinute` 控制对中转站的补全请求节奏：60 秒滑动窗口内超过上限时执行器会等待再发。执行器对 429 响应自动重试两次并遵守 `retry-after` 头。`/v1/models` 目录发现请求单独限速，不占用该额度。
 - 派发时用 `"executor": "asterroute"` 或显示名选中中转；每个中转的目录会出现在 `list_models`、网页面板，以及伴侣执行器列表的「模型端点」分组中。
 
 ## 实时模型目录

@@ -33,6 +33,7 @@ test("buildExecutors registers each relay as a model-endpoint executor", () => {
         apiKey: "k",
         protocol: "chat",
         models: ["relay-model-a"],
+        requestsPerMinute: 10,
       },
       {
         id: "secondary",
@@ -46,11 +47,13 @@ test("buildExecutors registers each relay as a model-endpoint executor", () => {
   assert.equal(asterroute.describe().display_name, "AsterRoute");
   assert.equal(asterroute.describe().kind, "model-endpoint");
   assert.deepEqual(asterroute.staticModels, ["relay-model-a"]);
+  assert.equal(asterroute.requestsPerMinute, 10);
 
   const secondary = executors.get("secondary");
   assert.ok(secondary);
   assert.equal(secondary.describe().display_name, "secondary");
   assert.deepEqual(secondary.staticModels, []);
+  assert.equal(secondary.requestsPerMinute, null);
 });
 
 test("relay ids must be non-empty and must not collide with built-ins", () => {

@@ -4,7 +4,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { OpenAICompatibleExecutor } from "../src/executors/openai-compatible-executor.js";
+import {
+  OpenAICompatibleExecutor,
+  computeCompletionWait,
+} from "../src/executors/openai-compatible-executor.js";
 import { assertLifecycle } from "../src/executors/lifecycle.js";
 
 function createMockServer() {
@@ -326,6 +329,104 @@ test("runs a tool loop against a chat-completions endpoint", async () => {
     .filter((entry) => entry.method === "thread/tokenUsage/updated")
     .at(-1);
   assert.equal(usageEvent.params.tokenUsage.last.totalTokens, 45);
+
+  await executor.stop();
+  await new Promise((resolve) => server.close(resolve));
+});
+
+test("computeCompletionWait paces a 60-second sliding window", () => {
+  const now = 1_000_000;
+  assert.deepEqual(computeCompletionWait([], 10, now), { waitMs: 0, next: [now] });
+  assert.deepEqual(computeCompletionWait([], null, now), { waitMs: 0, next: null });
+  const full = Array.from({ length: 10 }, (_, index) => now - 59000 + index * 100);
+  const result = computeCompletionWait(full, 10, now);
+  assert.equal(result.waitMs, full[0] + 60000 - now + 5);
+  assert.equal(result.next.length, 10);
+  assert.equal(result.next.at(-1), now + result.waitMs);
+  const underLimit = computeCompletionWait(full.slice(0, 9), 10, now);
+  assert.equal(underLimit.waitMs, 0);
+  assert.equal(underLimit.next.length, 10);
+});
+
+test("retries 429 responses and completes the chat turn", async () => {
+  let attempts = 0;
+  const server = http.createServer(async (req, res) => {
+    for await (const chunk of req) void chunk;
+    res.setHeader("content-type", "application/json");
+    if (req.method === "POST" && req.url === "/v1/chat/completions") {
+      attempts += 1;
+      if (attempts === 1) {
+        res.statusCode = 429;
+        res.setHeader("retry-after", "1");
+        res.end(JSON.stringify({ error: { message: "rate_limit_exceeded" } }));
+        return;
+      }
+      res.end(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                role: "assistant",
+                content: JSON.stringify({
+                  status: "completed",
+                  summary: "Done after retry",
+                  changed_files: [],
+                  tests: [],
+                  blockers: [],
+                  next_action: null,
+                }),
+              },
+            },
+          ],
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 5,
+            total_tokens: 15,
+            prompt_tokens_details: { cached_tokens: 0 },
+            completion_tokens_details: { reasoning_tokens: 0 },
+          },
+        }),
+      );
+      return;
+    }
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: "not found" }));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "acp-429-work-"));
+  const executor = new OpenAICompatibleExecutor({
+    baseUrl,
+    model: "m",
+    protocol: "chat",
+    workspaceRoots: [workspace],
+  });
+  await executor.start();
+
+  const notifications = [];
+  executor.on("notification", (message) => notifications.push(message));
+
+  const { thread } = await executor.startThread({ cwd: workspace });
+  await executor.setGoal({ threadId: thread.id, objective: "x", tokenBudget: 5000 });
+  await executor.startTurn({
+    threadId: thread.id,
+    input: [{ type: "text", text: "x" }],
+    model: "m",
+    cwd: workspace,
+    outputSchema: {},
+  });
+
+  await waitFor(() =>
+    notifications.some((entry) => entry.method === "turn/completed"),
+  );
+  const completed = notifications.find(
+    (entry) => entry.method === "turn/completed",
+  );
+  assert.equal(
+    JSON.parse(completed.params.turn.items[0].text).summary,
+    "Done after retry",
+  );
+  assert.equal(attempts, 2);
 
   await executor.stop();
   await new Promise((resolve) => server.close(resolve));

@@ -109,7 +109,19 @@ function runShell(workspace, command, timeoutMs = 30000) {
   });
 }
 
+export function computeCompletionWait(timestamps, limit, nowMs, windowMs = 60000) {
+  if (!limit || Number(limit) <= 0) return { waitMs: 0, next: null };
+  const recent = timestamps.filter((at) => at > nowMs - windowMs);
+  if (recent.length < limit) {
+    return { waitMs: 0, next: [...recent, nowMs] };
+  }
+  const waitMs = Math.max(0, recent[0] + windowMs - nowMs + 5);
+  return { waitMs, next: [...recent.slice(1), nowMs + waitMs] };
+}
+
 export class OpenAICompatibleExecutor extends ExecutorAdapter {
+  #completionTimes = [];
+
   constructor({
     id = "openai-compatible",
     displayName = "OpenAI Compatible",
@@ -121,6 +133,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     maxToolRounds = 20,
     workspaceRoots = [],
     models = [],
+    requestsPerMinute = null,
   } = {}) {
     super({
       id,
@@ -147,6 +160,8 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     this.requestTimeoutMs = requestTimeoutMs;
     this.maxToolRounds = maxToolRounds;
     this.workspaceRoots = workspaceRoots;
+    const rpm = Number(requestsPerMinute);
+    this.requestsPerMinute = Number.isFinite(rpm) && rpm > 0 ? rpm : null;
     this.goals = new Map();
     this.turns = new Map();
   }
@@ -630,8 +645,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       stream: false,
       max_tokens: 4000,
     };
-    const response = await this.#fetchJson(
-      "POST",
+    const response = await this.#requestCompletion(
       "/chat/completions",
       body,
       controller,
@@ -681,11 +695,55 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       stream: false,
       max_output_tokens: 4000,
     };
-    const response = await this.#fetchJson("POST", "/responses", body, controller);
+    const response = await this.#requestCompletion("/responses", body, controller);
     return {
       output: response?.output ?? [],
       usage: response?.usage ?? this.#zeroUsage(),
     };
+  }
+
+  async #paceCompletionRequest() {
+    if (!this.requestsPerMinute) return;
+    const { waitMs, next } = computeCompletionWait(
+      this.#completionTimes,
+      this.requestsPerMinute,
+      Date.now(),
+    );
+    this.#completionTimes = next ?? [];
+    if (waitMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+
+  async #requestCompletion(pathname, body, controller) {
+    const headers = { "content-type": "application/json" };
+    if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`;
+    for (let attempt = 0; ; attempt += 1) {
+      await this.#paceCompletionRequest();
+      const response = await fetch(`${this.baseUrl}${pathname}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        signal: controller?.signal,
+      });
+      if (response.status === 429 && attempt < 2) {
+        const retryAfter = Number(response.headers.get("retry-after"));
+        const delayMs =
+          Number.isFinite(retryAfter) && retryAfter > 0
+            ? Math.min(30000, retryAfter * 1000)
+            : 2000 * (attempt + 1);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        throw new ControlPlaneError(
+          "upstream_error",
+          `OpenAI-compatible endpoint returned ${response.status}: ${text.slice(0, 200)}`,
+        );
+      }
+      return response.json();
+    }
   }
 
   async #fetchJson(method, pathname, body, controller) {

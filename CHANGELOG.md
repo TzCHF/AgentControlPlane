@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.4.9 — 2026-08-16
+
+Relay request pacing and 429 retries.
+
+### Added
+
+- Per-relay `requestsPerMinute` setting paces completion requests with a
+  60-second sliding window; the executor waits when the next request would
+  exceed the relay's limit. The `openaiCompat` and `deepseek` endpoints
+  accept the same setting.
+- Completion requests to model endpoints retry 429 responses twice,
+  honoring the `retry-after` header; `/v1/models` discovery stays outside
+  the pacing window and is unaffected.
+- Integration guide documents the setting in both languages.
+
+### Verified
+
+- 93 tests pass locally, including sliding-window pacing math, a 429-then-
+  success chat turn, and relay config wiring.
+- Docs pass the grounded-copy gate with 0 findings.
+
 ## v0.4.8 — 2026-08-16
 
 Service version markers in the companion UI.

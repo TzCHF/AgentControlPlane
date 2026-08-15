@@ -42,14 +42,16 @@
       "baseUrl": null,
       "apiKey": null,
       "model": null,
-      "protocol": "responses"
+      "protocol": "responses",
+      "requestsPerMinute": null
     },
     "deepseek": {
       "baseUrl": "https://api.deepseek.com/v1",
       "apiKeyEnv": "DEEPSEEK_API_KEY",
       "model": "deepseek-chat",
       "protocol": "chat",
-      "models": ["deepseek-chat", "deepseek-reasoner"]
+      "models": ["deepseek-chat", "deepseek-reasoner"],
+      "requestsPerMinute": null
     },
     "relays": [],
     "claude": {

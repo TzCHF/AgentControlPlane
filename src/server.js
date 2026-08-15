@@ -32,6 +32,7 @@ export function buildExecutor(config, provider) {
         null,
       model: options.model,
       protocol: options.protocol,
+      requestsPerMinute: options.requestsPerMinute ?? null,
       workspaceRoots: config.workspaceRoots,
     });
   }
@@ -44,6 +45,7 @@ export function buildExecutor(config, provider) {
       apiKey: process.env[options.apiKeyEnv] ?? options.apiKey ?? null,
       model: options.model,
       protocol: options.protocol,
+      requestsPerMinute: options.requestsPerMinute ?? null,
       workspaceRoots: config.workspaceRoots,
     });
   }
@@ -111,6 +113,7 @@ export function buildExecutors(config) {
         model: relay.model,
         protocol: relay.protocol,
         models: relay.models ?? [],
+        requestsPerMinute: relay.requestsPerMinute ?? null,
         workspaceRoots: config.workspaceRoots,
       }),
     );
