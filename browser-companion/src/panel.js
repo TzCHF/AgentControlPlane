@@ -121,22 +121,33 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
       )
       .join("");
     const executors = options?.executors ?? [];
-    const available = executors
-      .filter((entry) => entry.discovery?.available !== false)
-      .map((entry) => ({ id: entry.id, label: entry.display_name ?? entry.id }));
-    const unavailable = executors
-      .filter((entry) => entry.discovery?.available === false)
-      .map((entry) => ({ id: entry.id, label: entry.display_name ?? entry.id }));
+    const ENDPOINT_IDS = new Set(["openai-compatible", "deepseek"]);
+    const optionFor = (entry, disabled = false) => {
+      const label = entry.display_name ?? entry.id;
+      return disabled
+        ? `<option value="${escapeAttribute(entry.id)}" disabled>${escapeText(label)}（${t("executorUnavailable")}）</option>`
+        : `<option value="${escapeAttribute(entry.id)}">${escapeText(label)}</option>`;
+    };
+    const group = (ids) =>
+      executors
+        .filter((entry) => ids.has(entry.id))
+        .flatMap((entry) => [
+          optionFor(entry, entry.discovery?.available === false),
+        ]);
     fields.executor.innerHTML = [
       `<option value="auto">${t("executorAuto")}</option>`,
-      ...available.map(
-        (entry) =>
-          `<option value="${escapeAttribute(entry.id)}">${escapeText(entry.label)}</option>`,
+      `<optgroup label="${t("executorGroupAgents")}">`,
+      ...group(
+        new Set(
+          executors
+            .filter((entry) => !ENDPOINT_IDS.has(entry.id))
+            .map((entry) => entry.id),
+        ),
       ),
-      ...unavailable.map(
-        (entry) =>
-          `<option value="${escapeAttribute(entry.id)}" disabled>${escapeText(entry.label)}（${t("executorUnavailable")}）</option>`,
-      ),
+      `</optgroup>`,
+      `<optgroup label="${t("executorGroupEndpoints")}">`,
+      ...group(ENDPOINT_IDS),
+      `</optgroup>`,
     ].join("");
     applySettings(settings);
   }

@@ -11,6 +11,8 @@ export const STRINGS = {
     executorLabel: "Executor",
     executorAuto: "auto · automatic",
     executorUnavailable: "unavailable",
+    executorGroupAgents: "Third-party agents",
+    executorGroupEndpoints: "Model endpoints",
     objectiveLabel: "Objective or ACP_TASK envelope (usually auto-filled)",
     objectivePlaceholder: "Describe the engineering task",
     confirmLabel:
@@ -82,6 +84,8 @@ export const STRINGS = {
     executorLabel: "执行器",
     executorAuto: "auto · 自动",
     executorUnavailable: "不可用",
+    executorGroupAgents: "第三方 agent",
+    executorGroupEndpoints: "模型端点",
     objectiveLabel: "目标或 ACP_TASK 信封（通常自动填入）",
     objectivePlaceholder: "描述工程任务",
     confirmLabel: "自定义确认词（逗号分隔；默认已含 执行 / 开始 / yes …）",

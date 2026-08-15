@@ -71,15 +71,32 @@ async function refresh() {
   const available = await message("ACP_OPTIONS");
   options(elements.workspace, available.workspaces, current.settings.workspace);
   options(elements.profile, ["auto", ...Object.keys(available.profiles)], current.settings.profile);
-  const executorValues = ["auto", ...available.executors.filter((entry) => entry.discovery?.available !== false).map((entry) => entry.id)];
-  const executorOptions = executorValues.map((value) => {
-    const entry = available.executors.find((item) => item.id === value);
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = value === "auto" ? t("executorAuto") : entry?.display_name ?? value;
-    return option;
-  });
-  elements.executor.replaceChildren(...executorOptions);
+  const executors = available.executors;
+  const ENDPOINT_IDS = new Set(["openai-compatible", "deepseek"]);
+  const buildOptions = (ids) =>
+    executors
+      .filter((entry) => ids.has(entry.id))
+      .map((entry) => {
+        const option = document.createElement("option");
+        option.value = entry.id;
+        option.textContent = entry.display_name ?? entry.id;
+        option.disabled = entry.discovery?.available === false;
+        return option;
+      });
+  const autoOption = document.createElement("option");
+  autoOption.value = "auto";
+  autoOption.textContent = t("executorAuto");
+  const agentGroup = document.createElement("optgroup");
+  agentGroup.label = t("executorGroupAgents");
+  agentGroup.append(
+    ...buildOptions(
+      new Set(executors.filter((entry) => !ENDPOINT_IDS.has(entry.id)).map((entry) => entry.id)),
+    ),
+  );
+  const endpointGroup = document.createElement("optgroup");
+  endpointGroup.label = t("executorGroupEndpoints");
+  endpointGroup.append(...buildOptions(ENDPOINT_IDS));
+  elements.executor.replaceChildren(autoOption, agentGroup, endpointGroup);
   elements.executor.value = current.settings.executor;
   status(t("popupConnected", { executor: available.default_executor }), "success");
 }
