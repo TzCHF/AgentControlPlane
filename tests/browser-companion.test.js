@@ -48,6 +48,7 @@ test("controller prompt keeps local paths out of the web conversation", () => {
   assert.doesNotMatch(prompt, /Users\\private/);
   assert.match(prompt, /任务已暂存/);
   assert.match(prompt, /Dispatch is performed locally/);
+  assert.match(prompt, /Model and reasoning check/);
 });
 
 test("web envelopes cannot override the locally selected workspace", () => {

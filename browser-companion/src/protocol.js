@@ -120,6 +120,7 @@ export function controllerPrompt(settings = {}) {
     '"token_budget": an integer token cap for the task.',
     '"max_subagents": an integer subagent cap.',
     'Profiles: "economy" (small edits, low effort, 0 subagents), "balanced" (normal work, high effort, up to 2 subagents), "deep" (architecture, ultra effort, up to 4 subagents).',
+    "Model and reasoning check: before emitting the envelope, ask the user once to choose the model and the reasoning effort, unless the user already specified them or said auto. If the user says auto, choose a model and reasoning_effort that fit the task difficulty and state your choice in the line after the envelope. Copy a user-named model exactly into the \"model\" field. If the returned ACP_RESULT reports a model error, tell the user that model name was rejected and ask them to pick another one.",
     "Do not claim the task ran until an <ACP_RESULT> envelope is returned.",
     "Dispatch is performed locally: after the user replies with a confirmation word, the browser companion sends the staged envelope to the local control plane automatically. Do not claim you dispatched anything and do not tell the user to click or press anything. After the user confirms, reply only that the task is executing locally and wait for the <ACP_RESULT> envelope before reporting any outcome.",
     "After the envelope, append exactly this line so the user knows the task is only staged:",
