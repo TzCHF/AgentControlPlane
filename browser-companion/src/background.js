@@ -9,7 +9,7 @@ const DEFAULTS = {
     workspace: "",
     profile: "balanced",
     executor: "auto",
-    autoDispatch: true,
+    dispatchMode: "auto",
     autoSubmitResults: false,
   },
 };

@@ -75,7 +75,7 @@
       workspace: values.workspace,
       profile: values.profile,
       executor: values.executor,
-      autoDispatch: values.autoDispatch,
+      dispatchMode: values.dispatchMode,
       autoSubmitResults: values.autoSubmitResults,
     };
     const response = await message("ACP_SETTINGS", { patch });
@@ -212,9 +212,28 @@
     }
   }
 
+  const CONFIRM_WORDS =
+    /^(yes|y|ok|okay|go|run|执行|确认|批准|好的|可以|是|对|派发|派发吧|派发吗|执行吧|确认派发|确认执行|是否派发)$/i;
+  let pendingEnvelope = null;
+
   async function inspectConversation() {
     monitorTimer = null;
     if (!currentState?.connected) return;
+    const mode = currentState.settings.dispatchMode ?? "auto";
+
+    const userText = adapters.latestUserText(document, adapter).trim();
+    if (
+      mode === "confirm" &&
+      pendingEnvelope &&
+      userText &&
+      CONFIRM_WORDS.test(userText)
+    ) {
+      const envelope = pendingEnvelope;
+      pendingEnvelope = null;
+      await executeEnvelope(envelope).catch(reportError);
+      return;
+    }
+
     const text = adapters.latestAssistantText(document, adapter);
     const envelope = protocol.extractTaskEnvelope(text);
     if (!envelope) return;
@@ -222,7 +241,8 @@
     if (seen.has(id)) return;
     seen.add(id);
     if (seen.size > 100) seen.delete(seen.values().next().value);
-    if (!currentState.settings.autoDispatch) {
+
+    if (mode === "manual") {
       panel.setObjective(JSON.stringify(envelope, null, 2));
       panel.open();
       panel.setStatus(
@@ -231,6 +251,23 @@
       );
       return;
     }
+
+    if (mode === "confirm") {
+      pendingEnvelope = envelope;
+      panel.setObjective(JSON.stringify(envelope, null, 2));
+      panel.open();
+      panel.setStatus(
+        "Task envelope staged 任务块已暂存：回复「执行 / 是否派发」确认，或点「派发」",
+        "success",
+      );
+      return;
+    }
+
+    await executeEnvelope(envelope).catch(reportError);
+  }
+
+  async function executeEnvelope(envelope) {
+    const id = protocol.stableEnvelopeId(envelope);
     const claim = await message("ACP_CLAIM_ENVELOPE", {
       pageUrl: location.href,
       envelopeId: id,
@@ -244,7 +281,7 @@
         envelopeId: id,
       }).catch(() => null);
       panel.setObjective(JSON.stringify(envelope, null, 2));
-      reportError(error);
+      throw error;
     }
   }
 

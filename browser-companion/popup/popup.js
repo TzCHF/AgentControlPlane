@@ -1,5 +1,5 @@
 const elements = Object.fromEntries(
-  ["status", "workspace", "profile", "executor", "autoDispatch", "autoSubmitResults", "pair", "enable", "refresh"].map(
+  ["status", "workspace", "profile", "executor", "dispatchMode", "autoSubmitResults", "pair", "enable", "refresh"].map(
     (id) => [id, document.getElementById(id)],
   ),
 );
@@ -37,7 +37,7 @@ async function refresh() {
     const pairing = await message("ACP_PAIR_STATUS");
     if (pairing.status === "connected") current = await message("ACP_STATE");
   }
-  elements.autoDispatch.checked = current.settings.autoDispatch;
+  elements.dispatchMode.value = current.settings.dispatchMode ?? "auto";
   elements.autoSubmitResults.checked = current.settings.autoSubmitResults;
   if (!current.connected) {
     status(
@@ -64,7 +64,7 @@ async function save() {
       workspace: elements.workspace.value,
       profile: elements.profile.value,
       executor: elements.executor.value,
-      autoDispatch: elements.autoDispatch.checked,
+      dispatchMode: elements.dispatchMode.value,
       autoSubmitResults: elements.autoSubmitResults.checked,
     },
   });
@@ -91,7 +91,7 @@ elements.enable.addEventListener("click", async () => {
 });
 
 elements.refresh.addEventListener("click", () => refresh().catch((error) => status(error.message, "error")));
-for (const element of [elements.workspace, elements.profile, elements.executor, elements.autoDispatch, elements.autoSubmitResults]) {
+for (const element of [elements.workspace, elements.profile, elements.executor, elements.dispatchMode, elements.autoSubmitResults]) {
   element.addEventListener("change", () => save().catch((error) => status(error.message, "error")));
 }
 

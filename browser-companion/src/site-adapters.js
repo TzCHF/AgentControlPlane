@@ -5,6 +5,7 @@ const definitions = {
     composer: ["#prompt-textarea", "textarea"],
     send: ['button[data-testid="send-button"]', 'button[aria-label*="Send"]'],
     assistant: ['[data-message-author-role="assistant"]'],
+    user: ['[data-message-author-role="user"]'],
   },
   deepseek: {
     id: "deepseek",
@@ -12,6 +13,7 @@ const definitions = {
     composer: ["textarea", '[contenteditable="true"]'],
     send: ['button[aria-label*="Send"]', 'button[aria-label*="发送"]'],
     assistant: [".ds-markdown", '[data-role="assistant"]', ".markdown-body"],
+    user: ['[data-message-author-role="user"]', '[data-role="user"]'],
   },
   claude: {
     id: "claude",
@@ -19,6 +21,7 @@ const definitions = {
     composer: ['div.ProseMirror[contenteditable="true"]', '[contenteditable="true"]'],
     send: ['button[aria-label*="Send"]', 'button[aria-label*="发送"]'],
     assistant: ['[data-testid="assistant-message"]', ".font-claude-response"],
+    user: ['[data-testid="user-message"]', '[data-message-author-role="user"]'],
   },
   generic: {
     id: "generic",
@@ -42,6 +45,11 @@ const definitions = {
       '[data-role="assistant"]',
       '[class*="assistant"] [class*="markdown"]',
       "main article",
+    ],
+    user: [
+      '[data-message-author-role="user"]',
+      '[data-role="user"]',
+      'main [class*="user"]',
     ],
   },
 };
@@ -92,6 +100,24 @@ export function latestAssistantText(document, adapter) {
   const candidates = specific.length
     ? specific
     : collect(definitions.generic.assistant);
+  return candidates.at(-1)?.innerText?.trim() ?? "";
+}
+
+export function latestUserText(document, adapter) {
+  const collect = (selectors) => {
+    const elements = [];
+    for (const selector of selectors) {
+      elements.push(...document.querySelectorAll(selector));
+    }
+    return [...new Set(elements)].filter((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
+  };
+  const specific = collect(adapter.user);
+  const candidates = specific.length
+    ? specific
+    : collect(definitions.generic.user);
   return candidates.at(-1)?.innerText?.trim() ?? "";
 }
 
