@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,20 +7,21 @@
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
-    <header><strong>AgentControlPlane</strong><span>v0.4</span></header>
-    <p id="status">Checking local connection… 正在检查本地连接…</p>
+    <header><strong>AgentControlPlane</strong><span>v0.4.1</span></header>
+    <p id="status">…</p>
     <section>
-      <label>Workspace 工作区<select id="workspace"><option value="">Pair first 请先配对</option></select></label>
+      <label id="languageLabel">语言<select id="language"><option value="zh">中文</option><option value="en">English</option></select></label>
+      <label id="workspaceLabel">Workspace<select id="workspace"><option value=""></option></select></label>
       <div class="grid">
-        <label>Profile 配置档<select id="profile"><option>balanced</option></select></label>
-        <label>Executor 执行器<select id="executor"><option>auto</option></select></label>
+        <label id="profileLabel">Profile<select id="profile"><option>balanced</option></select></label>
+        <label id="executorLabel">Executor<select id="executor"><option>auto</option></select></label>
       </div>
-      <label class="check"><input id="autoSubmitResults" type="checkbox">Auto-send ACP_RESULT 自动回传 ACP_RESULT</label>
+      <label class="check"><input id="autoSubmitResults" type="checkbox"><span id="autoSubmitLabel"></span></label>
     </section>
     <div class="actions">
-      <button id="pair" class="primary">Pair local service 配对本地服务</button>
-      <button id="enable">Enable current AI site 启用当前 AI 站点</button>
-      <button id="refresh">Refresh 刷新</button>
+      <button id="pair" class="primary">Pair</button>
+      <button id="enable">Enable site</button>
+      <button id="refresh">Refresh</button>
     </div>
     <script type="module" src="popup.js"></script>
   </body>
