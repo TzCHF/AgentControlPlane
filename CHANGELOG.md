@@ -1,5 +1,46 @@
 # Changelog
 
+## v0.4.2 — 2026-08-15
+
+Companion i18n, one-click dispatch confirmation, and executor correctness fixes.
+
+### Added
+
+- Separate Chinese and English companion UI with a language switcher in the
+  panel and popup, backed by a dedicated i18n module.
+- A one-click Confirm dispatch button in the panel that appears when an
+  envelope is staged; chat confirm words remain available as a fallback.
+- An auto profile option that resolves economy/balanced/deep from the
+  objective's difficulty.
+- Executor display names (OpenCodex, DeepSeek Harness) grouped in the UI into
+  third-party agents and model endpoints.
+- The controller prompt lists the executor catalog, per-executor model names,
+  and forbids fabricated `<ACP_RESULT>` envelopes.
+- Model allowlists for model-endpoint executors, validated at dispatch time.
+- Executor discovery refresh every 60 seconds so endpoints started after the
+  server become available without a restart.
+- Executor display names and aliases resolve to registered ids before dispatch.
+- Submitted composer text captured at page load as a confirm-word source.
+- E2E validation records for DeepSeek Harness, OpenCodex, and the Codex quota
+  limit in `docs/WEB-AI-E2E-VALIDATION-TEMPLATE.md`.
+
+### Fixed
+
+- The panel rendered nothing on initialization.
+- The i18n module was missing from `web_accessible_resources`.
+- Send capture registered lazily and missed the first confirm word.
+- Stale executor discovery cache after starting the OpenCodex proxy.
+- Web AI envelopes that carried display names for the executor field.
+- Invalid model names for endpoint executors reaching the executor layer.
+- Fabricated `<ACP_RESULT>` envelopes produced by the web AI.
+- DeepSeek user-message selectors broadened for confirm-word detection.
+
+### Verified
+
+- 74 tests pass locally and on GitHub Actions CI.
+- Real end-to-end runs through opencode, DeepSeek Harness, and OpenCodex
+  executors, including a public ChatGPT share link in the validation table.
+
 ## v0.4.1 — 2026-08-15
 
 Browser companion pairing, dispatch confirmation, and traceability fixes.

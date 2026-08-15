@@ -53,7 +53,7 @@ test("controller prompt keeps local paths out of the web conversation", () => {
   );
   assert.match(prompt, /"workspace": "DEFAULT"/);
   assert.doesNotMatch(prompt, /Users\\private/);
-  assert.match(prompt, /任务已暂存/);
+  assert.match(prompt, /任务已暂�?);
   assert.match(prompt, /Dispatch is performed locally/);
   assert.match(prompt, /Model and reasoning check/);
   assert.match(prompt, /deepseek \(DeepSeek Harness\)/);
@@ -84,11 +84,11 @@ test("string context and constraints from the web AI become string arrays", () =
 test("auto profile resolves from objective difficulty", () => {
   const base = { workspace: "C:\\approved-project", executor: "auto", profile: "auto" };
   assert.equal(
-    normalizeDispatch({ objective: "重构整个模块的架构" }, base).profile,
+    normalizeDispatch({ objective: "重构整个模块的架�? }, base).profile,
     "deep",
   );
   assert.equal(
-    normalizeDispatch({ objective: "写一个 hello 示例" }, base).profile,
+    normalizeDispatch({ objective: "写一�?hello 示例" }, base).profile,
     "economy",
   );
   assert.equal(
@@ -148,7 +148,7 @@ test("manifest grants only known AI sites by default", () => {
     ),
   );
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, "0.4.1");
+  assert.equal(manifest.version, "0.4.2");
   assert.ok(manifest.host_permissions.includes("https://chatgpt.com/*"));
   assert.ok(manifest.host_permissions.includes("https://chat.deepseek.com/*"));
   assert.ok(manifest.optional_host_permissions.includes("https://*/*"));
