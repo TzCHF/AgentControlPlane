@@ -37,6 +37,9 @@ Browser companion pairing, dispatch confirmation, and traceability fixes.
 - After pairing, the controller prompt is inserted into the composer
   automatically, and a missing workspace falls back to the first available
   workspace root.
+- The web AI asks once for model and reasoning effort before emitting an
+  envelope, supports an auto choice based on task difficulty, and reports
+  rejected model names from `<ACP_RESULT>` errors back to the user.
 
 ### Verified
 
