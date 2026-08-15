@@ -51,17 +51,19 @@ npm.cmd start
 
 | 时间 | 页面 | executor | task_id | status | changed_files | changed_lines | usage.total_tokens | result.summary | 说明 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-08-15 00:08 | chatgpt.com（浏览器伴侣配对+自动派发） | auto → opencode | `12ed04d6-...` | completed | （文件已存在，验证通过） | 1 | 9242 | Verified acp-e2e-ok.txt contains exactly ACP_WEB_AI_OK (13 bytes, no trailing newline). | 通过；测试证据 2 项 passed |
 | 2026-08-14 23:47 | 控制面 API 驱动（配对→派发同扩展链路） | auto → opencode | `5be331f3-...` | completed | `acp-e2e-ok.txt` | 1 | 9031 | Created acp-e2e-ok.txt with exact content ACP_WEB_AI_OK (13 bytes, no trailing newline/whitespace). | 通过；测试证据 passed（len=13, content=[ACP_WEB_AI_OK]） |
-| 2026-08-14 00:00 | chatgpt.com | auto | `...` | completed | `acp-e2e-ok.txt` | 1 | `...` | 通过 |
 | 2026-08-14 00:00 | chat.deepseek.com | auto | `...` | completed | `acp-e2e-ok.txt` | 1 | `...` | 通过 |
 | 2026-08-14 00:00 | claude.ai | auto | `...` | completed | `acp-e2e-ok.txt` | 1 | `...` | 通过 |
 
 > 如果某执行器不可用，记录 `error_code` 与 `assistant` 返回信息，不得跳过列；  
 > 例如：`executor_unavailable` / `no_executor_available` / `403` / `unknown_executor`.
 
-> 首行记录为 2026-08-14 通过控制面 API 驱动的完整链路验证（配对 → 批准 → 认领 →
-> 派发 → opencode 执行 → 文件核验），与浏览器伴侣扩展驱动的是同一服务端链路；
-> 三站点浏览器 UI 实测仍需在各自站点按第三节操作后回填。
+> 前两行记录为 2026-08-14/15 完成的两轮验证：第一轮通过控制面 API 驱动
+> （配对 → 批准 → 认领 → 派发 → opencode 执行 → 文件核验），第二轮通过
+> chatgpt.com 真实浏览器伴侣配对与自动派发完成；两轮与浏览器伴侣扩展驱动的是
+> 同一服务端链路。DeepSeek 与 Claude 站点的浏览器 UI 实测仍需在各自站点按
+> 第三节操作后回填。
 
 ## 五、文件与内容核验（本地）
 
