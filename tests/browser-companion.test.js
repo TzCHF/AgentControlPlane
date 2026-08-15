@@ -56,6 +56,7 @@ test("controller prompt keeps local paths out of the web conversation", () => {
   assert.match(prompt, /Dispatch is performed locally/);
   assert.match(prompt, /Model and reasoning check/);
   assert.match(prompt, /deepseek \(DeepSeek Harness\)/);
+  assert.match(prompt, /Never invent or write an <ACP_RESULT>/);
 });
 
 test("web envelopes cannot override the locally selected workspace", () => {

@@ -1,5 +1,17 @@
 import { ControlPlaneError } from "./errors.js";
 
+export function resolveEndpointModel(provider, requestModel, allowedModels = []) {
+  if (!requestModel) return null;
+  if (allowedModels.length && !allowedModels.includes(requestModel)) {
+    throw new ControlPlaneError(
+      "unknown_model",
+      `Unknown model for ${provider}: ${requestModel}`,
+      { available: allowedModels },
+    );
+  }
+  return requestModel;
+}
+
 export function resolveProfile(config, request, modelCatalog = []) {
   const profileName = request.profile ?? "balanced";
   const profile = config.profiles[profileName];

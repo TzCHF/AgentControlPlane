@@ -42,13 +42,15 @@
       "baseUrl": "http://127.0.0.1:10100/v1",
       "apiKey": null,
       "model": "deepseek/deepseek-v4-pro",
-      "protocol": "responses"
+      "protocol": "responses",
+      "models": ["deepseek/deepseek-v4-pro", "deepseek-v4-pro"]
     },
     "deepseek": {
       "baseUrl": "https://api.deepseek.com/v1",
       "apiKeyEnv": "DEEPSEEK_API_KEY",
       "model": "deepseek-chat",
-      "protocol": "chat"
+      "protocol": "chat",
+      "models": ["deepseek-chat", "deepseek-reasoner"]
     },
     "claude": {
       "command": "claude",

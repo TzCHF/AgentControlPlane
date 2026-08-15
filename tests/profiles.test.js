@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveProfile } from "../src/core/profiles.js";
+import { resolveProfile, resolveEndpointModel } from "../src/core/profiles.js";
 
 const config = {
   codex: { defaultModel: null },
@@ -56,4 +56,17 @@ test("rejects token budgets above the server maximum", () => {
       ),
     (error) => error.code === "invalid_token_budget",
   );
+});
+
+test("validates models for model-endpoint executors", () => {
+  assert.equal(
+    resolveEndpointModel("deepseek", "deepseek-chat", ["deepseek-chat", "deepseek-reasoner"]),
+    "deepseek-chat",
+  );
+  assert.throws(
+    () =>
+      resolveEndpointModel("deepseek", "deepseek-v4-pro", ["deepseek-chat", "deepseek-reasoner"]),
+    (error) => error.code === "unknown_model",
+  );
+  assert.equal(resolveEndpointModel("deepseek", null, ["deepseek-chat"]), null);
 });

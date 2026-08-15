@@ -5,7 +5,7 @@ import {
   normalizeBrief,
 } from "./brief.js";
 import { ControlPlaneError, asErrorPayload } from "./errors.js";
-import { resolveProfile } from "./profiles.js";
+import { resolveProfile, resolveEndpointModel } from "./profiles.js";
 import { resolveWorkspace } from "./workspace.js";
 import { discoverExecutors } from "../executors/discovery.js";
 
@@ -274,6 +274,14 @@ export class Orchestrator extends EventEmitter {
     const catalog = this.modelCatalogs.get(provider) ?? [];
     const policy = resolveProfile(this.config, request, catalog);
     if (provider !== "codex" && !request.model) policy.model = null;
+    if (["deepseek", "openai-compatible"].includes(provider) && request.model) {
+      const endpointKey = provider === "deepseek" ? "deepseek" : "openaiCompat";
+      resolveEndpointModel(
+        provider,
+        request.model,
+        this.config.executor[endpointKey]?.models ?? [],
+      );
+    }
     const task = this.store.createTask({
       workspace,
       brief,
