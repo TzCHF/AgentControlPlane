@@ -5,7 +5,7 @@ import {
   normalizeBrief,
 } from "./brief.js";
 import { ControlPlaneError, asErrorPayload } from "./errors.js";
-import { resolveProfile, resolveEndpointModel } from "./profiles.js";
+import { resolveProfile, resolveEndpointModel, estimateTaskMinutes } from "./profiles.js";
 import { resolveWorkspace } from "./workspace.js";
 import { discoverExecutors } from "../executors/discovery.js";
 
@@ -315,6 +315,10 @@ export class Orchestrator extends EventEmitter {
       brief,
       policy,
       executor: provider,
+      estimatedMinutes: estimateTaskMinutes(
+        policy.name,
+        policy.timeLimitMinutes,
+      ),
     });
     this.queue.push({ taskId: task.id, followUp: false });
     queueMicrotask(() => this.#drain());

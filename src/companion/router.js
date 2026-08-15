@@ -66,6 +66,13 @@ function approvedPage(pairing) {
 }
 
 function publicTask(task) {
+  let actualMinutes = null;
+  if (task.startedAt && task.completedAt) {
+    const duration = Date.parse(task.completedAt) - Date.parse(task.startedAt);
+    if (Number.isFinite(duration) && duration >= 0) {
+      actualMinutes = Math.max(1, Math.round(duration / 60000));
+    }
+  }
   return {
     id: task.id,
     parent_task_id: task.parentTaskId ?? null,
@@ -74,6 +81,8 @@ function publicTask(task) {
     workspace: task.workspace,
     executor: task.executor,
     executor_session_id: task.executorSessionId ?? null,
+    estimated_minutes: task.estimatedMinutes ?? null,
+    actual_minutes: actualMinutes,
     profile: task.policy?.name ?? null,
     created_at: task.createdAt,
     started_at: task.startedAt,

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveProfile, resolveEndpointModel } from "../src/core/profiles.js";
+import {
+  resolveProfile,
+  resolveEndpointModel,
+  estimateTaskMinutes,
+} from "../src/core/profiles.js";
 
 const config = {
   codex: { defaultModel: null },
@@ -100,4 +104,12 @@ test("validates models for model-endpoint executors", () => {
     (error) => error.code === "unknown_model",
   );
   assert.equal(resolveEndpointModel("deepseek", null, ["deepseek-chat"]), null);
+});
+
+test("estimates task minutes from profile and time limit", () => {
+  assert.equal(estimateTaskMinutes("economy"), 2);
+  assert.equal(estimateTaskMinutes("balanced"), 5);
+  assert.equal(estimateTaskMinutes("deep"), 12);
+  assert.equal(estimateTaskMinutes("balanced", 3), 3);
+  assert.equal(estimateTaskMinutes("economy", 10), 2);
 });

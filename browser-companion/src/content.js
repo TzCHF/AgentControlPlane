@@ -193,7 +193,12 @@
       pageUrl: location.href,
     });
     panel.open();
-    panel.setStatus(t("taskQueued", { id: response.task.id.slice(0, 8) }));
+    const eta = response.task.estimated_minutes;
+    panel.setStatus(
+      eta != null
+        ? t("taskQueuedEta", { id: response.task.id.slice(0, 8), eta })
+        : t("taskQueued", { id: response.task.id.slice(0, 8) }),
+    );
     await pollTask(response.task.id);
   }
 
@@ -211,8 +216,11 @@
       if (task.terminal) {
         const result = protocol.formatTaskResult(task);
         await returnResult(result);
+        const minutes = task.actual_minutes;
         panel.setStatus(
-          t("taskStatus", { id, status: task.status }),
+          minutes != null
+            ? t("taskDoneActual", { id, status: task.status, minutes })
+            : t("taskStatus", { id, status: task.status }),
           task.status === "completed" ? "success" : "error",
         );
         return task;

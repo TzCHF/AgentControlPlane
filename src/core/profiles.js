@@ -1,5 +1,12 @@
 import { ControlPlaneError } from "./errors.js";
 
+const PROFILE_ESTIMATE_MINUTES = { economy: 2, balanced: 5, deep: 12 };
+
+export function estimateTaskMinutes(profileName, timeLimitMinutes = null) {
+  const base = PROFILE_ESTIMATE_MINUTES[profileName] ?? 5;
+  return timeLimitMinutes != null ? Math.min(base, timeLimitMinutes) : base;
+}
+
 export function resolveEndpointModel(provider, requestModel, allowedModels = []) {
   if (!requestModel) return null;
   if (allowedModels.length && !allowedModels.includes(requestModel)) {
