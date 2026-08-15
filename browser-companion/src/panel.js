@@ -21,15 +21,19 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
   let hint = null;
   let badge = null;
   let confirmButton = null;
+  let progressBar = null;
+  let progressFill = null;
+  let progressPercent = 0;
 
   function render() {
     shadow.innerHTML = `
       <style>
-        *{box-sizing:border-box}button,input,select,textarea{font:inherit}.launcher{width:52px;height:52px;border:0;border-radius:50%;background:#238636;color:white;font:700 14px system-ui;box-shadow:0 5px 18px #0006;cursor:pointer}.panel{display:none;width:min(390px,calc(100vw - 36px));max-height:min(680px,calc(100vh - 96px));overflow:auto;margin-bottom:10px;padding:16px;border:1px solid #30363d;border-radius:14px;background:#0d1117;color:#e6edf3;font:14px system-ui;box-shadow:0 12px 36px #0008}.panel.open{display:block}.row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:9px 0}.stack{display:grid;gap:6px;margin:9px 0}label{color:#8b949e;font-size:12px}input,select,textarea{width:100%;padding:8px;border:1px solid #30363d;border-radius:7px;background:#161b22;color:#e6edf3}textarea{min-height:86px;resize:vertical}.actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.actions button{padding:8px 10px;border:1px solid #30363d;border-radius:7px;background:#21262d;color:#e6edf3;cursor:pointer}.actions .primary{background:#238636;border-color:#238636}.status{padding:8px;border-radius:7px;background:#161b22;color:#8b949e;overflow-wrap:anywhere}.hint{padding:8px;border-radius:7px;background:#161b22;color:#8b949e;font-size:12px;line-height:1.8}.advanced{margin:9px 0}.advanced summary{cursor:pointer;color:#58a6ff;font-size:13px}.toggle{display:flex;align-items:center;gap:7px;color:#c9d1d9}.toggle input{width:auto}.title{display:flex;justify-content:space-between;align-items:center;gap:8px}.title select{width:auto;padding:4px 6px;font-size:12px}.badge{font:12px ui-monospace;color:#58a6ff}
+        *{box-sizing:border-box}button,input,select,textarea{font:inherit}.launcher{width:52px;height:52px;border:0;border-radius:50%;background:#238636;color:white;font:700 14px system-ui;box-shadow:0 5px 18px #0006;cursor:pointer}.panel{display:none;width:min(390px,calc(100vw - 36px));max-height:min(680px,calc(100vh - 96px));overflow:auto;margin-bottom:10px;padding:16px;border:1px solid #30363d;border-radius:14px;background:#0d1117;color:#e6edf3;font:14px system-ui;box-shadow:0 12px 36px #0008}.panel.open{display:block}.row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:9px 0}.stack{display:grid;gap:6px;margin:9px 0}label{color:#8b949e;font-size:12px}input,select,textarea{width:100%;padding:8px;border:1px solid #30363d;border-radius:7px;background:#161b22;color:#e6edf3}textarea{min-height:86px;resize:vertical}.actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.actions button{padding:8px 10px;border:1px solid #30363d;border-radius:7px;background:#21262d;color:#e6edf3;cursor:pointer}.actions .primary{background:#238636;border-color:#238636}.status{padding:8px;border-radius:7px;background:#161b22;color:#8b949e;overflow-wrap:anywhere}.progress{display:none;height:5px;margin:6px 2px 2px;border-radius:4px;background:#161b22;overflow:hidden}.progress .fill{height:100%;background:#3fb950;transition:width .4s linear}.hint{padding:8px;border-radius:7px;background:#161b22;color:#8b949e;font-size:12px;line-height:1.8}.advanced{margin:9px 0}.advanced summary{cursor:pointer;color:#58a6ff;font-size:13px}.toggle{display:flex;align-items:center;gap:7px;color:#c9d1d9}.toggle input{width:auto}.title{display:flex;justify-content:space-between;align-items:center;gap:8px}.title select{width:auto;padding:4px 6px;font-size:12px}.badge{font:12px ui-monospace;color:#58a6ff}
       </style>
       <section class="panel">
         <div class="title"><strong>AgentControlPlane</strong><span class="badge"></span><select data-field="language"><option value="zh">中文</option><option value="en">English</option></select></div>
         <div class="status"></div>
+        <div class="progress"><div class="fill"></div></div>
         <p class="hint"></p>
         <div class="actions"><button class="primary" data-action="confirmDispatch" hidden>${t("confirmDispatch")}</button></div>
         <div class="actions"><button class="primary" data-action="connect">${t("pair")}</button><button data-action="teach">${t("teach")}</button><button data-action="dispatch">${t("dispatch")}</button></div>
@@ -50,6 +54,8 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     hint = shadow.querySelector(".hint");
     badge = shadow.querySelector(".badge");
     confirmButton = shadow.querySelector('[data-action="confirmDispatch"]');
+    progressBar = shadow.querySelector(".progress");
+    progressFill = shadow.querySelector(".progress .fill");
     fields = Object.fromEntries(
       [...shadow.querySelectorAll("[data-field]")].map((element) => [
         element.dataset.field,
@@ -191,6 +197,15 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     },
     setConfirmVisible(visible) {
       if (confirmButton) confirmButton.hidden = !visible;
+    },
+    setProgress(percent, visible) {
+      progressPercent = Math.max(0, Math.min(100, Math.round(percent)));
+      if (progressFill) {
+        progressFill.style.width = `${progressPercent}%`;
+      }
+      if (progressBar) {
+        progressBar.style.display = visible ? "block" : "none";
+      }
     },
     open() {
       panel?.classList.add("open");

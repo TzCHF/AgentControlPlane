@@ -204,16 +204,26 @@
 
   async function pollTask(taskId) {
     const deadline = Date.now() + 4 * 60 * 60 * 1000;
-    while (Date.now() < deadline) {
-      const response = await message("ACP_TASK_STATUS", { taskId });
-      const task = response.task;
-      const id = task.id.slice(0, 8);
-      const eta = task.estimated_minutes;
-      const session = task.executor_session_id;
-      const baseline = Date.parse(task.started_at ?? task.created_at);
-      const elapsed = Number.isFinite(baseline)
-        ? formatElapsed(Date.now() - baseline)
-        : "00:00:00";
+    let latest = null;
+    let tickTimer = null;
+
+    const clearTick = () => {
+      if (tickTimer) {
+        clearInterval(tickTimer);
+        tickTimer = null;
+      }
+    };
+
+    const renderTick = () => {
+      if (!latest) return;
+      const id = latest.id.slice(0, 8);
+      const eta = latest.estimated_minutes;
+      const session = latest.executor_session_id;
+      const baseline = Date.parse(latest.started_at ?? latest.created_at);
+      const elapsedMs = Number.isFinite(baseline)
+        ? Math.max(0, Date.now() - baseline)
+        : 0;
+      const elapsed = formatElapsed(elapsedMs);
       const statusKey =
         eta != null
           ? session
@@ -222,22 +232,51 @@
           : session
             ? "taskStatusSession"
             : "taskStatus";
-      panel.setStatus(
-        t(statusKey, { id, status: task.status, eta, session, elapsed }),
-      );
-      if (task.terminal) {
-        const result = protocol.formatTaskResult(task);
-        await returnResult(result);
-        const minutes = task.actual_minutes;
-        panel.setStatus(
-          minutes != null
-            ? t("taskDoneActual", { id, status: task.status, minutes })
-            : t("taskStatus", { id, status: task.status }),
-          task.status === "completed" ? "success" : "error",
+      let text = t(statusKey, {
+        id,
+        status: latest.status,
+        eta,
+        session,
+        elapsed,
+      });
+      if (eta != null) {
+        const percent = Math.min(
+          99,
+          Math.round((elapsedMs / (eta * 60 * 1000)) * 100),
         );
-        return task;
+        text += ` · ${percent}%`;
+        panel.setProgress(percent, true);
+      } else {
+        panel.setProgress(0, false);
       }
-      await delay(2000);
+      panel.setStatus(text);
+    };
+
+    tickTimer = setInterval(renderTick, 1000);
+    try {
+      while (Date.now() < deadline) {
+        const response = await message("ACP_TASK_STATUS", { taskId });
+        latest = response.task;
+        renderTick();
+        if (latest.terminal) {
+          clearTick();
+          const id = latest.id.slice(0, 8);
+          const result = protocol.formatTaskResult(latest);
+          await returnResult(result);
+          const minutes = latest.actual_minutes;
+          panel.setProgress(0, false);
+          panel.setStatus(
+            minutes != null
+              ? t("taskDoneActual", { id, status: latest.status, minutes })
+              : t("taskStatus", { id, status: latest.status }),
+            latest.status === "completed" ? "success" : "error",
+          );
+          return latest;
+        }
+        await delay(2000);
+      }
+    } finally {
+      clearTick();
     }
     throw new Error(t("monitorTimeout"));
   }
