@@ -36,6 +36,7 @@
       teach: () => teach().catch(reportError),
       latest: () => useLatest().catch(reportError),
       dispatch: () => dispatchFromPanel().catch(reportError),
+      disconnect: () => disconnect().catch(reportError),
       settings: (values) => saveSettings(values).catch(reportError),
     },
   });
@@ -112,6 +113,16 @@
         "error",
       );
     }
+  }
+
+  async function disconnect() {
+    await message("ACP_DISCONNECT");
+    currentState = null;
+    await refreshState();
+    panel.setStatus(
+      "Disconnected 已断开。任务历史保留，随时可重新配对。",
+      "normal",
+    );
   }
 
   async function teach() {
