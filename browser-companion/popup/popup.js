@@ -71,11 +71,16 @@ async function refresh() {
   const available = await message("ACP_OPTIONS");
   options(elements.workspace, available.workspaces, current.settings.workspace);
   options(elements.profile, ["auto", ...Object.keys(available.profiles)], current.settings.profile);
-  options(
-    elements.executor,
-    ["auto", ...available.executors.filter((entry) => entry.discovery?.available !== false).map((entry) => entry.id)],
-    current.settings.executor,
-  );
+  const executorValues = ["auto", ...available.executors.filter((entry) => entry.discovery?.available !== false).map((entry) => entry.id)];
+  const executorOptions = executorValues.map((value) => {
+    const entry = available.executors.find((item) => item.id === value);
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value === "auto" ? t("executorAuto") : entry?.display_name ?? value;
+    return option;
+  });
+  elements.executor.replaceChildren(...executorOptions);
+  elements.executor.value = current.settings.executor;
   status(t("popupConnected", { executor: available.default_executor }), "success");
 }
 

@@ -37,7 +37,7 @@ export function buildExecutor(config, provider) {
     const options = config.executor.deepseek ?? {};
     return new OpenAICompatibleExecutor({
       id: "deepseek",
-      displayName: "DeepSeek",
+      displayName: "DeepSeek Harness",
       baseUrl: options.baseUrl,
       apiKey: process.env[options.apiKeyEnv] ?? options.apiKey ?? null,
       model: options.model,

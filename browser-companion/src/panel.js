@@ -123,19 +123,19 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     const executors = options?.executors ?? [];
     const available = executors
       .filter((entry) => entry.discovery?.available !== false)
-      .map((entry) => entry.id);
+      .map((entry) => ({ id: entry.id, label: entry.display_name ?? entry.id }));
     const unavailable = executors
       .filter((entry) => entry.discovery?.available === false)
-      .map((entry) => entry.id);
+      .map((entry) => ({ id: entry.id, label: entry.display_name ?? entry.id }));
     fields.executor.innerHTML = [
       `<option value="auto">${t("executorAuto")}</option>`,
       ...available.map(
-        (value) =>
-          `<option value="${escapeAttribute(value)}">${escapeText(value)}</option>`,
+        (entry) =>
+          `<option value="${escapeAttribute(entry.id)}">${escapeText(entry.label)}</option>`,
       ),
       ...unavailable.map(
-        (value) =>
-          `<option value="${escapeAttribute(value)}" disabled>${escapeText(value)}（${t("executorUnavailable")}）</option>`,
+        (entry) =>
+          `<option value="${escapeAttribute(entry.id)}" disabled>${escapeText(entry.label)}（${t("executorUnavailable")}）</option>`,
       ),
     ].join("");
     applySettings(settings);
