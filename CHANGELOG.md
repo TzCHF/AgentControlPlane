@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.4.6 — 2026-08-16
+
+Multiple AI relay endpoints.
+
+### Added
+
+- Each entry under `executor.relays` registers a named OpenAI-compatible
+  relay as its own executor, with a display name, live model catalog
+  refreshed every 60 seconds, and a static model allowlist. Relay ids must
+  differ from built-in executor ids.
+- Relay API keys can come from a named environment variable
+  (`apiKeyEnv`) so keys stay out of configuration files.
+- Relay executors appear in the companion executor list under model
+  endpoints, in the web panel, and in `list_models` / `list_executors`.
+- Dispatch validates explicit models against the selected relay's live
+  catalog with the static allowlist as fallback.
+- Integration guide documents the multi-relay shape
+  (`docs/AI-RELAY-INTEGRATION.md`, Chinese version included).
+
+### Verified
+
+- 89 tests pass locally, including relay registration, id validation, and
+  static-allowlist model checks.
+- Docs and config examples pass the grounded-copy gate with 0 findings.
+
 ## v0.4.5 — 2026-08-16
 
 Companion task history and project continuation.

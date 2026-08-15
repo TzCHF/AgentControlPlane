@@ -2,6 +2,7 @@ import http from "node:http";
 import crypto from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { loadConfig } from "./core/config.js";
+import { ControlPlaneError } from "./core/errors.js";
 import { sendError, sendJson, sendHtml, readJson, routeParts } from "./core/http.js";
 import { Orchestrator } from "./core/orchestrator.js";
 import { publicModels, publicProfiles } from "./core/profiles.js";
@@ -84,6 +85,35 @@ export function buildExecutors(config) {
   const executors = new Map();
   for (const provider of providers) {
     executors.set(provider, buildExecutor(config, provider));
+  }
+  for (const relay of config.executor?.relays ?? []) {
+    const id = String(relay?.id ?? "").trim();
+    if (!id) {
+      throw new ControlPlaneError(
+        "invalid_relay_id",
+        "Every configured relay needs a non-empty id",
+      );
+    }
+    if (executors.has(id)) {
+      throw new ControlPlaneError(
+        "duplicate_executor_id",
+        `Relay id collides with a built-in executor: ${id}`,
+        { id },
+      );
+    }
+    executors.set(
+      id,
+      new OpenAICompatibleExecutor({
+        id,
+        displayName: relay.displayName ?? id,
+        baseUrl: relay.baseUrl,
+        apiKey: process.env[relay.apiKeyEnv] ?? relay.apiKey ?? null,
+        model: relay.model,
+        protocol: relay.protocol,
+        models: relay.models ?? [],
+        workspaceRoots: config.workspaceRoots,
+      }),
+    );
   }
   return executors;
 }

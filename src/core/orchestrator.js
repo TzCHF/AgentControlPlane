@@ -315,14 +315,19 @@ export class Orchestrator extends EventEmitter {
     const catalog = this.modelCatalogs.get(provider) ?? [];
     const policy = resolveProfile(this.config, request, catalog);
     if (provider !== "codex" && !request.model) policy.model = null;
-    if (["deepseek", "openai-compatible"].includes(provider) && request.model) {
-      const endpointKey = provider === "deepseek" ? "deepseek" : "openaiCompat";
-      const liveCatalog = this.modelCatalogs.get(provider) ?? [];
-      const allowed =
-        liveCatalog.length > 0
-          ? liveCatalog.map((model) => model.model ?? model.id)
-          : this.config.executor[endpointKey]?.models ?? [];
-      resolveEndpointModel(provider, request.model, allowed);
+    if (request.model) {
+      const executor = this.executors.get(provider);
+      if (executor?.kind === "model-endpoint") {
+        const endpointKey =
+          provider === "deepseek" ? "deepseek" : "openaiCompat";
+        const configModels = this.config.executor?.[endpointKey]?.models;
+        const liveCatalog = this.modelCatalogs.get(provider) ?? [];
+        const allowed =
+          liveCatalog.length > 0
+            ? liveCatalog.map((model) => model.model ?? model.id)
+            : executor?.staticModels ?? configModels ?? [];
+        resolveEndpointModel(provider, request.model, allowed);
+      }
     }
     const task = this.store.createTask({
       workspace,

@@ -120,6 +120,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     requestTimeoutMs = 30000,
     maxToolRounds = 20,
     workspaceRoots = [],
+    models = [],
   } = {}) {
     super({
       id,
@@ -131,6 +132,10 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         subagents: false,
       },
     });
+    this.kind = "model-endpoint";
+    this.staticModels = Array.isArray(models)
+      ? models.map((entry) => String(entry))
+      : [];
     if (baseUrl && typeof baseUrl === "string") {
       this.baseUrl = baseUrl.replace(/\/+$/, "");
     } else {

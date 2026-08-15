@@ -17,6 +17,18 @@
       "model": "deepseek/deepseek-v4-pro",
       "protocol": "responses",
       "models": ["deepseek/deepseek-v4-pro", "deepseek-v4-pro"]
-    }
+    },
+    "relays": [
+      {
+        "id": "my-relay",
+        "displayName": "My Relay",
+        "baseUrl": "https://your-relay.example/v1",
+        "apiKeyEnv": "ACP_RELAY_MY_RELAY_KEY",
+        "apiKey": null,
+        "model": null,
+        "protocol": "chat",
+        "models": []
+      }
+    ]
   }
 }

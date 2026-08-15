@@ -200,6 +200,8 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
       .join("");
     const executors = options?.executors ?? [];
     const ENDPOINT_IDS = new Set(["openai-compatible", "deepseek"]);
+    const isEndpoint = (entry) =>
+      entry.kind === "model-endpoint" || ENDPOINT_IDS.has(entry.id);
     const optionFor = (entry, disabled = false) => {
       const label = entry.display_name ?? entry.id;
       return disabled
@@ -218,13 +220,15 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
       ...group(
         new Set(
           executors
-            .filter((entry) => !ENDPOINT_IDS.has(entry.id))
+            .filter((entry) => !isEndpoint(entry))
             .map((entry) => entry.id),
         ),
       ),
       `</optgroup>`,
       `<optgroup label="${t("executorGroupEndpoints")}">`,
-      ...group(ENDPOINT_IDS),
+      ...group(
+        new Set(executors.filter((entry) => isEndpoint(entry)).map((entry) => entry.id)),
+      ),
       `</optgroup>`,
     ].join("");
     applySettings(settings);

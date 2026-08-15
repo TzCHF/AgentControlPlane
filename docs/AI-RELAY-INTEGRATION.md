@@ -47,6 +47,48 @@ Create `config/local.json` (machine-specific, gitignored) or use
 - `model`: the default model when an envelope omits `model`.
 - `models`: the static allowlist used when the live catalog is unreachable.
 
+## Multiple relay endpoints
+
+Each entry under `executor.relays` registers a named relay endpoint. Every
+relay becomes a separate executor with its own id, display name, live model
+catalog, and static allowlist:
+
+```json
+{
+  "executor": {
+    "relays": [
+      {
+        "id": "asterroute",
+        "displayName": "AsterRoute",
+        "baseUrl": "https://www.asterroute.com/v1",
+        "apiKeyEnv": "ACP_RELAY_ASTERROUTE_KEY",
+        "apiKey": "sk-your-relay-key",
+        "model": null,
+        "protocol": "chat",
+        "models": []
+      },
+      {
+        "id": "secondary",
+        "displayName": "Secondary Relay",
+        "baseUrl": "https://second-relay.example/v1",
+        "apiKeyEnv": "ACP_RELAY_SECONDARY_KEY",
+        "apiKey": null,
+        "protocol": "chat",
+        "models": ["deepseek-v4-pro"]
+      }
+    ]
+  }
+}
+```
+
+- `id` is required and must differ from the built-in executor ids
+  (`codex`, `openai-compatible`, `deepseek`, `claude`, `opencode`).
+- `apiKeyEnv` names an environment variable that supplies the key when
+  `apiKey` is empty, so keys can stay out of configuration files.
+- Dispatch selects a relay with `"executor": "asterroute"` or by its
+  display name; each relay's catalog appears in `list_models`, the web
+  panel, and the companion executor list under model endpoints.
+
 ## Live model catalog
 
 On startup and every 60 seconds, AgentControlPlane reads `GET /v1/models`

@@ -41,6 +41,42 @@ AI 中转站 -> 上游模型（DeepSeek、GLM、OpenAI ...）
 - `model`：信封未指定模型时的默认模型。
 - `models`：实时目录不可达时使用的静态白名单。
 
+## 多个中转端点
+
+`executor.relays` 里的每一项都注册一个具名中转端点。每个中转成为一个独立执行器，拥有自己的 id、显示名、实时模型目录与静态白名单：
+
+```json
+{
+  "executor": {
+    "relays": [
+      {
+        "id": "asterroute",
+        "displayName": "AsterRoute",
+        "baseUrl": "https://www.asterroute.com/v1",
+        "apiKeyEnv": "ACP_RELAY_ASTERROUTE_KEY",
+        "apiKey": "sk-your-relay-key",
+        "model": null,
+        "protocol": "chat",
+        "models": []
+      },
+      {
+        "id": "secondary",
+        "displayName": "Secondary Relay",
+        "baseUrl": "https://second-relay.example/v1",
+        "apiKeyEnv": "ACP_RELAY_SECONDARY_KEY",
+        "apiKey": null,
+        "protocol": "chat",
+        "models": ["deepseek-v4-pro"]
+      }
+    ]
+  }
+}
+```
+
+- `id` 必填，且要与内置执行器 id（`codex`、`openai-compatible`、`deepseek`、`claude`、`opencode`）不同。
+- `apiKeyEnv` 指定环境变量名；当 `apiKey` 为空时从该环境变量取密钥，密钥可以不出现在配置文件里。
+- 派发时用 `"executor": "asterroute"` 或显示名选中中转；每个中转的目录会出现在 `list_models`、网页面板，以及伴侣执行器列表的「模型端点」分组中。
+
 ## 实时模型目录
 
 启动时及每 60 秒，AgentControlPlane 读取中转站的 `GET /v1/models` 并构建模型目录：
