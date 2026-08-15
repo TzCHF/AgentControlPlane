@@ -6,8 +6,8 @@ const root = path.resolve("browser-companion");
 const manifest = JSON.parse(
   fs.readFileSync(path.join(root, "manifest.json"), "utf8"),
 );
-if (manifest.manifest_version !== 3 || manifest.version !== "0.4.0") {
-  throw new Error("Browser companion manifest is not v0.4.0 Manifest V3");
+if (manifest.manifest_version !== 3 || manifest.version !== "0.4.1") {
+  throw new Error("Browser companion manifest is not v0.4.1 Manifest V3");
 }
 
 const files = [

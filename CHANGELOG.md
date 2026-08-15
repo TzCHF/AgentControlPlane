@@ -1,5 +1,51 @@
 # Changelog
 
+## v0.4.1 — 2026-08-15
+
+Browser companion pairing, dispatch confirmation, and traceability fixes.
+
+### Fixed
+
+- Companion requests without an Origin header (Chrome sends none on GETs from
+  extension service workers) are accepted when authenticated by a pairing
+  secret or bearer token; pairing creation keeps its strict origin check.
+- CORS headers are omitted for companion requests without an Origin header.
+- String `context` and `constraints` fields from web AI envelopes are wrapped
+  into string arrays before dispatch.
+- Pairing approval now authenticates by the one-time URL secret alone, so
+  approval works regardless of the Origin header spelling the browser sends.
+- OpenCode session ids are captured across stderr chunk boundaries and stored
+  on tasks as `executor_session_id`.
+
+### Added
+
+- Chinese translations for the README and all documentation, with cross-links.
+- Bilingual Chinese-English labels for the companion panel, popup, pairing
+  approval pages, and server error messages.
+- A single confirm-word dispatch flow: envelopes are staged and dispatched only
+  after the user replies with a confirmation word (执行 / 开始 / yes / 是否派发
+  and others) or clicks the panel Dispatch button; new envelopes replace the
+  staged one.
+- Trailing modal particles are normalized in confirmation words (开始吧 matches
+  开始), unrecognized replies produce a visible panel hint, and custom confirm
+  words can be collected in the panel settings.
+- The web AI is taught to append a staged-task line after every envelope and to
+  wait quietly for `<ACP_RESULT>`.
+- The controller prompt documents optional `model`, `reasoning_effort`,
+  `token_budget`, and `max_subagents` fields with profile details.
+- `executor_session_id` surfaces in panel status and `<ACP_RESULT>` envelopes.
+- After pairing, the controller prompt is inserted into the composer
+  automatically, and a missing workspace falls back to the first available
+  workspace root.
+
+### Verified
+
+- 73 tests pass locally and on GitHub Actions CI.
+- Real browser-driven E2E on chatgpt.com: ChatGPT emits `<ACP_TASK>`, the
+  companion dispatches after the confirm word, OpenCode executes, and
+  `acp-e2e-ok.txt` with exact content `ACP_WEB_AI_OK` is produced with passed
+  test evidence.
+
 ## v0.4.0 — 2026-08-14
 
 Browser companion and provider-neutral web AI control loop.
@@ -52,8 +98,8 @@ Windows CLI routing and failure-diagnostics hotfix.
 
 - Resolve npm-generated `opencode.cmd` and `claude.cmd` shims to their trusted
   underlying executables before dispatch.
-- Apply discovered executable paths to the active adapters instead of retaining
-  unresolved command names.
+- Apply discovered executable paths to the active adapters and drop unresolved
+  command names.
 - Include bounded, ANSI-stripped CLI stderr in failed task errors and prevent
   duplicate terminal notifications.
 - Use executor-neutral wording when a failed backend returns no final message.

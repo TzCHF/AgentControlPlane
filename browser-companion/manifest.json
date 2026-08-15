@@ -2,8 +2,12 @@
   "manifest_version": 3,
   "name": "AgentControlPlane Companion 浏览器伴侣",
   "description": "Connect supported web AI conversations to local engineering executors through AgentControlPlane. 将受支持的网页 AI 对话连接到本地工程执行器。",
-  "version": "0.4.0",
-  "permissions": ["storage", "tabs", "scripting"],
+  "version": "0.4.1",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
   "host_permissions": [
     "http://127.0.0.1:4318/*",
     "http://localhost:4318/*",
@@ -11,7 +15,9 @@
     "https://chat.deepseek.com/*",
     "https://claude.ai/*"
   ],
-  "optional_host_permissions": ["https://*/*"],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
   "background": {
     "service_worker": "src/background.js",
     "type": "module"
@@ -27,14 +33,22 @@
         "https://chat.deepseek.com/*",
         "https://claude.ai/*"
       ],
-      "js": ["src/content.js"],
+      "js": [
+        "src/content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["src/protocol.js", "src/site-adapters.js", "src/panel.js"],
-      "matches": ["https://*/*"]
+      "resources": [
+        "src/protocol.js",
+        "src/site-adapters.js",
+        "src/panel.js"
+      ],
+      "matches": [
+        "https://*/*"
+      ]
     }
   ]
 }

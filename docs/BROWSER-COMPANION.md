@@ -61,9 +61,11 @@ composer. The web AI clarifies intent and emits one implementation-ready block:
 ```
 
 `DEFAULT` is resolved inside the extension and keeps the local filesystem path
-out of the web conversation. When automatic dispatch is enabled, the companion
-sends the envelope to AgentControlPlane, monitors the task, and inserts a
-compact terminal block:
+out of the web conversation. Envelopes are always staged first: the companion
+holds the envelope and prompts, and the task is dispatched only after the user
+replies with a confirmation word (such as 执行 / 开始 / yes) or clicks the
+panel Dispatch button. New envelopes replace the staged one while it waits.
+The companion then monitors the task and inserts a compact terminal block:
 
 ```text
 <ACP_RESULT>
@@ -71,12 +73,17 @@ compact terminal block:
   "task_id": "...",
   "status": "completed",
   "executor": "opencode",
+  "executor_session_id": "ses_...",
   "result": { "summary": "...", "changed_files": [], "tests": [] },
   "error": null,
   "usage": { "total_tokens": 0 }
 }
 </ACP_RESULT>
 ```
+
+`executor_session_id` is the executor's own session id (for example the
+opencode `ses_...` id) and can be used to reopen the full conversation inside
+the executor's interface.
 
 Automatic result submission is disabled by default because task results may
 contain local file names or code details. Enable it per browser profile only
