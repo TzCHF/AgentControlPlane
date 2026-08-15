@@ -52,8 +52,8 @@ AgentControlPlane 的本地核心按 [Apache License 2.0](LICENSE) 开源。独�
 | OpenCode | CLI | 自带配置好的默认模型 |
 | Codex | App Server | workspace-write 执行，网络禁用 |
 | Claude Code | CLI | 可选；需要 Claude Pro/Max 登录或 Anthropic API 密钥 |
-| OpenAI-compatible | 本地端点 | 包括 OpenCodex |
-| DeepSeek | OpenAI-compatible 适配器 | — |
+| OpenCodex | OpenAI-compatible 本地端点 | Codex 配置 DeepSeek 模型 |
+| DeepSeek Harness | OpenAI-compatible 适配器 | 直连 DeepSeek 官方 API |
 
 Claude Code 是可选的。仅安装其 CLI 不够：只有完成 Claude Pro/Max 账号登录、或为 CLI 配置 Anthropic API 密钥后，适配器才可用。否则发现结果报告 `not_authenticated`，自动路由会跳过它。
 

@@ -65,8 +65,8 @@ The local executor layer currently includes:
 | OpenCode | CLI | ships with its own configured default model |
 | Codex | App Server | workspace-write execution with network disabled |
 | Claude Code | CLI | optional; needs a Claude Pro/Max login or an Anthropic API key |
-| OpenAI-compatible | local endpoint | includes OpenCodex |
-| DeepSeek | OpenAI-compatible adapter | — |
+| OpenCodex | OpenAI-compatible local endpoint | Codex configured with a DeepSeek model |
+| DeepSeek Harness | OpenAI-compatible adapter | direct DeepSeek API |
 
 Claude Code is optional. Installing its CLI is not sufficient by itself: the
 adapter becomes available only after a Claude Pro/Max account login or when the

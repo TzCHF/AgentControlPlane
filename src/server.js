@@ -22,7 +22,7 @@ export function buildExecutor(config, provider) {
     const options = config.executor.openaiCompat ?? {};
     return new OpenAICompatibleExecutor({
       id: "openai-compatible",
-      displayName: "OpenAI Compatible (OpenCodex)",
+      displayName: "OpenCodex",
       baseUrl: options.baseUrl,
       apiKey:
         process.env.AGENT_CONTROL_OPENAI_KEY ??
