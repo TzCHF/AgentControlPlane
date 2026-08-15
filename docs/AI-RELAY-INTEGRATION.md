@@ -89,8 +89,10 @@ catalog, and static allowlist:
 - `requestsPerMinute` paces completion requests against the relay; the
   executor waits when a 60-second sliding window would exceed the limit.
   The executor also retries 429 responses twice, honoring the
-  `retry-after` header. `/v1/models` discovery requests are paced
-  separately and stay outside this limit.
+  `retry-after` header. Every authorized request counts into the relay's
+  RPM window, including retried 429s, and the pacer counts each attempt;
+  concurrent tasks share one window per relay. `/v1/models` discovery
+  requests are paced separately and stay outside this limit.
 - Dispatch selects a relay with `"executor": "asterroute"` or by its
   display name; each relay's catalog appears in `list_models`, the web
   panel, and the companion executor list under model endpoints.
@@ -127,3 +129,9 @@ model from the relay's catalog:
 Every task stores measured input, output, reasoning, and total tokens. The
 `usage_report` MCP tool aggregates them per executor, which gives the relay
 per-user usage evidence for billing or quota checks.
+
+Relays that bill KV-cache reads at the full input price (cache hits carry
+no discount) reconcile directly from `input_tokens`, which counts the whole
+prompt including the cached portion; `cached_input_tokens` labels that
+portion and `uncached_input_tokens` the remainder. Relays that discount
+cache reads subtract `cached_input_tokens` from `input_tokens` first.

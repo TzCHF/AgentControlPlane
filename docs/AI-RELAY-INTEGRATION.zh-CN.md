@@ -76,7 +76,7 @@ AI 中转站 -> 上游模型（DeepSeek、GLM、OpenAI ...）
 
 - `id` 必填，且要与内置执行器 id（`codex`、`openai-compatible`、`deepseek`、`claude`、`opencode`）不同。
 - `apiKeyEnv` 指定环境变量名；当 `apiKey` 为空时从该环境变量取密钥，密钥可以不出现在配置文件里。
-- `requestsPerMinute` 控制对中转站的补全请求节奏：60 秒滑动窗口内超过上限时执行器会等待再发。执行器对 429 响应自动重试两次并遵守 `retry-after` 头。`/v1/models` 目录发现请求单独限速，不占用该额度。
+- `requestsPerMinute` 控制对中转站的补全请求节奏：60 秒滑动窗口内超过上限时执行器会等待再发。执行器对 429 响应自动重试两次并遵守 `retry-after` 头。中转站对已授权请求（含重试的 429）都计入 RPM 窗口，节奏器同样计每一次尝试；并发任务共用一个窗口。`/v1/models` 目录发现请求单独限速，不占用该额度。
 - 派发时用 `"executor": "asterroute"` 或显示名选中中转；每个中转的目录会出现在 `list_models`、网页面板，以及伴侣执行器列表的「模型端点」分组中。
 
 ## 实时模型目录
@@ -106,3 +106,5 @@ AI 中转站 -> 上游模型（DeepSeek、GLM、OpenAI ...）
 ## 用量记账
 
 每个任务保存已测量的输入、输出、推理与总 token。`usage_report` MCP 工具按执行器汇总，为中转站提供按用户的用量证据，用于计费或配额检查。
+
+对缓存命中按全额输入价计费的中转站（缓存无折扣），直接用 `input_tokens` 对账即可——它统计的是整段输入（含缓存部分），`cached_input_tokens` 标注其中缓存命中的部分，`uncached_input_tokens` 标注其余部分。对缓存读取打折的中转站，先从 `input_tokens` 减去 `cached_input_tokens` 再计费。
