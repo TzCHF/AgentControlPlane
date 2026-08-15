@@ -399,7 +399,7 @@ export class OpenCodeExecutor extends ExecutorAdapter {
   #notifiedUsage(usage) {
     return {
       inputTokens: usage.input_tokens,
-      cachedInputTokens: 0,
+      cachedInputTokens: usage.cached_input_tokens ?? 0,
       outputTokens: usage.output_tokens,
       reasoningOutputTokens: usage.reasoning_output_tokens ?? 0,
       totalTokens: usage.total_tokens,
@@ -409,6 +409,7 @@ export class OpenCodeExecutor extends ExecutorAdapter {
   #zeroUsage() {
     return {
       input_tokens: 0,
+      cached_input_tokens: 0,
       output_tokens: 0,
       reasoning_output_tokens: 0,
       total_tokens: 0,
