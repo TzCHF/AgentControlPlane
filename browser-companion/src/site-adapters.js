@@ -13,7 +13,12 @@ const definitions = {
     composer: ["textarea", '[contenteditable="true"]'],
     send: ['button[aria-label*="Send"]', 'button[aria-label*="发送"]'],
     assistant: [".ds-markdown", '[data-role="assistant"]', ".markdown-body"],
-    user: ['[data-message-author-role="user"]', '[data-role="user"]'],
+    user: [
+      '[data-message-author-role="user"]',
+      '[data-role="user"]',
+      '.ds-chat [class*="user"]',
+      'main [class*="user"]',
+    ],
   },
   claude: {
     id: "claude",
