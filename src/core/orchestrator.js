@@ -31,13 +31,19 @@ function marginalTokens(usage) {
 function mapUsage(tokenUsage) {
   const source = tokenUsage?.last ?? tokenUsage?.total;
   if (!source) return zeroUsage();
+  const inputTokens = Number(source.inputTokens ?? 0);
+  const cachedInputTokens = Number(source.cachedInputTokens ?? 0);
+  // Codex reports input including cached reads; opencode reports marginal
+  // input with cache reads reported separately. When cached exceeds input,
+  // the input figure already excludes cached reads.
+  const uncachedInputTokens =
+    cachedInputTokens > inputTokens
+      ? inputTokens
+      : Math.max(0, inputTokens - cachedInputTokens);
   return {
-    input_tokens: Number(source.inputTokens ?? 0),
-    cached_input_tokens: Number(source.cachedInputTokens ?? 0),
-    uncached_input_tokens: Math.max(
-      0,
-      Number(source.inputTokens ?? 0) - Number(source.cachedInputTokens ?? 0),
-    ),
+    input_tokens: inputTokens,
+    cached_input_tokens: cachedInputTokens,
+    uncached_input_tokens: uncachedInputTokens,
     output_tokens: Number(source.outputTokens ?? 0),
     reasoning_output_tokens: Number(source.reasoningOutputTokens ?? 0),
     total_tokens: Number(source.totalTokens ?? 0),
