@@ -110,9 +110,12 @@ export function formatTaskResult(task) {
   return `<ACP_RESULT>\n${JSON.stringify(payload, null, 2)}\n</ACP_RESULT>`;
 }
 
-export function controllerPrompt(settings = {}) {
+export function controllerPrompt(settings = {}, executors = []) {
   const profile = boundedString(settings.profile, 40) || "balanced";
   const executor = boundedString(settings.executor, 80) || "auto";
+  const executorCatalog = executors
+    .map((entry) => `${entry.id} (${entry.display_name ?? entry.id})`)
+    .join(", ");
   return [
     "You are the planning controller for a local engineering control plane.",
     "Clarify the user's goal in this conversation before dispatching engineering work.",
@@ -133,6 +136,7 @@ export function controllerPrompt(settings = {}) {
     ),
     TASK_CLOSE,
     "DEFAULT is resolved locally by the companion; do not ask for or expose a local filesystem path.",
+    `Available executors: ${executorCatalog || "auto (automatic routing)"}. When the user names an executor, put its id in the "executor" field; otherwise use "auto".`,
     "Optional fields to add only when the user explicitly asks for them:",
     '"model": the model id for the executor (e.g. "deepseek-v4-pro"); omit to use the executor default.',
     '"reasoning_effort": "low" | "medium" | "high"; omit for the default.',

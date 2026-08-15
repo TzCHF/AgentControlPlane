@@ -39,16 +39,23 @@ test("extracts and normalizes a local ACP task envelope", () => {
 });
 
 test("controller prompt keeps local paths out of the web conversation", () => {
-  const prompt = controllerPrompt({
-    workspace: "C:\\Users\\private\\project",
-    profile: "balanced",
-    executor: "auto",
-  });
+  const prompt = controllerPrompt(
+    {
+      workspace: "C:\\Users\\private\\project",
+      profile: "balanced",
+      executor: "auto",
+    },
+    [
+      { id: "opencode", display_name: "OpenCode" },
+      { id: "deepseek", display_name: "DeepSeek Harness" },
+    ],
+  );
   assert.match(prompt, /"workspace": "DEFAULT"/);
   assert.doesNotMatch(prompt, /Users\\private/);
   assert.match(prompt, /任务已暂存/);
   assert.match(prompt, /Dispatch is performed locally/);
   assert.match(prompt, /Model and reasoning check/);
+  assert.match(prompt, /deepseek \(DeepSeek Harness\)/);
 });
 
 test("web envelopes cannot override the locally selected workspace", () => {

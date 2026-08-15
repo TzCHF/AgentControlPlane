@@ -131,7 +131,10 @@
     if (!composer) throw new Error(t("composerNotFound"));
     adapters.writeComposer(
       composer,
-      protocol.controllerPrompt(currentState.settings),
+      protocol.controllerPrompt(
+        currentState.settings,
+        currentState.options?.executors ?? [],
+      ),
     );
     panel.setStatus(t("controllerInserted"), "success");
   }
