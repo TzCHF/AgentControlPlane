@@ -198,7 +198,7 @@
 
   async function inspectConversation() {
     monitorTimer = null;
-    if (!currentState?.connected || !currentState.settings.autoDispatch) return;
+    if (!currentState?.connected) return;
     const text = adapters.latestAssistantText(document, adapter);
     const envelope = protocol.extractTaskEnvelope(text);
     if (!envelope) return;
@@ -206,6 +206,15 @@
     if (seen.has(id)) return;
     seen.add(id);
     if (seen.size > 100) seen.delete(seen.values().next().value);
+    if (!currentState.settings.autoDispatch) {
+      panel.setObjective(JSON.stringify(envelope, null, 2));
+      panel.open();
+      panel.setStatus(
+        "Task envelope detected 检测到任务块：点「派发」执行",
+        "success",
+      );
+      return;
+    }
     const claim = await message("ACP_CLAIM_ENVELOPE", {
       pageUrl: location.href,
       envelopeId: id,
@@ -218,6 +227,7 @@
         pageUrl: location.href,
         envelopeId: id,
       }).catch(() => null);
+      panel.setObjective(JSON.stringify(envelope, null, 2));
       reportError(error);
     }
   }

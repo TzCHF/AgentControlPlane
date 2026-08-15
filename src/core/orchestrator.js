@@ -919,6 +919,9 @@ export class Orchestrator extends EventEmitter {
       result: report,
       error,
       completedAt: new Date().toISOString(),
+      ...(params.executorSessionId
+        ? { executorSessionId: params.executorSessionId }
+        : {}),
     });
     this.store.audit("task.completed", {
       taskId,

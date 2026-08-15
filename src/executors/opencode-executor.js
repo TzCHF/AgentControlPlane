@@ -203,6 +203,7 @@ export class OpenCodeExecutor extends ExecutorAdapter {
     const events = [];
     let stderr = "";
     let stdoutDiagnostics = "";
+    let executorSessionId = null;
     let finished = false;
     const finish = (payload) => {
       if (finished) return;
@@ -222,6 +223,10 @@ export class OpenCodeExecutor extends ExecutorAdapter {
     });
     child.stderr.on("data", (chunk) => {
       const text = chunk.toString("utf8");
+      if (!executorSessionId) {
+        const match = text.match(/session\.id=(ses_[A-Za-z0-9]+)/);
+        if (match) executorSessionId = match[1];
+      }
       stderr = `${stderr}${text}`.slice(-4000);
       this.emit("stderr", text);
     });
@@ -247,11 +252,16 @@ export class OpenCodeExecutor extends ExecutorAdapter {
           : null,
         resultText: normalized.finalText,
         usage: normalized.usage,
+        executorSessionId,
       });
     });
   }
 
-  #finishOpenCode(turnId, threadId, { status, error, resultText, usage }) {
+  #finishOpenCode(
+    turnId,
+    threadId,
+    { status, error, resultText, usage, executorSessionId },
+  ) {
     const goal = this.goals.get(threadId);
     if (goal) {
       goal.tokensUsed = Math.max(goal.tokensUsed, usage?.total_tokens ?? 0);
@@ -279,6 +289,7 @@ export class OpenCodeExecutor extends ExecutorAdapter {
       method: "turn/completed",
       params: {
         threadId,
+        executorSessionId: executorSessionId ?? null,
         turn: {
           id: turnId,
           status,

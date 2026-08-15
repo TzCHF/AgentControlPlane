@@ -72,6 +72,7 @@ function publicTask(task) {
     terminal: TERMINAL_STATUSES.has(task.status),
     workspace: task.workspace,
     executor: task.executor,
+    executor_session_id: task.executorSessionId ?? null,
     profile: task.policy?.name ?? null,
     created_at: task.createdAt,
     started_at: task.startedAt,

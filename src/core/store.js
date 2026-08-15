@@ -126,6 +126,7 @@ export class TaskStore {
       completedAt: null,
       threadId: null,
       turnId: null,
+      executorSessionId: null,
       result: null,
       error: null,
       usage: null,
