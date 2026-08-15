@@ -7,6 +7,7 @@ import {
   extractTaskEnvelope,
   formatTaskResult,
   normalizeDispatch,
+  resolveExecutorAlias,
   stableEnvelopeId,
 } from "../browser-companion/src/protocol.js";
 import {
@@ -94,6 +95,20 @@ test("auto profile resolves from objective difficulty", () => {
     normalizeDispatch({ objective: "给接口加参数校验" }, base).profile,
     "balanced",
   );
+});
+
+test("executor aliases resolve to registered ids", () => {
+  const executors = [
+    { id: "openai-compatible", display_name: "OpenCodex" },
+    { id: "deepseek", display_name: "DeepSeek Harness" },
+  ];
+  assert.equal(resolveExecutorAlias("opencodex", executors), "openai-compatible");
+  assert.equal(
+    resolveExecutorAlias("DeepSeek Harness", executors),
+    "deepseek",
+  );
+  assert.equal(resolveExecutorAlias("auto", executors), "auto");
+  assert.equal(resolveExecutorAlias("codex", executors), "codex");
 });
 
 test("formats terminal results and creates stable envelope identifiers", () => {

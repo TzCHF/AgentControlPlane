@@ -167,7 +167,18 @@
     if (!resolvedSettings.workspace) {
       resolvedSettings.workspace = currentState.options?.workspaces?.[0] ?? "";
     }
-    const request = protocol.normalizeDispatch(envelope, resolvedSettings);
+    const resolvedEnvelope = { ...envelope };
+    if (resolvedEnvelope.executor) {
+      resolvedEnvelope.executor = protocol.resolveExecutorAlias(
+        resolvedEnvelope.executor,
+        currentState.options?.executors ?? [],
+      );
+    }
+    resolvedSettings.executor = protocol.resolveExecutorAlias(
+      resolvedSettings.executor,
+      currentState.options?.executors ?? [],
+    );
+    const request = protocol.normalizeDispatch(resolvedEnvelope, resolvedSettings);
     const response = await message("ACP_DISPATCH", {
       request,
       pageUrl: location.href,

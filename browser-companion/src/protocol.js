@@ -24,6 +24,16 @@ export function extractTaskEnvelope(text) {
   }
 }
 
+export function resolveExecutorAlias(requested, executors = []) {
+  const value = String(requested ?? "auto").trim();
+  if (!value || value === "auto") return "auto";
+  const match = executors.find(
+    (entry) =>
+      String(entry.display_name ?? "").trim().toLowerCase() === value.toLowerCase(),
+  );
+  return match?.id ?? value;
+}
+
 export function autoProfile(objective) {
   const text = String(objective ?? "");
   if (
