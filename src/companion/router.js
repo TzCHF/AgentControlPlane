@@ -111,16 +111,8 @@ export class CompanionRouter {
 
   originAllowed(request, url) {
     if (!this.matches(url)) return false;
+    if (url.pathname === "/companion/approve") return true;
     const origin = request.headers.origin;
-    if (url.pathname === "/companion/approve") {
-      if (!origin) return true;
-      try {
-        const parsed = new URL(origin);
-        return ["127.0.0.1", "localhost", "::1"].includes(parsed.hostname);
-      } catch {
-        return false;
-      }
-    }
     if (origin) return isCompanionOrigin(origin);
     return request.method === "GET" || request.method === "HEAD";
   }
