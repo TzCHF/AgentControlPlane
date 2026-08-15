@@ -58,6 +58,37 @@ test("rejects token budgets above the server maximum", () => {
   );
 });
 
+test("accepts and validates per-task time limits", () => {
+  const limited = resolveProfile(
+    config,
+    { profile: "economy", time_limit_minutes: 10 },
+    catalog,
+  );
+  assert.equal(limited.timeLimitMinutes, 10);
+  assert.equal(
+    resolveProfile(config, { profile: "economy" }, catalog).timeLimitMinutes,
+    null,
+  );
+  assert.throws(
+    () =>
+      resolveProfile(
+        config,
+        { profile: "economy", time_limit_minutes: 0 },
+        catalog,
+      ),
+    (error) => error.code === "invalid_time_limit",
+  );
+  assert.throws(
+    () =>
+      resolveProfile(
+        config,
+        { profile: "economy", time_limit_minutes: 241 },
+        catalog,
+      ),
+    (error) => error.code === "invalid_time_limit",
+  );
+});
+
 test("validates models for model-endpoint executors", () => {
   assert.equal(
     resolveEndpointModel("deepseek", "deepseek-chat", ["deepseek-chat", "deepseek-reasoner"]),

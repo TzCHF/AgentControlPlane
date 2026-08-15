@@ -51,6 +51,7 @@ const briefFields = {
   reasoning_effort: z.string().nullable().optional(),
   max_subagents: z.number().int().min(0).max(8).nullable().optional(),
   token_budget: z.number().int().min(1000).max(250000).nullable().optional(),
+  time_limit_minutes: z.number().int().min(1).max(240).nullable().optional(),
 };
 
 function result(payload, message) {
@@ -165,6 +166,7 @@ function buildToolSpecs({ orchestrator, store, config }) {
         reasoning_effort: z.string().nullable().optional(),
         max_subagents: z.number().int().min(0).max(8).nullable().optional(),
         token_budget: z.number().int().min(1000).max(250000).nullable().optional(),
+        time_limit_minutes: z.number().int().min(1).max(240).nullable().optional(),
       },
       annotations: {
         readOnlyHint: false,

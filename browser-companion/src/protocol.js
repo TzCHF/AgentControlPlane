@@ -99,6 +99,7 @@ export function normalizeDispatch(envelope, settings = {}) {
   for (const [source, target] of [
     ["max_subagents", "max_subagents"],
     ["token_budget", "token_budget"],
+    ["time_limit_minutes", "time_limit_minutes"],
   ]) {
     if (Number.isInteger(envelope?.[source])) {
       request[target] = envelope[source];
@@ -152,6 +153,7 @@ export function controllerPrompt(settings = {}, executors = []) {
     '"reasoning_effort": "low" | "medium" | "high"; omit for the default.',
     '"token_budget": an integer token cap for the task.',
     '"max_subagents": an integer subagent cap.',
+    '"time_limit_minutes": an integer minute cap on task runtime (1 to 240); omit for the default.',
     'Profiles: "economy" (small edits, low effort, 0 subagents), "balanced" (normal work, high effort, up to 2 subagents), "deep" (architecture, ultra effort, up to 4 subagents).',
     "Model and reasoning check: before emitting the envelope, ask the user once to choose the model and the reasoning effort, unless the user already specified them or said auto. If the user says auto, choose a model and reasoning_effort that fit the task difficulty and state your choice in the line after the envelope. Copy a user-named model exactly into the \"model\" field. If the returned ACP_RESULT reports a model error, tell the user that model name was rejected and ask them to pick another one.",
     "Do not claim the task ran until an <ACP_RESULT> envelope is returned.",

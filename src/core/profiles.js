@@ -29,11 +29,24 @@ export function resolveProfile(config, request, modelCatalog = []) {
     request.token_budget ?? request.tokenBudget ?? profile.tokenBudget;
   const effort =
     request.reasoning_effort ?? request.reasoningEffort ?? profile.effort;
+  const timeLimitMinutes =
+    request.time_limit_minutes ?? request.timeLimitMinutes ?? null;
 
   if (!Number.isInteger(maxSubagents) || maxSubagents < 0 || maxSubagents > 8) {
     throw new ControlPlaneError(
       "invalid_subagent_limit",
       "max_subagents must be an integer from 0 to 8",
+    );
+  }
+  if (
+    timeLimitMinutes != null &&
+    (!Number.isInteger(timeLimitMinutes) ||
+      timeLimitMinutes < 1 ||
+      timeLimitMinutes > 240)
+  ) {
+    throw new ControlPlaneError(
+      "invalid_time_limit",
+      "time_limit_minutes must be an integer from 1 to 240",
     );
   }
   if (!Number.isInteger(tokenBudget) || tokenBudget < 1000) {
@@ -56,6 +69,7 @@ export function resolveProfile(config, request, modelCatalog = []) {
     effort,
     maxSubagents,
     tokenBudget,
+    timeLimitMinutes,
     summary: profile.summary ?? "concise",
   };
 

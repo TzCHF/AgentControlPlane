@@ -580,8 +580,12 @@ export class Orchestrator extends EventEmitter {
     if (current && current.status !== "running") {
       return Promise.resolve();
     }
-    const timeoutMs =
-      Number(this.config.limits.maxTaskRuntimeMinutes ?? 240) * 60 * 1000;
+    const limitMinutes = Number(
+      current?.policy?.timeLimitMinutes ??
+        this.config.limits.maxTaskRuntimeMinutes ??
+        240,
+    );
+    const timeoutMs = limitMinutes * 60 * 1000;
     return new Promise((resolve) => {
       active.resolve = resolve;
       active.timer = setTimeout(async () => {
@@ -603,7 +607,7 @@ export class Orchestrator extends EventEmitter {
             status: "interrupted",
             error: {
               code: "task_runtime_exceeded",
-              message: `Task exceeded the configured runtime limit of ${this.config.limits.maxTaskRuntimeMinutes ?? 240} minutes.`,
+              message: `Task exceeded the configured runtime limit of ${limitMinutes} minutes.`,
               details: interruptionError,
             },
             completedAt: new Date().toISOString(),
