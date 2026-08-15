@@ -204,6 +204,7 @@ export class OpenCodeExecutor extends ExecutorAdapter {
     let stderr = "";
     let stdoutDiagnostics = "";
     let executorSessionId = null;
+    let stderrTail = "";
     let finished = false;
     const finish = (payload) => {
       if (finished) return;
@@ -224,7 +225,8 @@ export class OpenCodeExecutor extends ExecutorAdapter {
     child.stderr.on("data", (chunk) => {
       const text = chunk.toString("utf8");
       if (!executorSessionId) {
-        const match = text.match(/session\.id=(ses_[A-Za-z0-9]+)/);
+        stderrTail = `${stderrTail}${text}`.slice(-400);
+        const match = stderrTail.match(/session\.id=(ses_[A-Za-z0-9]+)/);
         if (match) executorSessionId = match[1];
       }
       stderr = `${stderr}${text}`.slice(-4000);
