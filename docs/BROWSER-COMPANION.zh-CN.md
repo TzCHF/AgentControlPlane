@@ -57,12 +57,15 @@
   "task_id": "...",
   "status": "completed",
   "executor": "opencode",
+  "executor_session_id": "ses_...",
   "result": { "summary": "...", "changed_files": [], "tests": [] },
   "error": null,
   "usage": { "total_tokens": 0 }
 }
 </ACP_RESULT>
 ```
+
+`executor_session_id` 是执行器自身的会话 ID（例如 opencode 的 `ses_...`），可用于在执行器界面中回看该场完整对话。
 
 自动结果提交默认禁用，因为任务结果可能包含本地文件名或代码细节。仅当所选网页 AI 对话受信任、可以接收这些结果时，才按浏览器 `profile` 启用它。
 

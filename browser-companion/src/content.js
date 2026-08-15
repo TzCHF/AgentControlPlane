@@ -182,7 +182,12 @@
     while (Date.now() < deadline) {
       const response = await message("ACP_TASK_STATUS", { taskId });
       const task = response.task;
-      panel.setStatus(`Task ${task.id.slice(0, 8)} · ${task.status} 任务 ${task.id.slice(0, 8)} · ${task.status}`);
+      const sessionLabel = task.executor_session_id
+        ? ` · 会话 ${task.executor_session_id}`
+        : "";
+      panel.setStatus(
+        `Task ${task.id.slice(0, 8)} · ${task.status} 任务 ${task.id.slice(0, 8)} · ${task.status}${sessionLabel}`,
+      );
       if (task.terminal) {
         const result = protocol.formatTaskResult(task);
         await returnResult(result);

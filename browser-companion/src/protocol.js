@@ -83,6 +83,7 @@ export function formatTaskResult(task) {
     task_id: task.id,
     status: task.status,
     executor: task.executor,
+    executor_session_id: task.executor_session_id ?? null,
     result: task.result ?? null,
     error: task.error ?? null,
     usage: task.usage ?? null,
