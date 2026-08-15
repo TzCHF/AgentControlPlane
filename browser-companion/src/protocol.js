@@ -113,6 +113,12 @@ export function controllerPrompt(settings = {}) {
     ),
     TASK_CLOSE,
     "DEFAULT is resolved locally by the companion; do not ask for or expose a local filesystem path.",
+    "Optional fields to add only when the user explicitly asks for them:",
+    '"model": the model id for the executor (e.g. "deepseek-v4-pro"); omit to use the executor default.',
+    '"reasoning_effort": "low" | "medium" | "high"; omit for the default.',
+    '"token_budget": an integer token cap for the task.',
+    '"max_subagents": an integer subagent cap.',
+    'Profiles: "economy" (small edits, low effort, 0 subagents), "balanced" (normal work, high effort, up to 2 subagents), "deep" (architecture, ultra effort, up to 4 subagents).',
     "Do not claim the task ran until an <ACP_RESULT> envelope is returned.",
     "After receiving ACP_RESULT, explain the verified outcome and continue with a follow-up envelope only when needed.",
   ].join("\n");
