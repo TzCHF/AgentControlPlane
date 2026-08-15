@@ -215,8 +215,8 @@
   const DEFAULT_CONFIRM_WORDS = [
     "yes", "y", "ok", "okay", "go", "run", "do it", "send", "execute",
     "confirm", "approve", "执行", "确认", "批准", "同意", "好的", "可以",
-    "行", "干", "开始", "派发", "派发吧", "派发吗", "执行吧", "确认派发",
-    "确认执行", "是否派发", "是", "对",
+    "行", "干", "开始", "开工", "上", "走", "冲", "搞", "跑",
+    "派发", "派发吗", "确认派发", "确认执行", "是否派发", "是", "对",
   ];
 
   function confirmWordsRegex(settings) {
@@ -231,6 +231,13 @@
     return new RegExp(`^(?:${escaped.join("|")})$`, "i");
   }
 
+  function normalizeConfirmText(text) {
+    return String(text ?? "")
+      .replace(/[吧啊呀哦哈呢嘛咯]+[!！。.\s]*$/u, "")
+      .replace(/[!！。.\s]+$/u, "")
+      .trim();
+  }
+
   let pendingEnvelope = null;
 
   async function inspectConversation() {
@@ -238,7 +245,26 @@
     if (!currentState?.connected) return;
 
     const userText = adapters.latestUserText(document, adapter).trim();
-    if (pendingEnvelope && userText && confirmWordsRegex(currentState.settings).test(userText)) {
+    if (userText) {
+      const normalized = normalizeConfirmText(userText);
+      if (pendingEnvelope && confirmWordsRegex(currentState.settings).test(normalized)) {
+        const envelope = pendingEnvelope;
+        pendingEnvelope = null;
+        await executeEnvelope(envelope).catch(reportError);
+        return;
+      }
+      if (
+        pendingEnvelope &&
+        !confirmWordsRegex(currentState.settings).test(normalized) &&
+        !protocol.extractTaskEnvelope(userText)
+      ) {
+        panel.open();
+        panel.setStatus(
+          "Not a confirm word 未识别为确认词：回复「执行 / 开始 / 是」或点「派发」",
+          "error",
+        );
+      }
+    }
       const envelope = pendingEnvelope;
       pendingEnvelope = null;
       await executeEnvelope(envelope).catch(reportError);
