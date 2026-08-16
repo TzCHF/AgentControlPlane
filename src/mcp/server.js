@@ -379,7 +379,7 @@ function buildToolSpecs({ orchestrator, store, config }) {
         kind: z.string().nullable().optional(),
         limit: z.number().int().min(1).max(500).default(100),
         offset: z.number().int().min(0).default(0),
-        scope: z.enum(["production", "all"]).default("production"),
+        scope: z.enum(["production", "diagnostic", "all"]).default("production"),
         production_only: z.boolean().optional(),
       },
       annotations: {
@@ -428,11 +428,31 @@ function buildToolSpecs({ orchestrator, store, config }) {
         provider_rows: z
           .array(
             z.object({
-              request_id: z.string(),
-              total_tokens: z.number().optional(),
-              settled_cost_microusd: z.number().nullable().optional(),
-              credit_microusd: z.number().nullable().optional(),
-              net_cost_microusd: z.number().nullable().optional(),
+              asterroute_request_id: z.string(),
+              upstream_request_id: z.string().nullable().optional(),
+              token_dimensions: z
+                .object({
+                  input: z.number().int().min(0),
+                  output: z.number().int().min(0),
+                  cached_input: z.number().int().min(0).optional(),
+                  reasoning_output: z.number().int().min(0).optional(),
+                })
+                .optional(),
+              presence_state: z
+                .enum(["both", "client_only", "provider_only", "unknown"])
+                .nullable()
+                .optional(),
+              token_state: z
+                .enum(["matched", "mismatch", "unknown"])
+                .nullable()
+                .optional(),
+              settlement_state: z
+                .enum(["pending", "settled", "adjusted", "not_billable"])
+                .nullable()
+                .optional(),
+              settled_cost_microusd: z.number().int().min(0).nullable().optional(),
+              credit_microusd: z.number().int().min(0).nullable().optional(),
+              net_cost_microusd: z.number().int().min(0).nullable().optional(),
               currency: z.string().nullable().optional(),
               pricing_version: z.string().nullable().optional(),
               billing_revision: z.string().nullable().optional(),

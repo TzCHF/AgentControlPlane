@@ -15,6 +15,8 @@ const DIMENSIONS = new Set([
   "task_kind",
 ]);
 
+const SCOPES = new Set(["production", "diagnostic", "all"]);
+
 function projectOf(store, taskId) {
   if (!taskId) return "unattached";
   const task = store.getTask(taskId);
@@ -49,13 +51,17 @@ export function usageDimensions(
   } = {},
 ) {
   const dimension = DIMENSIONS.has(by) ? by : "model";
-  const effectiveScope =
+  const rawScope =
     production_only === false ? "all" : production_only === true ? "production" : scope;
+  // Frozen contract scopes: production | diagnostic | all.
+  const effectiveScope = SCOPES.has(rawScope) ? rawScope : "production";
   const { events } = store.listUsageEvents({ since, kind, limit: 100000, offset: 0 });
   const groups = new Map();
   for (const event of events) {
     const task = event.task_id ? store.getTask(event.task_id) : null;
-    if (effectiveScope !== "all" && !inProductionScope(store, event)) continue;
+    const inProduction = inProductionScope(store, event);
+    if (effectiveScope === "production" && !inProduction) continue;
+    if (effectiveScope === "diagnostic" && inProduction) continue;
     let key;
     switch (dimension) {
       case "task":
@@ -165,39 +171,53 @@ export function reconcileUsage(store, providerRows = []) {
       byRequestId.set(event.asterroute_request_id, event);
     }
   }
-  const seenEvents = new Set();
   const statuses = {
     presence: { both: 0, client_only: 0, provider_only: 0, unknown: 0 },
     token: { matched: 0, mismatch: 0, unknown: 0 },
     settlement: { pending: 0, settled: 0, adjusted: 0, not_billable: 0 },
   };
-  for (const event of events) {
-    if (!event.asterroute_request_id) {
-      statuses.presence.client_only += 1;
-      statuses.settlement.pending += 1;
-      continue;
-    }
-    if (!seenEvents.has(event.asterroute_request_id)) {
-      seenEvents.add(event.asterroute_request_id);
-      statuses.presence.both += 1;
-    }
-  }
-  const processed = new Set();
   const updates = [];
+  const matchedIds = new Set();
   for (const row of providerRows.slice(0, 200)) {
-    const requestId = String(row?.request_id ?? "");
-    if (!requestId || processed.has(requestId)) continue;
-    processed.add(requestId);
+    // Provider rows use the frozen wire shape: asterroute_request_id and
+    // token_dimensions, never request_id / total_tokens.
+    const requestId = String(row?.asterroute_request_id ?? "");
+    if (!requestId || matchedIds.has(requestId)) continue;
     const event = byRequestId.get(requestId);
     if (!event) {
+      matchedIds.add(requestId);
       statuses.presence.provider_only += 1;
+      statuses.token.unknown += 1;
+      const settlement =
+        row.settlement_state === "adjusted"
+          ? "adjusted"
+          : row.settlement_state === "not_billable"
+            ? "not_billable"
+            : row.settled_cost_microusd != null
+              ? "settled"
+              : "pending";
+      statuses.settlement[settlement] += 1;
+      updates.push({
+        asterroute_request_id: requestId,
+        presence_state: "provider_only",
+        token_state: "unknown",
+        settlement_state: settlement,
+        settled_cost_microusd: row.settled_cost_microusd ?? null,
+        credit_microusd: row.credit_microusd ?? null,
+        net_cost_microusd: row.net_cost_microusd ?? null,
+        currency: row.currency ?? "USD",
+        pricing_version: row.pricing_version ?? null,
+        billing_revision: row.billing_revision ?? null,
+      });
       continue;
     }
-    statuses.presence.both -= 1;
-    const providerTokens = Number(row.total_tokens);
+    matchedIds.add(requestId);
+    statuses.presence.both += 1;
+    const dims = row?.token_dimensions ?? {};
+    const providerTotal = Number(dims.input ?? 0) + Number(dims.output ?? 0);
     const tokenState =
-      Number.isFinite(providerTokens) &&
-      providerTokens !== (event.usage?.total_tokens ?? 0)
+      Number.isFinite(providerTotal) &&
+      providerTotal !== (event.usage?.total_tokens ?? 0)
         ? "mismatch"
         : "matched";
     statuses.token[tokenState] += 1;
@@ -211,7 +231,7 @@ export function reconcileUsage(store, providerRows = []) {
             : "pending";
     statuses.settlement[settlement] += 1;
     updates.push({
-      request_id: requestId,
+      asterroute_request_id: requestId,
       presence_state: "both",
       token_state: tokenState,
       settlement_state: settlement,
@@ -221,6 +241,44 @@ export function reconcileUsage(store, providerRows = []) {
       currency: row.currency ?? "USD",
       pricing_version: row.pricing_version ?? null,
       billing_revision: row.billing_revision ?? null,
+    });
+  }
+  // Existing reconciliation entries are authoritative: events already
+  // reconciled are counted from their stored state and never refined again
+  // (keeps repeated reconcile_now runs idempotent).
+  const existing = new Map(
+    store
+      .listReconciliations()
+      .map((entry) => [entry.asterroute_request_id ?? entry.request_id, entry]),
+  );
+  for (const event of events) {
+    if (!event.asterroute_request_id) {
+      statuses.presence.client_only += 1;
+      statuses.settlement.pending += 1;
+      continue;
+    }
+    if (matchedIds.has(event.asterroute_request_id)) continue;
+    const entry = existing.get(event.asterroute_request_id);
+    if (entry) {
+      statuses.presence[entry.presence_state] += 1;
+      statuses.token[entry.token_state] += 1;
+      statuses.settlement[entry.settlement_state] += 1;
+      continue;
+    }
+    statuses.presence.unknown += 1;
+    statuses.token.unknown += 1;
+    statuses.settlement.pending += 1;
+    updates.push({
+      asterroute_request_id: event.asterroute_request_id,
+      presence_state: "unknown",
+      token_state: "unknown",
+      settlement_state: "pending",
+      settled_cost_microusd: null,
+      credit_microusd: null,
+      net_cost_microusd: null,
+      currency: "USD",
+      pricing_version: null,
+      billing_revision: null,
     });
   }
   store.applyReconciliations(updates);
