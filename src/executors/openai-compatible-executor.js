@@ -1123,6 +1123,9 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         headers["x-acp-project"] = path.basename(String(attribution.workspace));
       }
       if (eventMeta?.turnId) headers["x-acp-turn-id"] = String(eventMeta.turnId);
+      if (eventMeta?.taskKind) {
+        headers["x-acp-task-kind"] = String(eventMeta.taskKind);
+      }
       if (eventMeta?.requestKind) {
         headers["x-acp-request-kind"] = String(eventMeta.requestKind);
       }
