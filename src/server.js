@@ -14,6 +14,7 @@ import { OpenCodeExecutor } from "./executors/opencode-executor.js";
 import { OpenAICompatibleExecutor } from "./executors/openai-compatible-executor.js";
 import { assertExecutor } from "./executors/executor.js";
 import { assertLifecycle } from "./executors/lifecycle.js";
+import { resolvePreset, presetNames } from "./executors/provider-presets.js";
 import { createMcpHandler } from "./mcp/server.js";
 import { PairingManager } from "./companion/pairing-manager.js";
 import { CompanionRouter } from "./companion/router.js";
@@ -89,7 +90,16 @@ export function buildExecutors(config) {
     executors.set(provider, buildExecutor(config, provider));
   }
   for (const relay of config.executor?.relays ?? []) {
-    const id = String(relay?.id ?? "").trim();
+    const preset = relay?.preset ? resolvePreset(relay.preset) : null;
+    if (relay?.preset && !preset) {
+      throw new ControlPlaneError(
+        "unknown_provider_preset",
+        `Unknown provider preset: ${relay.preset}`,
+        { available: presetNames() },
+      );
+    }
+    const merged = { ...(preset ?? {}), ...relay };
+    const id = String(merged.id ?? "").trim();
     if (!id) {
       throw new ControlPlaneError(
         "invalid_relay_id",
@@ -107,13 +117,14 @@ export function buildExecutors(config) {
       id,
       new OpenAICompatibleExecutor({
         id,
-        displayName: relay.displayName ?? id,
-        baseUrl: relay.baseUrl,
-        apiKey: process.env[relay.apiKeyEnv] ?? relay.apiKey ?? null,
-        model: relay.model,
-        protocol: relay.protocol,
-        models: relay.models ?? [],
-        requestsPerMinute: relay.requestsPerMinute ?? null,
+        displayName: merged.displayName ?? id,
+        baseUrl: merged.baseUrl,
+        apiKey: process.env[merged.apiKeyEnv] ?? merged.apiKey ?? null,
+        model: merged.model,
+        protocol: merged.protocol,
+        models: merged.models ?? [],
+        requestsPerMinute: merged.requestsPerMinute ?? null,
+        official: merged.official === true,
         workspaceRoots: config.workspaceRoots,
       }),
     );

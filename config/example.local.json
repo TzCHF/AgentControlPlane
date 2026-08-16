@@ -20,6 +20,12 @@
     },
     "relays": [
       {
+        "id": "asterroute",
+        "preset": "asterroute",
+        "apiKey": null,
+        "requestsPerMinute": 10
+      },
+      {
         "id": "my-relay",
         "displayName": "My Relay",
         "baseUrl": "https://your-relay.example/v1",

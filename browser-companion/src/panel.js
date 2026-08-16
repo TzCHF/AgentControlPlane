@@ -49,6 +49,7 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
           <div class="actions"><button data-action="latest">${t("useLatest")}</button><button data-action="disconnect">${t("disconnect")}</button></div>
           <div class="stack"><label>${t("workspaceLabel")}</label><select data-field="workspace"><option value="">${t("selectAfterPairing")}</option></select></div>
           <div class="row"><div><label>${t("profileLabel")}</label><select data-field="profile"><option value="auto">${t("profileAuto")}</option><option value="economy">${t("profileEconomy")}</option><option value="balanced">${t("profileBalanced")}</option><option value="deep">${t("profileDeep")}</option></select></div><div><label>${t("executorLabel")}</label><select data-field="executor"><option value="auto">${t("executorAuto")}</option></select></div></div>
+          <div class="stack"><label>${t("modelLabel")}</label><select data-field="model"><option value="">${t("modelAuto")}</option></select></div>
           <div class="stack"><label>${t("objectiveLabel")}</label><textarea data-field="objective" placeholder="${t("objectivePlaceholder")}"></textarea></div>
           <div class="stack"><label>${t("confirmLabel")}</label><input data-field="confirmWords" placeholder="${t("confirmPlaceholder")}"></div>
           <label class="toggle"><input type="checkbox" data-field="autoSubmitResults"> ${t("autoSubmitLabel")}</label>
@@ -91,6 +92,11 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     for (const button of shadow.querySelectorAll("[data-action]")) {
       button.addEventListener("click", () => handlers[button.dataset.action]?.());
     }
+    if (fields.executor && fields.model) {
+      fields.executor.addEventListener("change", () => {
+        if (currentOptions) refreshModelOptions(currentOptions);
+      });
+    }
     for (const name of ["workspace", "profile", "executor", "confirmWords", "autoSubmitResults"]) {
       fields[name].addEventListener("change", () => handlers.settings?.(getValues()));
     }
@@ -126,6 +132,7 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
       workspace: fields.workspace.value,
       profile: fields.profile.value,
       executor: fields.executor.value,
+      model: fields.model ? fields.model.value : "",
       confirmWords: fields.confirmWords.value,
       autoSubmitResults: fields.autoSubmitResults.checked,
       language: lang,
@@ -184,6 +191,22 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     }
   }
 
+  function refreshModelOptions(options) {
+    const executorValue = fields.executor.value;
+    const list = options?.models?.[executorValue] ?? [];
+    const previous = fields.model.value;
+    fields.model.innerHTML = [
+      `<option value="">${t("modelAuto")}</option>`,
+      ...list.map((entry) => {
+        const id = entry.id ?? entry.model;
+        return `<option value="${escapeAttribute(id)}">${escapeText(id)}</option>`;
+      }),
+    ].join("");
+    if (previous && list.some((entry) => (entry.id ?? entry.model) === previous)) {
+      fields.model.value = previous;
+    }
+  }
+
   function applySettings(settings) {
     currentSettings = settings;
     if (!fields.workspace) return;
@@ -192,6 +215,16 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     }
     fields.language.value = lang;
     fields.autoSubmitResults.checked = Boolean(settings?.autoSubmitResults);
+    if (fields.model) {
+      const modelList = currentOptions?.models?.[fields.executor.value] ?? [];
+      const model = settings?.model ?? "";
+      if (
+        !model ||
+        modelList.some((entry) => (entry.id ?? entry.model) === model)
+      ) {
+        fields.model.value = model;
+      }
+    }
   }
 
   function applyOptions(options, settings) {
@@ -217,7 +250,9 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     const isEndpoint = (entry) =>
       entry.kind === "model-endpoint" || ENDPOINT_IDS.has(entry.id);
     const optionFor = (entry, disabled = false) => {
-      const label = entry.display_name ?? entry.id;
+      const label =
+        (entry.display_name ?? entry.id) +
+        (entry.official ? ` · ${t("officialTag")}` : "");
       return disabled
         ? `<option value="${escapeAttribute(entry.id)}" disabled>${escapeText(label)}（${t("executorUnavailable")}）</option>`
         : `<option value="${escapeAttribute(entry.id)}">${escapeText(label)}</option>`;
@@ -245,6 +280,7 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
       ),
       `</optgroup>`,
     ].join("");
+    refreshModelOptions(options);
     applySettings(settings);
   }
 

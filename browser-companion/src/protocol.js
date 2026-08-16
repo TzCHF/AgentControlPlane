@@ -86,8 +86,12 @@ export function normalizeDispatch(envelope, settings = {}) {
     ["model", "model", 120],
     ["reasoning_effort", "reasoning_effort", 40],
   ]) {
-    const value = envelope?.[source];
-    if (value == null) continue;
+    const value =
+      envelope?.[source] ??
+      (source === "model" || source === "reasoning_effort"
+        ? settings?.[source]
+        : undefined);
+    if (value == null || value === "") continue;
     if (listTargets.has(target) && typeof value === "string") {
       request[target] = [boundedString(value, limit)];
       continue;
@@ -121,12 +125,25 @@ export function formatTaskResult(task) {
   return `<ACP_RESULT>\n${JSON.stringify(payload, null, 2)}\n</ACP_RESULT>`;
 }
 
-export function controllerPrompt(settings = {}, executors = []) {
+export function controllerPrompt(settings = {}, executors = [], models = {}) {
   const profile = boundedString(settings.profile, 40) || "balanced";
   const executor = boundedString(settings.executor, 80) || "auto";
   const executorCatalog = executors
     .map((entry) => `${entry.id} (${entry.display_name ?? entry.id})`)
     .join(", ");
+  const modelCatalog = executors
+    .map((entry) => {
+      const list = models?.[entry.id] ?? [];
+      const names = list
+        .slice(0, 5)
+        .map((model) => model.id ?? model.model)
+        .filter(Boolean);
+      return names.length
+        ? `${entry.display_name ?? entry.id}: ${names.join(", ")}`
+        : null;
+    })
+    .filter(Boolean)
+    .join("; ");
   return [
     "You are the planning controller for a local engineering control plane.",
     "Clarify the user's goal in this conversation before dispatching engineering work.",
@@ -149,7 +166,9 @@ export function controllerPrompt(settings = {}, executors = []) {
     "DEFAULT is resolved locally by the companion; do not ask for or expose a local filesystem path.",
     `Available executors: ${executorCatalog || "auto (automatic routing)"}. When the user names an executor, put its id in the "executor" field; otherwise use "auto".`,
     "Optional fields to add only when the user explicitly asks for them:",
-    '"model": only when the user names a model. DeepSeek Harness accepts "deepseek-chat" or "deepseek-reasoner"; OpenCodex accepts "deepseek/deepseek-v4-pro" or "deepseek-v4-pro"; omit the field to use the executor default.',
+    modelCatalog
+      ? `"model": only when the user names a model. Advertised models: ${modelCatalog}. Omit the field to use the executor default.`
+      : '"model": only when the user names a model; omit the field to use the executor default.',
     '"reasoning_effort": "low" | "medium" | "high"; omit for the default.',
     '"token_budget": an integer token cap for the task.',
     '"max_subagents": an integer subagent cap.',

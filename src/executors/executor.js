@@ -94,6 +94,7 @@ export class ExecutorAdapter extends EventEmitter {
       id: this.id,
       display_name: this.displayName,
       kind: this.kind ?? null,
+      official: this.official === true,
       ready: Boolean(this.ready),
       discovery: structuredClone(this.discovery),
       capabilities: structuredClone(this.capabilities),

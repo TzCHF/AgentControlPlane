@@ -79,6 +79,62 @@ AI 中转站 -> 上游模型（DeepSeek、GLM、OpenAI ...）
 - `requestsPerMinute` 控制对中转站的补全请求节奏：60 秒滑动窗口内超过上限时执行器会等待再发。执行器对 429 响应自动重试两次并遵守 `retry-after` 头。中转站对已授权请求（含重试的 429）都计入 RPM 窗口，节奏器同样计每一次尝试；并发任务共用一个窗口。`/v1/models` 目录发现请求单独限速，不占用该额度。
 - 派发时用 `"executor": "asterroute"` 或显示名选中中转；每个中转的目录会出现在 `list_models`、网页面板，以及伴侣执行器列表的「模型端点」分组中。
 
+## Provider preset
+
+preset 是一份预填 relay 字段的数据条目，用一个名字代替整段 JSON 配置：
+
+```json
+{
+  "executor": {
+    "relays": [
+      {
+        "id": "asterroute",
+        "preset": "asterroute",
+        "apiKey": "sk-your-relay-key",
+        "requestsPerMinute": 10
+      }
+    ]
+  }
+}
+```
+
+显式字段覆盖 preset；`presetNames()` 列出注册表。preset 不携带代码分支，
+删除所有 preset 条目后，ACP 仍可用手工 relay 配置正常工作。
+
+## 协议自动探测
+
+`protocol: "auto"` 每个进程探测一次端点，选择能完整完成 agent tool loop 的协议：
+
+1. Responses API 可用性。
+2. Responses 工具调用：发一个 `ping` 工具请求，必须返回 `ping` 的 `function_call`。
+3. Chat Completions 工具调用：用 `tool_calls` 做同样检查。
+4. 通过两项检查的协议被选中；都通过时 responses 优先。
+
+探测输出上限很小、只跑一次、进程内缓存。显式 `chat` 或 `responses` 永不探测。
+探测结果出现在执行器发现信息里（`protocols.selected`、各协议的 tool loop 检查、
+探测所用模型）。
+
+## 模型能力
+
+每个模型条目可以带 `capabilities` 对象：
+
+```json
+{
+  "id": "model-id",
+  "capabilities": {
+    "chat": true,
+    "responses": false,
+    "tools": true,
+    "reasoning": true,
+    "vision": false
+  }
+}
+```
+
+Provider 在 `/v1/models` 里声明的能力直接透传。未声明时保持 unknown（`null`），
+协议探测会把已验证的能力记在被探测的模型上。`featured` 与 `route_tier`
+元数据存在时透传。
+
 ## 实时模型目录
 
 启动时及每 60 秒，AgentControlPlane 读取中转站的 `GET /v1/models` 并构建模型目录：

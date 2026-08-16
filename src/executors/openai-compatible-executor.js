@@ -121,6 +121,8 @@ export function computeCompletionWait(timestamps, limit, nowMs, windowMs = 60000
 
 export class OpenAICompatibleExecutor extends ExecutorAdapter {
   #completionTimes = [];
+  #resolvedProtocol = null;
+  #modelCapabilities = new Map();
 
   constructor({
     id = "openai-compatible",
@@ -134,6 +136,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     workspaceRoots = [],
     models = [],
     requestsPerMinute = null,
+    official = false,
   } = {}) {
     super({
       id,
@@ -156,7 +159,10 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     }
     this.apiKey = apiKey ?? null;
     this.model = model;
-    this.protocol = protocol === "chat" ? "chat" : "responses";
+    this.protocol = ["chat", "auto"].includes(protocol)
+      ? protocol
+      : "responses";
+    this.official = official === true;
     this.requestTimeoutMs = requestTimeoutMs;
     this.maxToolRounds = maxToolRounds;
     this.workspaceRoots = workspaceRoots;
@@ -178,6 +184,29 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       };
     }
     const local = ["127.0.0.1", "localhost", "::1"].includes(parsed.hostname);
+    if (this.protocol === "auto" || this.#resolvedProtocol) {
+      if (!local && !this.apiKey) {
+        return {
+          available: false,
+          status: "unavailable",
+          reason: "missing_api_key",
+        };
+      }
+      const detection = await this.#resolveProtocolOnce();
+      return {
+        available: Boolean(detection.protocol),
+        status: detection.protocol ? "available" : "degraded",
+        reason: detection.protocol
+          ? null
+          : detection.reason ?? "tool_loop_unsupported",
+        protocols: {
+          chat: detection.chat,
+          responses: detection.responses,
+          selected: detection.protocol,
+          probe_model: detection.model,
+        },
+      };
+    }
     if (!local) {
       return this.apiKey
         ? { available: true, status: "configured", reason: null }
@@ -198,6 +227,155 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         detail: error.message,
       };
     }
+  }
+
+  async #resolveProtocolOnce() {
+    if (this.#resolvedProtocol) return this.#resolvedProtocol;
+    if (this.protocol !== "auto") {
+      return { protocol: this.protocol, chat: {}, responses: {}, reason: null };
+    }
+    const detection = await this.#detectProtocol();
+    if (detection.protocol) this.protocol = detection.protocol;
+    this.#resolvedProtocol = detection;
+    return detection;
+  }
+
+  async #ensureProtocol() {
+    if (this.protocol !== "auto") return this.protocol;
+    const detection = await this.#resolveProtocolOnce();
+    if (detection.protocol) return detection.protocol;
+    throw new ControlPlaneError(
+      "protocol_detection_failed",
+      detection.reason ?? "No protocol completed the agent tool loop",
+      { detection },
+    );
+  }
+
+  async #pickProbeModel() {
+    if (this.model) return this.model;
+    if (this.staticModels.length > 0) return this.staticModels[0];
+    const catalog = await this.listModels();
+    const first = catalog.data?.[0];
+    return first?.id ?? first?.model ?? null;
+  }
+
+  async #detectProtocol() {
+    const probeToolResponses = {
+      type: "function",
+      name: "ping",
+      description: "Reply with pong.",
+      parameters: { type: "object", properties: {} },
+    };
+    const probeToolChat = {
+      type: "function",
+      function: {
+        name: "ping",
+        description: "Reply with pong.",
+        parameters: { type: "object", properties: {} },
+      },
+    };
+    const model = await this.#pickProbeModel();
+    const result = {
+      protocol: null,
+      model: model ?? null,
+      responses: { available: false, toolLoop: false },
+      chat: { available: false, toolLoop: false },
+      reasoning: null,
+      reason: null,
+    };
+    if (!model) {
+      result.reason = "no_model_to_probe";
+      return result;
+    }
+
+    const statusOf = (error) => Number(error?.details?.status ?? 0);
+    const recordReasoning = (usage) => {
+      if (!usage || typeof usage.completion_tokens_details?.reasoning_tokens !== "number") {
+        return;
+      }
+      result.reasoning =
+        result.reasoning ?? usage.completion_tokens_details.reasoning_tokens > 0;
+    };
+
+    let responsesStatus = 0;
+    try {
+      const availability = await this.#requestCompletion("/responses", {
+        model,
+        instructions: "Reply with the word pong.",
+        input: "ping",
+        stream: false,
+        max_output_tokens: 16,
+      });
+      responsesStatus = 200;
+      recordReasoning(availability?.usage);
+    } catch (error) {
+      responsesStatus = statusOf(error);
+    }
+    if (![404, 405, 0].includes(responsesStatus)) {
+      result.responses.available = true;
+    }
+
+    if (result.responses.available) {
+      try {
+        const toolResponse = await this.#requestCompletion("/responses", {
+          model,
+          instructions: "Call the ping tool exactly once.",
+          input: "ping",
+          tools: [probeToolResponses],
+          stream: false,
+          max_output_tokens: 16,
+        });
+        const output = Array.isArray(toolResponse?.output) ? toolResponse.output : [];
+        result.responses.toolLoop = output.some(
+          (item) => item.type === "function_call" && item.name === "ping",
+        );
+        recordReasoning(toolResponse?.usage);
+      } catch {
+        result.responses.toolLoop = false;
+      }
+    }
+
+    if (!result.responses.toolLoop) {
+      try {
+        const chatResponse = await this.#requestCompletion("/chat/completions", {
+          model,
+          messages: [
+            { role: "user", content: "Call the ping tool exactly once." },
+          ],
+          tools: [probeToolChat],
+          stream: false,
+          max_tokens: 16,
+        });
+        result.chat.available = true;
+        const message = chatResponse?.choices?.[0]?.message ?? {};
+        result.chat.toolLoop = Array.isArray(message.tool_calls)
+          ? message.tool_calls.some((call) => call?.function?.name === "ping")
+          : false;
+        recordReasoning(chatResponse?.usage);
+      } catch (error) {
+        const status = statusOf(error);
+        result.chat.available = ![404, 405, 0].includes(status);
+      }
+    }
+
+    if (result.responses.toolLoop) result.protocol = "responses";
+    else if (result.chat.toolLoop) result.protocol = "chat";
+    else if (result.responses.available || result.chat.available) {
+      result.reason = "tool_loop_unsupported";
+    } else {
+      result.reason = "endpoint_unreachable";
+    }
+
+    if (model) {
+      this.#modelCapabilities.set(model, {
+        chat: result.chat.toolLoop,
+        responses: result.responses.toolLoop,
+        tools: result.chat.toolLoop || result.responses.toolLoop,
+        reasoning: result.reasoning,
+        vision: null,
+      });
+    }
+    return result;
   }
 
   async start() {
@@ -229,20 +407,42 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       const data = Array.isArray(body?.data) ? body.data : [];
       return {
         data: data
-          .map((entry) => {
-            const id = String(entry?.id ?? entry?.model ?? "");
-            return {
-              id,
-              model: id,
-              displayName: id,
-              isDefault: Boolean(id && id === this.model),
-            };
-          })
+          .map((entry) => this.#normalizeCatalogEntry(entry))
           .filter((entry) => entry.id),
       };
     } catch {
       return { data: [] };
     }
+  }
+
+  #normalizeCatalogEntry(entry) {
+    const id = String(entry?.id ?? entry?.model ?? "");
+    const declared =
+      entry?.capabilities && typeof entry.capabilities === "object"
+        ? entry.capabilities
+        : null;
+    const probed = this.#modelCapabilities.get(id) ?? null;
+    const capabilities = declared
+      ? {
+          chat: declared.chat != null ? Boolean(declared.chat) : null,
+          responses:
+            declared.responses != null ? Boolean(declared.responses) : null,
+          tools: declared.tools != null ? Boolean(declared.tools) : null,
+          reasoning: declared.reasoning ?? null,
+          vision: declared.vision ?? null,
+        }
+      : probed
+        ? { ...probed }
+        : null;
+    return {
+      id,
+      model: id,
+      displayName: id,
+      isDefault: Boolean(id && id === this.model),
+      capabilities,
+      featured: entry?.metadata?.featured ?? entry?.featured ?? null,
+      route_tier: entry?.metadata?.routeTier ?? entry?.routeTier ?? null,
+    };
   }
 
   async getSandboxReadiness() {
@@ -335,7 +535,8 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
   }
 
   async #runTurn(turnId, { threadId, input, model, cwd, outputSchema }) {
-    if (this.protocol === "chat") {
+    const protocol = await this.#ensureProtocol();
+    if (protocol === "chat") {
       return this.#runChatTurn(turnId, {
         threadId,
         input,
@@ -740,6 +941,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         throw new ControlPlaneError(
           "upstream_error",
           `OpenAI-compatible endpoint returned ${response.status}: ${text.slice(0, 200)}`,
+          { status: response.status },
         );
       }
       return response.json();

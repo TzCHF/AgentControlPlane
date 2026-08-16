@@ -12,12 +12,18 @@ export const DASHBOARD_STRINGS = {
     healthBad: "状态异常",
     executors: "执行器",
     default: "默认",
+    official: "官方",
     ready: "就绪",
     notReady: "未就绪",
     modelsInCatalog: "模型目录 {n} 个",
     models: "模型目录",
     modelFilter: "输入模型名过滤",
     noModels: "该执行器暂无模型目录。",
+    featuredTag: "主打",
+    capTools: "工具",
+    capReasoning: "推理",
+    capVision: "视觉",
+    capUnknown: "能力未知",
     tasks: "任务",
     noTasks: "暂无任务记录。",
     searchTasks: "按编号或内容搜索任务",
@@ -67,12 +73,18 @@ export const DASHBOARD_STRINGS = {
     healthBad: "Unhealthy",
     executors: "Executors",
     default: "Default",
+    official: "Official",
     ready: "Ready",
     notReady: "Not ready",
     modelsInCatalog: "{n} models in catalog",
     models: "Model catalog",
     modelFilter: "Filter by model name",
     noModels: "This executor has no model catalog.",
+    featuredTag: "Featured",
+    capTools: "tools",
+    capReasoning: "reasoning",
+    capVision: "vision",
+    capUnknown: "capabilities unknown",
     tasks: "Tasks",
     noTasks: "No task records yet.",
     searchTasks: "Search tasks by id or content",
@@ -200,6 +212,7 @@ h2 { font-size: 14px; margin: 0 0 10px; color: var(--muted); font-weight: 600; t
 .badge.ready { color: var(--ok); border-color: var(--ok); }
 .badge.notready { color: var(--bad); border-color: var(--bad); }
 .badge.default { color: var(--accent); border-color: var(--accent); }
+.badge.official { color: #d29922; border-color: #d29922; }
 .exec-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
 .exec-detail { font-size: 12px; color: var(--muted); margin-top: 6px; word-break: break-all; }
 .row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
@@ -457,6 +470,7 @@ function renderExecutors() {
         '<div class="exec-id">' + escapeHtml(executor.id) + "</div>" +
         '<div class="exec-row">' +
         '<span class="badge ' + (ready ? "ready" : "notready") + '">' + t(ready ? "ready" : "notReady") + "</span>" +
+        (executor.official ? '<span class="badge official">' + t("official") + "</span>" : "") +
         (executor.selected ? '<span class="badge default">' + t("default") + "</span>" : "") +
         '<span class="muted">' + fmt(t("modelsInCatalog"), { n: count }) + "</span>" +
         "</div>" +
@@ -496,16 +510,24 @@ function renderModels() {
   }
   box.innerHTML = filtered
     .map(function (model) {
-      var efforts = model.supported_reasoning_efforts || [];
-      var tag =
-        efforts.length > 0
-          ? '<span class="tag">' + escapeHtml(efforts.join(", ")) + "</span>"
-          : "";
+      const caps = model.capabilities;
+      const tags = [];
+      if (!caps) {
+        tags.push(t("capUnknown"));
+      } else {
+        if (caps.tools) tags.push(t("capTools"));
+        if (caps.reasoning) tags.push(t("capReasoning"));
+        if (caps.vision) tags.push(t("capVision"));
+        if (model.featured) tags.push(t("featuredTag"));
+        if (!tags.length) tags.push(t("capUnknown"));
+      }
       return (
         "<li><span>" +
         escapeHtml(model.id || model.model) +
         "</span>" +
-        tag +
+        '<span class="tag">' +
+        tags.map((tag) => escapeHtml(tag)).join(" · ") +
+        "</span>" +
         "</li>"
       );
     })

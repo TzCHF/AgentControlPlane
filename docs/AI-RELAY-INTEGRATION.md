@@ -97,6 +97,68 @@ catalog, and static allowlist:
   display name; each relay's catalog appears in `list_models`, the web
   panel, and the companion executor list under model endpoints.
 
+## Provider presets
+
+A preset is a data entry that pre-fills relay fields, so a provider can be
+configured with a name in place of a full JSON block:
+
+```json
+{
+  "executor": {
+    "relays": [
+      {
+        "id": "asterroute",
+        "preset": "asterroute",
+        "apiKey": "sk-your-relay-key",
+        "requestsPerMinute": 10
+      }
+    ]
+  }
+}
+```
+
+Explicit fields override the preset; `presetNames()` lists the registry.
+Presets carry no code branches, and removing every preset entry leaves ACP
+functional with any manual relay configuration.
+
+## Protocol auto-detection
+
+`protocol: "auto"` probes the endpoint once per process and selects the
+protocol that completes the agent tool loop:
+
+1. Responses API availability.
+2. Responses tool calling: a `ping` tool request that must return a
+   `function_call` for `ping`.
+3. Chat Completions tool calling: the same check with `tool_calls`.
+4. The protocol that passed both checks is selected; responses wins ties.
+
+The probe uses a tiny output cap, runs once, and is cached for the process
+lifetime. Explicit `chat` or `responses` never probes. The detection result
+shows in executor discovery (`protocols.selected`, per-protocol tool loop
+checks, probe model).
+
+## Model capabilities
+
+Each model entry may carry a `capabilities` object:
+
+```json
+{
+  "id": "model-id",
+  "capabilities": {
+    "chat": true,
+    "responses": false,
+    "tools": true,
+    "reasoning": true,
+    "vision": false
+  }
+}
+```
+
+Capabilities declared by the provider in `/v1/models` pass through. When a
+provider declares none, the field stays unknown (`null`) and the protocol
+probe records verified capabilities for the probed model. `featured` and
+`route_tier` metadata pass through when present.
+
 ## Live model catalog
 
 On startup and every 60 seconds, AgentControlPlane reads `GET /v1/models`

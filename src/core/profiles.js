@@ -138,6 +138,9 @@ export function publicModels(modelCatalog) {
     display_name: model.displayName,
     description: model.description,
     is_default: model.isDefault,
+    capabilities: model.capabilities ?? null,
+    featured: model.featured ?? null,
+    route_tier: model.route_tier ?? null,
     supported_reasoning_efforts: model.supportedReasoningEfforts?.map(
       (entry) => entry.reasoningEffort,
     ) ?? [],

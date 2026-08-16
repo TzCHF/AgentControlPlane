@@ -1,4 +1,4 @@
-import { publicProfiles } from "../core/profiles.js";
+import { publicModels, publicProfiles } from "../core/profiles.js";
 import { asErrorPayload, ControlPlaneError } from "../core/errors.js";
 import { readJson, sendJson } from "../core/http.js";
 import { isCompanionOrigin } from "./pairing-manager.js";
@@ -275,6 +275,11 @@ export class CompanionRouter {
         .listTasks(100)
         .map((task) => task.workspace)
         .filter((workspace) => Boolean(workspace) && insideRoots(workspace));
+      const executors = this.orchestrator.getExecutors?.() ?? [];
+      const models = {};
+      for (const entry of executors) {
+        models[entry.id] = publicModels(this.orchestrator.getModels(entry.id));
+      }
       sendJson(
         response,
         200,
@@ -282,7 +287,8 @@ export class CompanionRouter {
           service: "agent-control-plane",
           version: this.config.version ?? "0.0.0",
           default_executor: this.orchestrator.getDefaultExecutorId?.() ?? "auto",
-          executors: this.orchestrator.getExecutors?.() ?? [],
+          executors,
+          models,
           profiles: publicProfiles(this.config),
           workspaces: [
             ...new Set([...(this.config.workspaceRoots ?? []), ...recent]),

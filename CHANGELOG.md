@@ -1,5 +1,50 @@
 # Changelog
 
+## v0.5.0 — 2026-08-16
+
+Phase 1: provider-agnostic capability layer and official relay preset.
+
+### Added
+
+- Provider preset registry (`src/executors/provider-presets.js`): data
+  entries that pre-fill relay fields. A relay entry can now be
+  `{ "id": "asterroute", "preset": "asterroute", "apiKey": "…" }`;
+  explicit fields override the preset. Unknown presets fail with the
+  available names. Presets carry no code branches; `official` is a UI
+  flag only.
+- `protocol: "auto"` detection: probes the Responses API availability,
+  the Responses tool loop, then the Chat Completions tool loop with a
+  tiny `ping` tool, and selects the protocol that completes the loop.
+  Detection runs once per process, is cached, uses a 16-token output cap,
+  and explicit `chat`/`responses` never probe. The result shows in
+  executor discovery (`protocols.selected`, per-protocol checks, probe
+  model).
+- Model capability layer: `/v1/models` entries pass through provider-
+  declared `capabilities`, `featured`, and `route_tier`; undeclared
+  capabilities stay unknown (`null`) and the protocol probe records
+  verified capabilities for the probed model.
+- Companion model dropdown: per-executor model catalogs from
+  `/v1/companion/options` (`models` map), an auto default, official
+  provider labels, and a catalog-driven controller prompt that lists
+  advertised model names. The dashboard shows official badges and
+  capability/featured tags per model.
+- Integration guide documents presets, auto-detection, and capabilities
+  in both languages.
+
+### Compatibility
+
+- Explicit relay JSON configurations keep working unchanged; `chat` and
+  `responses` protocols behave as before. `list_models` and companion
+  options now include extra fields (additive). `dispatch` behavior is
+  unchanged.
+
+### Verified
+
+- 108 tests pass locally, including preset resolution and overrides,
+  detection ordering and caching, a full auto-detected chat tool loop,
+  capability passthrough, and companion model-dispatch flow.
+- Copy passes the grounded-copy gate with 0 findings.
+
 ## v0.4.10 — 2026-08-16
 
 Task search and id-prefix lookup.

@@ -80,6 +80,49 @@ test("web envelopes cannot override the locally selected workspace", () => {
   assert.equal(request.workspace, "C:\\approved-project");
 });
 
+test("panel-selected model and reasoning effort flow into dispatch", () => {
+  const request = normalizeDispatch(
+    { objective: "Create hello.txt" },
+    {
+      workspace: "C:\\approved-project",
+      executor: "asterroute",
+      model: "deepseek-v4-pro-official",
+      reasoning_effort: "high",
+    },
+  );
+  assert.equal(request.model, "deepseek-v4-pro-official");
+  assert.equal(request.reasoning_effort, "high");
+
+  const envelopeWins = normalizeDispatch(
+    { objective: "Create hello.txt", model: "explicit-model" },
+    {
+      workspace: "C:\\approved-project",
+      executor: "asterroute",
+      model: "panel-model",
+    },
+  );
+  assert.equal(envelopeWins.model, "explicit-model");
+});
+
+test("controller prompt lists advertised models from the catalog", () => {
+  const prompt = controllerPrompt(
+    { workspace: "C:\\w", executor: "auto" },
+    [
+      { id: "asterroute", display_name: "AsterRoute" },
+      { id: "opencode", display_name: "OpenCode" },
+    ],
+    {
+      asterroute: [
+        { id: "deepseek-v4-pro-official" },
+        { id: "gpt-5.6-sol-economy" },
+      ],
+      opencode: [],
+    },
+  );
+  assert.match(prompt, /Advertised models: AsterRoute: deepseek-v4-pro-official, gpt-5\.6-sol-economy/);
+  assert.doesNotMatch(prompt, /deepseek-chat" or "deepseek-reasoner/);
+});
+
 test("string context and constraints from the web AI become string arrays", () => {
   const request = normalizeDispatch(
     {
@@ -183,7 +226,7 @@ test("manifest grants only known AI sites by default", () => {
     ),
   );
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, "0.4.10");
+  assert.equal(manifest.version, "0.5.0");
   assert.ok(manifest.host_permissions.includes("https://chatgpt.com/*"));
   assert.ok(manifest.host_permissions.includes("https://chat.deepseek.com/*"));
   assert.ok(manifest.optional_host_permissions.includes("https://*/*"));

@@ -135,6 +135,7 @@
       workspace: values.workspace,
       profile: values.profile,
       executor: values.executor,
+      model: values.model ?? "",
       confirmWords: values.confirmWords,
       autoSubmitResults: values.autoSubmitResults,
       language: values.language,
@@ -193,6 +194,7 @@
       protocol.controllerPrompt(
         currentState.settings,
         currentState.options?.executors ?? [],
+        currentState.options?.models ?? {},
       ),
     );
     panel.setStatus(t("controllerInserted"), "success");

@@ -8,6 +8,11 @@ import { Orchestrator } from "../src/core/orchestrator.js";
 import { TaskStore } from "../src/core/store.js";
 import { ControlPlaneError } from "../src/core/errors.js";
 import { OpenAICompatibleExecutor } from "../src/executors/openai-compatible-executor.js";
+import {
+  PROVIDER_PRESETS,
+  resolvePreset,
+  presetNames,
+} from "../src/executors/provider-presets.js";
 
 function relayConfig(relays) {
   return {
@@ -73,6 +78,56 @@ test("relay ids must be non-empty and must not collide with built-ins", () => {
       error instanceof ControlPlaneError &&
       error.code === "duplicate_executor_id",
   );
+});
+
+test("provider presets pre-fill relay fields and explicit fields win", () => {
+  assert.deepEqual(presetNames(), ["asterroute"]);
+  const preset = resolvePreset("asterroute");
+  assert.equal(preset.displayName, "AsterRoute");
+  assert.equal(preset.baseUrl, "https://www.asterroute.com/v1");
+  assert.equal(preset.protocol, "auto");
+  assert.equal(preset.official, true);
+  assert.equal(resolvePreset("unknown"), null);
+
+  const executors = buildExecutors(
+    relayConfig([
+      { id: "asterroute", preset: "asterroute", apiKey: "k", requestsPerMinute: 10 },
+      {
+        id: "mine",
+        preset: "asterroute",
+        displayName: "My Endpoint",
+        baseUrl: "https://mine.example/v1",
+        protocol: "chat",
+        official: false,
+      },
+    ]),
+  );
+  const asterroute = executors.get("asterroute");
+  assert.equal(asterroute.describe().display_name, "AsterRoute");
+  assert.equal(asterroute.baseUrl, "https://www.asterroute.com/v1");
+  assert.equal(asterroute.protocol, "auto");
+  assert.equal(asterroute.describe().official, true);
+  assert.equal(asterroute.requestsPerMinute, 10);
+
+  const mine = executors.get("mine");
+  assert.equal(mine.describe().display_name, "My Endpoint");
+  assert.equal(mine.baseUrl, "https://mine.example/v1");
+  assert.equal(mine.protocol, "chat");
+  assert.equal(mine.describe().official, false);
+});
+
+test("unknown provider presets fail with the available names", () => {
+  assert.throws(
+    () =>
+      buildExecutors(
+        relayConfig([{ id: "x", preset: "nope" }]),
+      ),
+    (error) =>
+      error instanceof ControlPlaneError &&
+      error.code === "unknown_provider_preset" &&
+      error.details.available.includes("asterroute"),
+  );
+  assert.ok(PROVIDER_PRESETS.asterroute);
 });
 
 test("dispatch validates relay models against the static allowlist", () => {
