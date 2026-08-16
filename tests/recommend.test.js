@@ -193,6 +193,19 @@ test("explicit null metadata fields are unknown, never zero or excluded", () => 
   assert.equal(entry.metadata_freshness_seconds, null);
 });
 
+test("scores are finite numbers for priced candidates", () => {
+  const requirements = extractTaskRequirements({ objective: "x", profile: "economy" }, config);
+  const result = recommendModels({
+    candidates: [candidate(baseModel({ id: "priced" }))],
+    requirements,
+    config,
+  });
+  assert.equal(result.ranked.length, 1);
+  assert.ok(Number.isFinite(result.ranked[0].score));
+  assert.ok(result.ranked[0].score > 0);
+  assert.ok(result.ranked[0].estimated_cost_range.max > 0);
+});
+
 test("the recommender core carries no provider-specific branches", () => {
   const source = fs.readFileSync(
     new URL("../src/core/recommend.js", import.meta.url),

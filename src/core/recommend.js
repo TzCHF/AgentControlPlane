@@ -257,7 +257,8 @@ export function scoreCandidate(candidate, requirements, config = {}) {
   const costCap = Number(costCaps[requirements.profile] ?? 2);
   let pricing = 0.5;
   if (estimates.known) {
-    pricing = Math.max(0, Math.min(1, 1 - estimates.max / costCap));
+    const costMax = Number(estimates.range?.max ?? 0);
+    pricing = Math.max(0, Math.min(1, 1 - costMax / costCap));
   }
 
   const tierScore =

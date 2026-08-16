@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.6.2 — 2026-08-16
+
+Score computation fix.
+
+### Fixed
+
+- The pricing component read a nonexistent `estimates.max` field and
+  produced NaN scores (serialized as null). It now reads
+  `estimates.range.max`; scores are finite numbers.
+
+### Verified
+
+- 128 tests pass locally, including a finite-score regression test.
+
 ## v0.6.1 — 2026-08-16
 
 Null metadata guards in the recommender.
