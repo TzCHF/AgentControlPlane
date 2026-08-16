@@ -154,14 +154,34 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
       recommendationBox.innerHTML = "";
       return;
     }
+    const usd6 = (microusd) =>
+      microusd == null ? null : (microusd / 1e6).toFixed(6);
+    const strategyRows = Object.entries({
+      cheapest: t("strategyCheapest"),
+      balanced: t("strategyBalanced"),
+      best: t("strategyBest"),
+    })
+      .map(([key, label]) => {
+        const entry = recommendation.strategies?.[key];
+        if (!entry) {
+          return `<div class="task-row"><div class="task-line1"><span class="ts completed">${escapeText(label)}</span></div><div class="task-line2">—</div></div>`;
+        }
+        const range = entry.estimated_cost_range;
+        const cost = range
+          ? `est $${usd6(range.low_microusd)}–$${usd6(range.high_microusd)} ${range.currency}`
+          : t("recCostUnknown");
+        return `<div class="task-row" data-rec-model="${escapeAttribute(entry.model)}" data-rec-executor="${escapeAttribute(entry.executor)}">
+          <div class="task-line1"><span class="ts completed">${escapeText(label)}</span><span>${escapeText(cost)}</span></div>
+          <div class="task-line2">${escapeText(entry.model)}</div>
+          <div class="task-line3"><span>${escapeText(entry.executor)}</span></div>
+        </div>`;
+      })
+      .join("");
     const rows = (recommendation.ranked ?? [])
       .map((entry) => {
-        const cost = entry.estimated_cost_range
-          ? t("recCost", {
-              min: entry.estimated_cost_range.min,
-              max: entry.estimated_cost_range.max,
-              currency: entry.estimated_cost_range.currency,
-            })
+        const range = entry.estimated_cost_range;
+        const cost = range
+          ? `est $${usd6(range.low_microusd)}–$${usd6(range.high_microusd)} ${range.currency}`
           : t("recCostUnknown");
         const warnings = entry.warnings?.length
           ? ` · ${t("recWarnings", { count: entry.warnings.length })}`
@@ -178,7 +198,7 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
         ? `<div class="task-line3">${escapeText(t("recExcludedCount", { count: recommendation.excluded.length }))}</div>`
         : "";
     recommendationBox.innerHTML =
-      `<p class="hint">${t("recSelectHint")}</p>` + rows + excluded;
+      `<p class="hint">${t("recSelectHint")}</p>` + strategyRows + rows + excluded;
     for (const row of recommendationBox.querySelectorAll("[data-rec-model]")) {
       row.addEventListener("click", () => {
         handlers.selectRecommended?.(

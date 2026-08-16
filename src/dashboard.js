@@ -33,9 +33,12 @@ export const DASHBOARD_STRINGS = {
     recommendButton: "推荐",
     recommendEmpty: "输入目标后点「推荐」。",
     recommendScore: "得分 {score}",
-    recommendCost: "预估成本 {min}–{max} {currency}",
+    recommendCost: "预估 $ {low}–{high} {currency}（期望 {expected}）",
     recommendCostUnknown: "成本未知",
     recommendExcluded: "已排除",
+    strategyCheapest: "最便宜",
+    strategyBalanced: "均衡",
+    strategyBest: "最佳",
     recommendCapability: "能力来源：{source}",
     recommendLatency: "延迟 {avg}ms · n={samples}",
     recommendFreshness: "元数据 {seconds} 秒前",
@@ -144,9 +147,12 @@ export const DASHBOARD_STRINGS = {
     recommendButton: "Recommend",
     recommendEmpty: "Enter an objective and click Recommend.",
     recommendScore: "score {score}",
-    recommendCost: "est. cost {min}–{max} {currency}",
+    recommendCost: "est. ${low}–${high} {currency} (expected ${expected})",
     recommendCostUnknown: "cost unknown",
     recommendExcluded: "Excluded",
+    strategyCheapest: "Cheapest",
+    strategyBalanced: "Balanced",
+    strategyBest: "Best",
     recommendCapability: "capability: {source}",
     recommendLatency: "latency {avg}ms · n={samples}",
     recommendFreshness: "metadata {seconds}s ago",
@@ -920,13 +926,43 @@ function renderRecommendation() {
       '<div class="card muted">' + escapeHtml(t("recommendEmpty")) + "</div>";
     return;
   }
+  var usd6 = function (microusd) {
+    return microusd == null ? null : (microusd / 1e6).toFixed(6);
+  };
+  var strategyRow = function (key, label) {
+    var entry = recommendation.strategies?.[key];
+    if (!entry) {
+      return (
+        '<div class="card"><div class="exec-name">' + escapeHtml(label) + "</div>" +
+        '<div class="exec-detail muted">—</div></div>'
+      );
+    }
+    var range = entry.estimated_cost_range;
+    var cost = range
+      ? "est $" + usd6(range.low_microusd) + " – $" + usd6(range.high_microusd) +
+        (range.pricing_version ? " · pricing " + escapeHtml(range.pricing_version) : "")
+      : t("recommendCostUnknown");
+    return (
+      '<div class="card">' +
+      '<div class="exec-name">' + escapeHtml(label) + ": " + escapeHtml(entry.model) + "</div>" +
+      '<div class="exec-id">' + escapeHtml(entry.executor) + "</div>" +
+      '<div class="exec-detail">' + escapeHtml(cost) + "</div>" +
+      "</div>"
+    );
+  };
+  var strategies =
+    strategyRow("cheapest", t("strategyCheapest")) +
+    strategyRow("balanced", t("strategyBalanced")) +
+    strategyRow("best", t("strategyBest"));
   var rows = (recommendation.ranked ?? [])
     .map(function (entry) {
-      var cost = entry.estimated_cost_range
+      var range = entry.estimated_cost_range;
+      var cost = range
         ? fmt(t("recommendCost"), {
-            min: entry.estimated_cost_range.min,
-            max: entry.estimated_cost_range.max,
-            currency: entry.estimated_cost_range.currency,
+            low: usd6(range.low_microusd),
+            expected: usd6(range.expected_microusd),
+            high: usd6(range.high_microusd),
+            currency: range.currency,
           })
         : t("recommendCostUnknown");
       var reasons = (entry.reasons ?? []).map(reasonText).join(" · ");
@@ -971,6 +1007,7 @@ function renderRecommendation() {
     })
     .join("");
   box.innerHTML =
+    strategies +
     rows +
     (excluded
       ? '<div class="card"><div class="exec-name">' + escapeHtml(t("recommendExcluded")) + "</div>" + excluded + "</div>"

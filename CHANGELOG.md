@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.8.0 — 2026-08-16
+
+Phase 4A: estimate-aware cost selector.
+
+### Added
+
+- Versioned token estimates (`src/core/token-estimate.js`): low /
+  expected / high scenarios per profile with component-wise ordering
+  enforced; scenarios configurable under `config.recommendation.tokenScenarios`.
+- Price normalization to micro-USD per token rates; cost projection
+  returns integer micro-USD ranges (low / expected / high). Cached input
+  is billed at the cached rate only and reasoning tokens at the reasoning
+  rate only; each token is billed exactly once. Missing prices stay
+  unknown and are never zero; missing context is never zero.
+- Cheapest / Balanced / Best strategies: cheapest picks the lowest
+  expected cost among candidates with known pricing, balanced uses the
+  profile weights, best prefers reasoning capability first and then deep
+  weights. The recommendation snapshot carries the token estimate, per-
+  entry pricing versions, and the three strategy picks; selected_model
+  stays null.
+- Over-budget behavior is configurable: `config.recommendation.overBudget`
+  is `warn` (default) or `exclude`.
+- Usage events carry `estimated_cost_microusd` (integer) and the
+  `pricing_version` used for the estimate.
+- Dashboard and companion show the three strategy picks with low–high
+  cost ranges; the benchmark prints strategies and ranges.
+- The selector is fully static: it never reads usage history and never
+  adjusts weights from results; certification and probe data never feed
+  it.
+
+### Verified
+
+- 170 tests pass locally, covering token-estimate ordering, single-billing
+  for cached and reasoning tokens, unknown pricing and context, pricing
+  versions, catalog-order independence, explicit-model preservation,
+  route/capability separation, over-budget warn/exclude, strategy picks,
+  integer micro-USD ranges, replay, and history isolation.
+
 ## v0.7.3 — 2026-08-16
 
 Usage/Reconciliation v2 joint certification fixes.

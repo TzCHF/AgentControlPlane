@@ -12,8 +12,10 @@ import {
   extractTaskRequirements,
   normalizeCandidate,
   recommendModels,
-  estimateCost,
+  normalizePricing,
+  computeCostRange,
 } from "./recommend.js";
+import { extractTokenEstimate } from "./token-estimate.js";
 import { createUsageEvent } from "./usage-events.js";
 import { reconcileUsage } from "./usage-dimensions.js";
 import { reconcileClientFor } from "./reconcile-client.js";
@@ -996,22 +998,34 @@ export class Orchestrator extends EventEmitter {
     const catalog = this.modelCatalogs.get(executorId) ?? [];
     const entry = catalog.find((model) => (model.id ?? model.model) === modelId);
     if (!entry?.pricing) return null;
-    const { range } = estimateCost(
-      {
-        pricing: {
-          input: entry.pricing.input,
-          output: entry.pricing.output,
-          cached_input: entry.pricing.cached_input,
-        },
-      },
+    const normalized = normalizePricing({
+      input: entry.pricing.input,
+      output: entry.pricing.output,
+      cached_input: entry.pricing.cached_input,
+      reasoning: entry.pricing.reasoning,
+      currency: entry.pricing.currency,
+      pricing_version: entry.pricing.pricing_version ?? entry.pricing.version,
+    });
+    const tokenEstimate = extractTokenEstimate(
       { profile: profileName ?? "balanced" },
+      this.config,
     );
-    return range ? Math.round(((range.min + range.max) / 2) * 1e6) / 1e6 : null;
+    const range = computeCostRange(tokenEstimate, normalized);
+    if (!range) return null;
+    return {
+      estimated_cost_microusd: range.expected_microusd,
+      pricing_version: range.pricing_version,
+    };
   }
 
   #recordUsageEvent(message, executor, params) {
     const taskId = this.#taskForNotification(params);
     const task = taskId ? this.store.getTask(taskId) : null;
+    const estimate = this.#estimatedCostFor(
+      executor.id,
+      params.resolvedModel,
+      task?.policy?.name ?? null,
+    );
     const event = createUsageEvent({
       task_id: taskId ?? null,
       turn_id: params.turnId ?? null,
@@ -1027,11 +1041,8 @@ export class Orchestrator extends EventEmitter {
       duration_ms: params.durationMs ?? 0,
       outcome: params.outcome ?? "ok",
       usage: params.usage,
-      estimated_cost: this.#estimatedCostFor(
-        executor.id,
-        params.resolvedModel,
-        task?.policy?.name ?? null,
-      ),
+      estimated_cost_microusd: estimate?.estimated_cost_microusd ?? null,
+      pricing_version: estimate?.pricing_version ?? null,
     });
     this.store.appendUsageEvent(event);
   }

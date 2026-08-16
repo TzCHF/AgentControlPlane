@@ -203,7 +203,10 @@ test("scores are finite numbers for priced candidates", () => {
   assert.equal(result.ranked.length, 1);
   assert.ok(Number.isFinite(result.ranked[0].score));
   assert.ok(result.ranked[0].score > 0);
-  assert.ok(result.ranked[0].estimated_cost_range.max > 0);
+  const range = result.ranked[0].estimated_cost_range;
+  assert.ok(Number.isInteger(range.expected_microusd));
+  assert.ok(range.high_microusd >= range.expected_microusd);
+  assert.ok(range.expected_microusd >= range.low_microusd);
 });
 
 test("the recommender core carries no provider-specific branches", () => {

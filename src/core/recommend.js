@@ -1,13 +1,16 @@
 // Deterministic, provider-agnostic model recommendation.
 //
 // This module holds pure functions only: requirement extraction, candidate
-// normalization, hard filtering, scoring, and the result schema. It never
-// calls a model, never switches the user's selection, and treats provider
-// metadata as three-state (true / false / unknown); unknown stays a warning
-// candidate and is never written down as false. Weights and context defaults
-// live in config; they do not live here.
+// normalization, hard filtering, scoring, cost projection, and the result
+// schema. It never calls a model, never switches the user's selection, never
+// learns from history, and treats provider metadata as three-state
+// (true / false / unknown); unknown stays a warning candidate and is never
+// written down as false. Costs are integer micro-USD; missing prices stay
+// unknown and are never treated as zero. Weights and context defaults live
+// in config; they do not live here.
 
 import crypto from "node:crypto";
+import { extractTokenEstimate } from "./token-estimate.js";
 
 export const RECOMMENDATION_VERSION = 1;
 
@@ -112,7 +115,11 @@ export function normalizeCandidate(executorId, model) {
           cached_input: pricing.cached_input != null && Number.isFinite(Number(pricing.cached_input))
             ? Number(pricing.cached_input)
             : null,
+          reasoning: pricing.reasoning != null && Number.isFinite(Number(pricing.reasoning))
+            ? Number(pricing.reasoning)
+            : null,
           currency: pricing.currency ?? "USD",
+          pricing_version: pricing.pricing_version ?? pricing.version ?? null,
         }
       : null,
     tier: model?.tier ?? model?.route_tier ?? null,
@@ -123,6 +130,66 @@ export function normalizeCandidate(executorId, model) {
         ? Number(rawFreshness)
         : null,
     capability_source: capabilities ? "declared" : "unknown",
+  };
+}
+
+// Price normalization: provider prices are USD per million tokens, which
+// equals micro-USD per token. Rates stay numeric; projected costs are
+// rounded to integer micro-USD. Missing prices normalize to null and costs
+// stay unknown.
+export function normalizePricing(pricing) {
+  if (!pricing || typeof pricing !== "object") return null;
+  const input = pricing.input != null && Number.isFinite(Number(pricing.input))
+    ? Number(pricing.input)
+    : null;
+  const output = pricing.output != null && Number.isFinite(Number(pricing.output))
+    ? Number(pricing.output)
+    : null;
+  if (input == null && output == null) return null;
+  const cached = pricing.cached_input != null && Number.isFinite(Number(pricing.cached_input))
+    ? Number(pricing.cached_input)
+    : input;
+  const reasoning = pricing.reasoning != null && Number.isFinite(Number(pricing.reasoning))
+    ? Number(pricing.reasoning)
+    : output;
+  return {
+    input_microusd_per_token: input,
+    cached_input_microusd_per_token: cached,
+    output_microusd_per_token: output,
+    reasoning_output_microusd_per_token: reasoning,
+    currency: pricing.currency ?? "USD",
+    pricing_version: pricing.pricing_version ?? pricing.version ?? null,
+  };
+}
+
+// Cost projection over the three token scenarios. Cached input is billed at
+// the cached rate only; reasoning tokens are billed at the reasoning rate
+// only; each token is billed exactly once. The low/expected/high ordering
+// is enforced, so low <= expected <= high.
+export function computeCostRange(tokenEstimate, normalizedPricing) {
+  if (!normalizedPricing || !tokenEstimate?.scenarios) return null;
+  const compute = (scenario) => {
+    const cached = scenario.cached_input_tokens;
+    const uncached = Math.max(0, scenario.input_tokens - cached);
+    const reasoning = scenario.reasoning_output_tokens;
+    const plainOutput = Math.max(0, scenario.output_tokens - reasoning);
+    const cachedCost = cached * (normalizedPricing.cached_input_microusd_per_token ?? 0);
+    const inputCost = uncached * (normalizedPricing.input_microusd_per_token ?? 0);
+    const outputCost = plainOutput * (normalizedPricing.output_microusd_per_token ?? 0);
+    const reasoningCost = reasoning * (normalizedPricing.reasoning_output_microusd_per_token ?? 0);
+    return Math.round(cachedCost + inputCost + outputCost + reasoningCost);
+  };
+  const low = compute(tokenEstimate.scenarios.low);
+  const expected = compute(tokenEstimate.scenarios.expected);
+  const high = compute(tokenEstimate.scenarios.high);
+  const orderedLow = Math.min(low, expected);
+  const orderedHigh = Math.max(high, expected);
+  return {
+    low_microusd: orderedLow,
+    expected_microusd: expected,
+    high_microusd: orderedHigh,
+    currency: normalizedPricing.currency,
+    pricing_version: normalizedPricing.pricing_version,
   };
 }
 
@@ -207,16 +274,18 @@ export function filterCandidates(candidates, requirements, _config = {}) {
   return { ranked, excluded };
 }
 
-export function scoreCandidate(candidate, requirements, config = {}) {
-  const weights = config.recommendation?.weights?.[requirements.profile] ?? {
-    capability_fit: 30,
-    confidence: 15,
-    health: 10,
-    latency: 10,
-    pricing: 15,
-    tier: 5,
-    freshness: 15,
-  };
+export function scoreCandidate(candidate, requirements, config = {}, weightsOverride = null) {
+  const weights =
+    weightsOverride ??
+    config.recommendation?.weights?.[requirements.profile] ?? {
+      capability_fit: 30,
+      confidence: 15,
+      health: 10,
+      latency: 10,
+      pricing: 15,
+      tier: 5,
+      freshness: 15,
+    };
   const caps = candidate.capabilities;
 
   const fitParts = [];
@@ -252,13 +321,19 @@ export function scoreCandidate(candidate, requirements, config = {}) {
     latency = Math.max(0, Math.min(1, 1 - candidate.latency_avg_ms / (target * 2)));
   }
 
-  const estimates = estimateCost(candidate, requirements);
+  const tokenEstimate = extractTokenEstimate(requirements, config);
+  const normalizedPricing = normalizePricing(candidate.pricing);
+  const costRange = computeCostRange(tokenEstimate, normalizedPricing);
   const costCaps = config.recommendation?.costCap ?? { economy: 0.2, balanced: 2, deep: 10 };
   const costCap = Number(costCaps[requirements.profile] ?? 2);
   let pricing = 0.5;
-  if (estimates.known) {
-    const costMax = Number(estimates.range?.max ?? 0);
-    pricing = Math.max(0, Math.min(1, 1 - costMax / costCap));
+  let overBudget = false;
+  if (costRange) {
+    pricing = Math.max(
+      0,
+      Math.min(1, 1 - costRange.expected_microusd / 1e6 / costCap),
+    );
+    overBudget = costRange.expected_microusd / 1e6 > costCap;
   }
 
   const tierScore =
@@ -285,7 +360,7 @@ export function scoreCandidate(candidate, requirements, config = {}) {
   if (candidate.route_health != null && String(candidate.route_health).toLowerCase() === "healthy") {
     reasons.push("route_healthy");
   }
-  if (estimates.known && pricing >= 0.9) reasons.push("price_low");
+  if (costRange && pricing >= 0.9) reasons.push("price_low");
   if (candidate.latency_avg_ms != null && candidate.latency_samples >= 3 && latency >= 0.75) {
     reasons.push("latency_low");
   }
@@ -294,7 +369,8 @@ export function scoreCandidate(candidate, requirements, config = {}) {
   }
 
   const warnings = [...(candidate.filter_warnings ?? [])];
-  if (!estimates.known) warnings.push("pricing_unknown");
+  if (!costRange) warnings.push("pricing_unknown");
+  if (overBudget) warnings.push("over_budget");
   if (candidate.latency_avg_ms != null && candidate.latency_samples < 3) {
     warnings.push("latency_samples_insufficient");
   }
@@ -306,38 +382,17 @@ export function scoreCandidate(candidate, requirements, config = {}) {
     model: candidate.model,
     executor: candidate.executor,
     score,
-    estimated_cost_range: estimates.range,
+    capability_fit: capabilityFit,
+    reasoning: caps.reasoning === true,
+    estimated_cost_range: costRange,
     reasons: [...new Set(reasons)],
     warnings: [...new Set(warnings)],
     capability_source: candidate.capability_source,
     route_health: candidate.route_health,
     latency_avg_ms: candidate.latency_avg_ms,
     latency_samples: candidate.latency_samples,
-    pricing: candidate.pricing,
+    pricing: normalizedPricing,
     metadata_freshness_seconds: candidate.metadata_freshness_seconds,
-  };
-}
-
-export function estimateCost(candidate, requirements) {
-  const pricing = candidate.pricing;
-  if (!pricing || (pricing.input == null && pricing.output == null)) {
-    return { known: false, range: null };
-  }
-  const profileTokens = { economy: [8000, 1500], balanced: [30000, 6000], deep: [90000, 18000] };
-  const [inputTokens, outputTokens] = profileTokens[requirements.profile] ?? profileTokens.balanced;
-  const inputPrice = pricing.input ?? 0;
-  const outputPrice = pricing.output ?? 0;
-  const cachedPrice = pricing.cached_input ?? inputPrice;
-  const max = (inputTokens * inputPrice + outputTokens * outputPrice) / 1_000_000;
-  const min = (inputTokens * cachedPrice + outputTokens * outputPrice) / 1_000_000;
-  return {
-    known: true,
-    range: {
-      min: Math.round(min * 1e6) / 1e6,
-      max: Math.round(max * 1e6) / 1e6,
-      currency: pricing.currency ?? "USD",
-      source: "provider_pricing",
-    },
   };
 }
 
@@ -361,23 +416,71 @@ export function catalogHash(candidates) {
 }
 
 export function recommendModels({ candidates, requirements, config = {} }) {
-  const { ranked, excluded } = filterCandidates(candidates, requirements, config);
+  const { ranked, excluded: filteredOut } = filterCandidates(candidates, requirements, config);
+  const tokenEstimate = extractTokenEstimate(requirements, config);
   const scored = ranked
     .map((candidate) => scoreCandidate(candidate, requirements, config))
     .sort((a, b) => b.score - a.score || String(a.model).localeCompare(String(b.model)));
+
+  const overBudgetMode = config.recommendation?.overBudget ?? "warn";
+  const kept = [];
+  const excluded = [...filteredOut];
+  for (const entry of scored) {
+    if (overBudgetMode === "exclude" && entry.warnings.includes("over_budget")) {
+      excluded.push({ model: entry.model, executor: entry.executor, reasons: ["over_budget"] });
+      continue;
+    }
+    kept.push(entry);
+  }
+
+  const withKnownCost = kept.filter(
+    (entry) => entry.estimated_cost_range != null,
+  );
+  const cheapest = withKnownCost.length
+    ? [...withKnownCost].sort(
+        (a, b) =>
+          a.estimated_cost_range.expected_microusd -
+            b.estimated_cost_range.expected_microusd ||
+          String(a.model).localeCompare(String(b.model)),
+      )[0]
+    : null;
+  const balanced = kept[0] ?? null;
+  const bestWeights = config.recommendation?.weights?.deep;
+  const best =
+    kept.length && bestWeights
+      ? [...ranked]
+          .map((candidate) =>
+            scoreCandidate(candidate, requirements, config, bestWeights),
+          )
+          .sort(
+            (a, b) =>
+              Number(b.reasoning) - Number(a.reasoning) ||
+              b.capability_fit - a.capability_fit ||
+              b.score - a.score ||
+              String(a.model).localeCompare(String(b.model)),
+          )[0]
+      : balanced;
+
   const hash = catalogHash(candidates);
   const recommendationId = crypto
     .createHash("sha256")
     .update(JSON.stringify({ requirements, catalog_hash: hash }))
     .digest("hex")
     .slice(0, 12);
+
   return {
     version: RECOMMENDATION_VERSION,
     recommendation_id: recommendationId,
     generated_at: new Date().toISOString(),
     requirements,
+    token_estimate: tokenEstimate,
     catalog_hash: hash,
-    ranked: scored.slice(0, 3),
+    ranked: kept.slice(0, 3),
+    strategies: {
+      cheapest,
+      balanced,
+      best,
+    },
     selected_model: null,
     excluded: excluded.map((entry) => ({
       model: entry.model,

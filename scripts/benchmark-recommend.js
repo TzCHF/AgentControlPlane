@@ -22,9 +22,27 @@ for (const item of cases) {
   const { recommendation } = await response.json();
   console.log(`\n[${item.profile}] ${item.objective}`);
   console.log(`catalog_hash=${recommendation.catalog_hash} version=${recommendation.version}`);
+  const usd = (microusd) => (microusd == null ? null : (microusd / 1e6).toFixed(6));
+  for (const [strategy, label] of [
+    ["cheapest", "cheapest"],
+    ["balanced", "balanced"],
+    ["best", "best"],
+  ]) {
+    const entry = recommendation.strategies?.[strategy];
+    if (!entry) {
+      console.log(`  ${label}: none`);
+      continue;
+    }
+    const range = entry.estimated_cost_range;
+    const cost = range
+      ? `$${usd(range.low_microusd)}–$${usd(range.high_microusd)} (expected $${usd(range.expected_microusd)} ${range.currency})`
+      : "unknown";
+    console.log(`  ${label}: ${entry.executor}/${entry.model} cost=${cost}`);
+  }
   for (const entry of recommendation.ranked ?? []) {
-    const cost = entry.estimated_cost_range
-      ? `${entry.estimated_cost_range.min}–${entry.estimated_cost_range.max} ${entry.estimated_cost_range.currency}`
+    const range = entry.estimated_cost_range;
+    const cost = range
+      ? `$${usd(range.low_microusd)}–$${usd(range.high_microusd)} ${range.currency}`
       : "unknown";
     console.log(
       `  ${entry.score}  ${entry.executor}/${entry.model}  cost=${cost} reasons=[${entry.reasons.join(", ")}] warnings=[${entry.warnings.join(", ")}]`,
