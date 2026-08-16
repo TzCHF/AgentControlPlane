@@ -207,6 +207,14 @@ async function handle(message) {
       if (message.status) params.set("status", String(message.status));
       return api(`/v1/companion/tasks?${params.toString()}`);
     }
+    case "ACP_RECOMMEND": {
+      const params = new URLSearchParams();
+      params.set("objective", String(message.objective ?? ""));
+      if (message.profile) params.set("profile", String(message.profile));
+      if (message.executor) params.set("executor", String(message.executor));
+      if (message.model) params.set("model", String(message.model));
+      return api(`/v1/recommendations?${params.toString()}`);
+    }
     case "ACP_FOLLOW_UP":
       return api(`/v1/companion/tasks/${encodeURIComponent(message.taskId)}/follow-up`, {
         method: "POST",

@@ -206,6 +206,11 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           probe_model: detection.model,
           preferred_protocol: detection.preferred_protocol ?? null,
           probe_order: detection.probe_order ?? null,
+          probe_usage: detection.probe_usage ?? {
+            input_tokens: 0,
+            output_tokens: 0,
+            total_tokens: 0,
+          },
         },
       };
     }
@@ -277,8 +282,20 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       responses: { available: false, toolLoop: null },
       chat: { available: false, toolLoop: null },
       reasoning: null,
+      probe_usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
     };
     const statusOf = (error) => Number(error?.details?.status ?? 0);
+    const addProbeUsage = (usage) => {
+      if (!usage) return;
+      const input =
+        Number(usage.input_tokens ?? usage.prompt_tokens ?? 0);
+      const output =
+        Number(usage.output_tokens ?? usage.completion_tokens ?? 0);
+      const total = Number(usage.total_tokens ?? 0);
+      outcome.probe_usage.input_tokens += input;
+      outcome.probe_usage.output_tokens += output;
+      outcome.probe_usage.total_tokens += total || input + output;
+    };
     const recordReasoning = (usage) => {
       if (
         !usage ||
@@ -308,6 +325,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           ? message.tool_calls.some((call) => call?.function?.name === "ping")
           : false;
         recordReasoning(chatResponse?.usage);
+        addProbeUsage(chatResponse?.usage);
       } catch (error) {
         const status = statusOf(error);
         outcome.chat.available = ![404, 405, 0].includes(status);
@@ -327,6 +345,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         });
         responsesStatus = 200;
         recordReasoning(availability?.usage);
+        addProbeUsage(availability?.usage);
       } catch (error) {
         responsesStatus = statusOf(error);
       }
@@ -349,6 +368,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           (item) => item.type === "function_call" && item.name === "ping",
         );
         recordReasoning(toolResponse?.usage);
+        addProbeUsage(toolResponse?.usage);
       } catch {
         outcome.responses.toolLoop = false;
       }
@@ -388,6 +408,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       chat: { available: false, toolLoop: null },
       reasoning: null,
       reason: null,
+      probe_usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
     };
     if (candidates.length === 0) {
       result.reason = "no_model_to_probe";
@@ -418,6 +439,9 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       result.responses = outcome.responses;
       result.chat = outcome.chat;
       if (outcome.reasoning != null) result.reasoning = outcome.reasoning;
+      result.probe_usage.input_tokens += outcome.probe_usage.input_tokens;
+      result.probe_usage.output_tokens += outcome.probe_usage.output_tokens;
+      result.probe_usage.total_tokens += outcome.probe_usage.total_tokens;
       if (outcome.responses.toolLoop) {
         result.protocol = "responses";
         this.#modelCapabilities.set(model, {
@@ -596,7 +620,8 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       params ?? {};
     const turnId = randomUUID();
     const controller = new AbortController();
-    this.turns.set(turnId, { controller, threadId, cwd });
+    const retryCounter = { count: 0 };
+    this.turns.set(turnId, { controller, threadId, cwd, retryCounter });
     queueMicrotask(() => {
       this.#runTurn(turnId, {
         threadId,
@@ -605,6 +630,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         cwd,
         outputSchema,
         attribution,
+        retryCounter,
       }).catch(
         (error) => {
           this.emit("notification", {
@@ -616,6 +642,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
                 status: "failed",
                 error: { message: error.message },
                 items: [],
+                retries: retryCounter.count,
               },
             },
           });
@@ -634,7 +661,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
 
   async #runTurn(
     turnId,
-    { threadId, input, model, cwd, outputSchema, attribution },
+    { threadId, input, model, cwd, outputSchema, attribution, retryCounter },
   ) {
     const protocol = await this.#ensureProtocol();
     if (protocol === "chat") {
@@ -645,6 +672,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         cwd,
         outputSchema,
         attribution,
+        retryCounter,
       });
     }
     const controller = this.turns.get(turnId)?.controller;
@@ -664,6 +692,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           instructions,
           controller,
           attribution,
+          retryCounter,
         },
       );
       usage = this.#addUsage(usage, response.usage);
@@ -695,6 +724,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
             turn: {
               id: turnId,
               status: "completed",
+              retries: retryCounter?.count ?? 0,
               items: [
                 {
                   type: "agentMessage",
@@ -874,7 +904,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
 
   async #runChatTurn(
     turnId,
-    { threadId, input, model, cwd, outputSchema, attribution },
+    { threadId, input, model, cwd, outputSchema, attribution, retryCounter },
   ) {
     const controller = this.turns.get(turnId)?.controller;
     const brief = this.#extractBrief(input);
@@ -894,6 +924,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           controller,
         },
         attribution,
+        retryCounter,
       );
       usage = this.#addUsage(usage, response.usage);
       const goal = this.goals.get(threadId);
@@ -921,6 +952,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
             turn: {
               id: turnId,
               status: "completed",
+              retries: retryCounter?.count ?? 0,
               items: [{ type: "agentMessage", phase: "final_answer", text }],
             },
           },
@@ -952,7 +984,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     );
   }
 
-  async #callChat(messages, { model, controller }, attribution = null) {
+  async #callChat(messages, { model, controller }, attribution = null, retryCounter = null) {
     const body = {
       model,
       messages,
@@ -965,6 +997,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       body,
       controller,
       attribution,
+      retryCounter,
     );
     const message = response?.choices?.[0]?.message ?? {};
     const rawToolCalls = Array.isArray(message.tool_calls)
@@ -1002,7 +1035,10 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     };
   }
 
-  async #responses(inputItems, { model, instructions, controller, attribution }) {
+  async #responses(
+    inputItems,
+    { model, instructions, controller, attribution, retryCounter },
+  ) {
     const body = {
       model,
       instructions,
@@ -1016,6 +1052,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       body,
       controller,
       attribution,
+      retryCounter,
     );
     return {
       output: response?.output ?? [],
@@ -1036,7 +1073,13 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     }
   }
 
-  async #requestCompletion(pathname, body, controller, attribution = null) {
+  async #requestCompletion(
+    pathname,
+    body,
+    controller,
+    attribution = null,
+    retryCounter = null,
+  ) {
     const headers = { "content-type": "application/json" };
     if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`;
     headers["x-acp-executor"] = this.id;
@@ -1055,6 +1098,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         signal: controller?.signal,
       });
       if (response.status === 429 && attempt < 2) {
+        if (retryCounter) retryCounter.count += 1;
         const retryAfter = Number(response.headers.get("retry-after"));
         const delayMs =
           Number.isFinite(retryAfter) && retryAfter > 0

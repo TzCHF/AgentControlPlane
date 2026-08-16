@@ -116,6 +116,7 @@ export class TaskStore {
     parentTaskId = null,
     executor = null,
     estimatedMinutes = null,
+    recommendation = null,
   }) {
     this.#pruneTasks();
     const id = crypto.randomUUID();
@@ -140,6 +141,10 @@ export class TaskStore {
       usage: null,
       subagents: [],
       events: [],
+      recommendation: recommendation
+        ? structuredClone(recommendation)
+        : null,
+      retries: 0,
     };
     this.state.tasks[id] = task;
     this.persist();

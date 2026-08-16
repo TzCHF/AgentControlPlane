@@ -28,6 +28,45 @@ export const DASHBOARD_STRINGS = {
     protoResponses: "Responses 工具循环",
     protoChat: "Chat 工具循环",
     protoPending: "探测中",
+    recommendTitle: "模型推荐",
+    recommendObjectivePlaceholder: "输入任务目标，获取模型推荐（仅建议，不派发）",
+    recommendButton: "推荐",
+    recommendEmpty: "输入目标后点「推荐」。",
+    recommendScore: "得分 {score}",
+    recommendCost: "预估成本 {min}–{max} {currency}",
+    recommendCostUnknown: "成本未知",
+    recommendExcluded: "已排除",
+    recommendCapability: "能力来源：{source}",
+    recommendLatency: "延迟 {avg}ms · n={samples}",
+    recommendFreshness: "元数据 {seconds} 秒前",
+    reasonCapabilityFit: "能力匹配",
+    reasonRouteHealthy: "路由健康",
+    reasonPriceLow: "价格低",
+    reasonLatencyLow: "延迟低",
+    reasonMetadataFresh: "元数据新鲜",
+    warnStatusUnknown: "状态未知",
+    warnContextUnknown: "上下文未知",
+    warnToolsUnknown: "工具能力未知",
+    warnVisionUnknown: "视觉能力未知",
+    warnReasoningUnknown: "推理能力未知",
+    warnProtocolUnknown: "协议未知：{protocol}",
+    warnRouteHealthUnknown: "路由健康未知",
+    warnRouteHealthNotConfirmed: "路由健康未确认",
+    warnPricingUnknown: "价格未知",
+    warnLatencySamples: "延迟样本不足 3 条",
+    warnMetadataStale: "元数据过旧",
+    exclInvalidEntry: "无效条目",
+    exclNotAllowlisted: "不在允许列表",
+    exclStatusUnavailable: "状态不可用",
+    exclContextInsufficient: "上下文不足",
+    exclToolsUnsupported: "不支持工具",
+    exclVisionUnsupported: "不支持视觉",
+    exclReasoningUnsupported: "不支持推理",
+    exclProtocolUnsupported: "协议不支持：{protocol}",
+    exclRouteUnhealthy: "路由不健康",
+    capSourceDeclared: "声明",
+    capSourceProbed: "探测",
+    capSourceUnknown: "未知",
     tasks: "任务",
     noTasks: "暂无任务记录。",
     searchTasks: "按编号或内容搜索任务",
@@ -93,6 +132,46 @@ export const DASHBOARD_STRINGS = {
     protoResponses: "Responses tool loop",
     protoChat: "Chat tool loop",
     protoPending: "probing",
+    recommendTitle: "Model recommendation",
+    recommendObjectivePlaceholder:
+      "Enter the task objective for advisory model recommendations",
+    recommendButton: "Recommend",
+    recommendEmpty: "Enter an objective and click Recommend.",
+    recommendScore: "score {score}",
+    recommendCost: "est. cost {min}–{max} {currency}",
+    recommendCostUnknown: "cost unknown",
+    recommendExcluded: "Excluded",
+    recommendCapability: "capability: {source}",
+    recommendLatency: "latency {avg}ms · n={samples}",
+    recommendFreshness: "metadata {seconds}s ago",
+    reasonCapabilityFit: "capability fit",
+    reasonRouteHealthy: "route healthy",
+    reasonPriceLow: "low price",
+    reasonLatencyLow: "low latency",
+    reasonMetadataFresh: "metadata fresh",
+    warnStatusUnknown: "status unknown",
+    warnContextUnknown: "context unknown",
+    warnToolsUnknown: "tools unknown",
+    warnVisionUnknown: "vision unknown",
+    warnReasoningUnknown: "reasoning unknown",
+    warnProtocolUnknown: "protocol unknown: {protocol}",
+    warnRouteHealthUnknown: "route health unknown",
+    warnRouteHealthNotConfirmed: "route health not confirmed",
+    warnPricingUnknown: "pricing unknown",
+    warnLatencySamples: "latency samples below 3",
+    warnMetadataStale: "metadata stale",
+    exclInvalidEntry: "invalid entry",
+    exclNotAllowlisted: "not in allowlist",
+    exclStatusUnavailable: "status unavailable",
+    exclContextInsufficient: "context insufficient",
+    exclToolsUnsupported: "tools unsupported",
+    exclVisionUnsupported: "vision unsupported",
+    exclReasoningUnsupported: "reasoning unsupported",
+    exclProtocolUnsupported: "protocol unsupported: {protocol}",
+    exclRouteUnhealthy: "route unhealthy",
+    capSourceDeclared: "declared",
+    capSourceProbed: "probed",
+    capSourceUnknown: "unknown",
     tasks: "Tasks",
     noTasks: "No task records yet.",
     searchTasks: "Search tasks by id or content",
@@ -337,6 +416,20 @@ footer { padding: 10px 20px 18px; color: var(--muted); font-size: 12px; max-widt
   </section>
 
   <section>
+    <h2 id="kRecommend"></h2>
+    <div class="row">
+      <input type="text" id="recommendObjective">
+      <select id="recommendProfile">
+        <option value="economy">economy</option>
+        <option value="balanced" selected>balanced</option>
+        <option value="deep">deep</option>
+      </select>
+      <button class="save" id="recommendButton"></button>
+    </div>
+    <div id="recommendation"></div>
+  </section>
+
+  <section>
     <h2 id="kTasks"></h2>
     <div class="row">
       <input type="text" id="taskSearch">
@@ -388,6 +481,7 @@ var modelFilter = "";
 var taskQuery = "";
 var selectedExecutor = null;
 var catalogs = {};
+var lastRecommendation = null;
 var lastData = { executors: [], tasks: [], usage: null, health: null };
 var liveSeconds = 0;
 
@@ -445,6 +539,10 @@ function setLang(next) {
   document.getElementById("kTasks").textContent = t("tasks");
   document.getElementById("kUsage").textContent = t("usage");
   document.getElementById("modelFilter").placeholder = t("modelFilter");
+  document.getElementById("kRecommend").textContent = t("recommendTitle");
+  document.getElementById("recommendObjective").placeholder = t("recommendObjectivePlaceholder");
+  document.getElementById("recommendButton").textContent = t("recommendButton");
+  renderRecommendation();
   document.getElementById("taskSearch").placeholder = t("searchTasks");
   document.getElementById("taskSearchButton").textContent = t("searchButton");
   document.getElementById("tokenPrompt").textContent = t("tokenPrompt");
@@ -681,6 +779,125 @@ function renderAll() {
   dot.title = healthy ? t("healthOk") : t("healthBad");
 }
 
+function reasonText(key) {
+  var map = {
+    capability_fit: "reasonCapabilityFit",
+    route_healthy: "reasonRouteHealthy",
+    price_low: "reasonPriceLow",
+    latency_low: "reasonLatencyLow",
+    metadata_fresh: "reasonMetadataFresh",
+  };
+  return map[key] ? t(map[key]) : key;
+}
+
+function warningText(key) {
+  var map = {
+    status_unknown: "warnStatusUnknown",
+    context_unknown: "warnContextUnknown",
+    tools_unknown: "warnToolsUnknown",
+    vision_unknown: "warnVisionUnknown",
+    reasoning_unknown: "warnReasoningUnknown",
+    route_health_unknown: "warnRouteHealthUnknown",
+    route_health_not_confirmed: "warnRouteHealthNotConfirmed",
+    pricing_unknown: "warnPricingUnknown",
+    latency_samples_insufficient: "warnLatencySamples",
+    metadata_stale: "warnMetadataStale",
+  };
+  if (key.indexOf("protocol_unknown:") === 0) {
+    return fmt(t("warnProtocolUnknown"), { protocol: key.slice(17) });
+  }
+  return map[key] ? t(map[key]) : key;
+}
+
+function exclusionText(key) {
+  var map = {
+    invalid_entry: "exclInvalidEntry",
+    not_in_allowlist: "exclNotAllowlisted",
+    status_unavailable: "exclStatusUnavailable",
+    context_insufficient: "exclContextInsufficient",
+    tools_unsupported: "exclToolsUnsupported",
+    vision_unsupported: "exclVisionUnsupported",
+    reasoning_unsupported: "exclReasoningUnsupported",
+    route_unhealthy: "exclRouteUnhealthy",
+  };
+  if (key.indexOf("protocol_unsupported:") === 0) {
+    return fmt(t("exclProtocolUnsupported"), { protocol: key.slice(21) });
+  }
+  return map[key] ? t(map[key]) : key;
+}
+
+function capabilitySourceText(source) {
+  if (source === "declared") return t("capSourceDeclared");
+  if (source === "probed") return t("capSourceProbed");
+  return t("capSourceUnknown");
+}
+
+function renderRecommendation() {
+  var box = document.getElementById("recommendation");
+  if (!box) return;
+  var recommendation = lastRecommendation;
+  if (!recommendation) {
+    box.innerHTML =
+      '<div class="card muted">' + escapeHtml(t("recommendEmpty")) + "</div>";
+    return;
+  }
+  var rows = (recommendation.ranked ?? [])
+    .map(function (entry) {
+      var cost = entry.estimated_cost_range
+        ? fmt(t("recommendCost"), {
+            min: entry.estimated_cost_range.min,
+            max: entry.estimated_cost_range.max,
+            currency: entry.estimated_cost_range.currency,
+          })
+        : t("recommendCostUnknown");
+      var reasons = (entry.reasons ?? []).map(reasonText).join(" · ");
+      var warnings = (entry.warnings ?? []).map(warningText).join(" · ");
+      var latency =
+        entry.latency_avg_ms != null
+          ? fmt(t("recommendLatency"), {
+              avg: entry.latency_avg_ms,
+              samples: entry.latency_samples ?? 0,
+            })
+          : "";
+      var freshness =
+        entry.metadata_freshness_seconds != null
+          ? fmt(t("recommendFreshness"), {
+              seconds: entry.metadata_freshness_seconds,
+            })
+          : "";
+      return (
+        '<div class="card">' +
+        '<div class="exec-name">' + escapeHtml(entry.model) + "</div>" +
+        '<div class="exec-id">' + escapeHtml(entry.executor) + " · " + escapeHtml(fmt(t("recommendScore"), { score: entry.score })) + "</div>" +
+        '<div class="exec-row">' +
+        '<span class="badge default">' + escapeHtml(capabilitySourceText(entry.capability_source)) + "</span>" +
+        '<span class="muted">' + escapeHtml(cost) + "</span>" +
+        "</div>" +
+        (reasons ? '<div class="exec-detail">' + escapeHtml(reasons) + "</div>" : "") +
+        (latency || freshness ? '<div class="exec-detail">' + escapeHtml([latency, freshness].filter(Boolean).join(" · ")) + "</div>" : "") +
+        (warnings ? '<div class="exec-detail" style="color:#e0a53e">' + escapeHtml(warnings) + "</div>" : "") +
+        "</div>"
+      );
+    })
+    .join("");
+  var excluded = (recommendation.excluded ?? [])
+    .map(function (entry) {
+      return (
+        '<div class="exec-detail">' +
+        escapeHtml(entry.model + " (" + entry.executor + ")") +
+        " — " +
+        escapeHtml((entry.reasons ?? []).map(exclusionText).join(", ")) +
+        "</div>"
+      );
+    })
+    .join("");
+  box.innerHTML =
+    rows +
+    (excluded
+      ? '<div class="card"><div class="exec-name">' + escapeHtml(t("recommendExcluded")) + "</div>" + excluded + "</div>"
+      : "");
+}
+
 async function refresh() {
   try {
     var executorList = await api("/v1/executors");
@@ -736,6 +953,26 @@ document.getElementById("execSelect").addEventListener("change", function (event
 document.getElementById("modelFilter").addEventListener("input", function (event) {
   modelFilter = event.target.value.trim();
   renderModels();
+});
+document.getElementById("recommendButton").addEventListener("click", async function () {
+  var objective = document.getElementById("recommendObjective").value.trim();
+  if (!objective) {
+    lastRecommendation = null;
+    renderRecommendation();
+    return;
+  }
+  var profile = document.getElementById("recommendProfile").value;
+  var query =
+    "objective=" + encodeURIComponent(objective) + "&profile=" + encodeURIComponent(profile);
+  try {
+    var response = await api("/v1/recommendations?" + query);
+    lastRecommendation = response.recommendation ?? null;
+    renderRecommendation();
+  } catch (error) {
+    var bar = document.getElementById("errorBar");
+    bar.textContent = fmt(t("errorBanner"), { message: error.message });
+    bar.classList.remove("hidden");
+  }
 });
 document.getElementById("taskSearchButton").addEventListener("click", function () {
   taskQuery = document.getElementById("taskSearch").value.trim();

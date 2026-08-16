@@ -48,6 +48,9 @@
       historySearch: (query) => searchHistory(query),
       continueProject: (taskId) => startFollowUp(taskId),
       sendFollowUp: () => sendFollowUp().catch(reportError),
+      recommendModels: () => recommendFromPanel().catch(reportError),
+      selectRecommended: (modelId, executorId) =>
+        selectRecommended(modelId, executorId).catch(reportError),
     },
   });
 
@@ -103,6 +106,31 @@
   }
 
   let followUpTaskId = null;
+
+  async function recommendFromPanel() {
+    if (!currentState?.connected) await refreshState();
+    if (!currentState?.connected) throw new Error(t("pairBeforeDispatch"));
+    const values = panel.getValues();
+    const objective = String(values.objective ?? "").trim();
+    if (!objective) throw new Error(t("recommendNeedObjective"));
+    const response = await message("ACP_RECOMMEND", {
+      objective,
+      profile: values.profile || undefined,
+      executor: values.executor || undefined,
+      model: values.model || undefined,
+    });
+    panel.setRecommendation(response.recommendation ?? null);
+    panel.open();
+  }
+
+  async function selectRecommended(modelId, executorId) {
+    const response = await message("ACP_SETTINGS", {
+      patch: { model: modelId, executor: executorId },
+    });
+    currentState = { ...currentState, settings: response.settings };
+    panel.setSettings(currentState.settings);
+    panel.setStatus(t("modelSelected", { model: modelId }), "success");
+  }
 
   function startFollowUp(taskId) {
     followUpTaskId = taskId;

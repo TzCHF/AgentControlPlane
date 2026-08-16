@@ -31,6 +31,8 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
   let versionEl = null;
   let currentVersion = "";
   let currentHistoryQuery = "";
+  let recommendationBox = null;
+  let currentRecommendation = null;
 
   function render() {
     shadow.innerHTML = `
@@ -50,6 +52,8 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
           <div class="stack"><label>${t("workspaceLabel")}</label><select data-field="workspace"><option value="">${t("selectAfterPairing")}</option></select></div>
           <div class="row"><div><label>${t("profileLabel")}</label><select data-field="profile"><option value="auto">${t("profileAuto")}</option><option value="economy">${t("profileEconomy")}</option><option value="balanced">${t("profileBalanced")}</option><option value="deep">${t("profileDeep")}</option></select></div><div><label>${t("executorLabel")}</label><select data-field="executor"><option value="auto">${t("executorAuto")}</option></select></div></div>
           <div class="stack"><label>${t("modelLabel")}</label><select data-field="model"><option value="">${t("modelAuto")}</option></select></div>
+          <div class="actions"><button data-action="recommendModels">${t("recommendModelsButton")}</button></div>
+          <div class="recommendation"></div>
           <div class="stack"><label>${t("objectiveLabel")}</label><textarea data-field="objective" placeholder="${t("objectivePlaceholder")}"></textarea></div>
           <div class="stack"><label>${t("confirmLabel")}</label><input data-field="confirmWords" placeholder="${t("confirmPlaceholder")}"></div>
           <label class="toggle"><input type="checkbox" data-field="autoSubmitResults"> ${t("autoSubmitLabel")}</label>
@@ -78,6 +82,7 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     tasksBox = shadow.querySelector(".tasks");
     followUpBlock = shadow.querySelector(".followup");
     versionEl = shadow.querySelector(".version");
+    recommendationBox = shadow.querySelector(".recommendation");
     fields = Object.fromEntries(
       [...shadow.querySelectorAll("[data-field]")].map((element) => [
         element.dataset.field,
@@ -124,6 +129,7 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     if (fields.historyQuery) fields.historyQuery.value = currentHistoryQuery;
     if (versionEl) versionEl.textContent = currentVersion ? `v${currentVersion}` : "";
     renderTasks();
+    renderRecommendation();
     if (continueTaskId && followUpBlock) followUpBlock.hidden = false;
   }
 
@@ -139,6 +145,48 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
       objective: fields.objective.value,
       followUp: fields.followUp ? fields.followUp.value : "",
     };
+  }
+
+  function renderRecommendation() {
+    if (!recommendationBox) return;
+    const recommendation = currentRecommendation;
+    if (!recommendation) {
+      recommendationBox.innerHTML = "";
+      return;
+    }
+    const rows = (recommendation.ranked ?? [])
+      .map((entry) => {
+        const cost = entry.estimated_cost_range
+          ? t("recCost", {
+              min: entry.estimated_cost_range.min,
+              max: entry.estimated_cost_range.max,
+              currency: entry.estimated_cost_range.currency,
+            })
+          : t("recCostUnknown");
+        const warnings = entry.warnings?.length
+          ? ` · ${t("recWarnings", { count: entry.warnings.length })}`
+          : "";
+        return `<div class="task-row" data-rec-model="${escapeAttribute(entry.model)}" data-rec-executor="${escapeAttribute(entry.executor)}">
+          <div class="task-line1"><span class="ts completed">${escapeText(t("recScore", { score: entry.score }))}</span><span>${escapeText(cost)}</span>${escapeText(warnings)}</div>
+          <div class="task-line2">${escapeText(entry.model)}</div>
+          <div class="task-line3"><span>${escapeText(entry.executor)}</span></div>
+        </div>`;
+      })
+      .join("");
+    const excluded =
+      recommendation.excluded?.length > 0
+        ? `<div class="task-line3">${escapeText(t("recExcludedCount", { count: recommendation.excluded.length }))}</div>`
+        : "";
+    recommendationBox.innerHTML =
+      `<p class="hint">${t("recSelectHint")}</p>` + rows + excluded;
+    for (const row of recommendationBox.querySelectorAll("[data-rec-model]")) {
+      row.addEventListener("click", () => {
+        handlers.selectRecommended?.(
+          row.dataset.recModel,
+          row.dataset.recExecutor,
+        );
+      });
+    }
   }
 
   function renderTasks() {
@@ -337,6 +385,10 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     setHistoryQuery(value) {
       currentHistoryQuery = value ?? "";
       if (fields.historyQuery) fields.historyQuery.value = currentHistoryQuery;
+    },
+    setRecommendation(recommendation) {
+      currentRecommendation = recommendation ?? null;
+      renderRecommendation();
     },
     setFollowUpVisible(visible) {
       if (followUpBlock) followUpBlock.hidden = !visible;

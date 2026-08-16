@@ -218,6 +218,30 @@ test("companion panel and popup display the service version", () => {
   assert.match(popupJs, /serviceVersion\.textContent/);
 });
 
+test("companion surfaces recommendations without auto-selecting", () => {
+  const panel = fs.readFileSync(
+    path.resolve("browser-companion", "src", "panel.js"),
+    "utf8",
+  );
+  assert.match(panel, /recommendModels/);
+  assert.match(panel, /setRecommendation/);
+  assert.match(panel, /selectRecommended/);
+
+  const content = fs.readFileSync(
+    path.resolve("browser-companion", "src", "content.js"),
+    "utf8",
+  );
+  assert.match(content, /ACP_RECOMMEND/);
+  assert.match(content, /recommendFromPanel/);
+
+  const background = fs.readFileSync(
+    path.resolve("browser-companion", "src", "background.js"),
+    "utf8",
+  );
+  assert.match(background, /ACP_RECOMMEND/);
+  assert.match(background, /\/v1\/recommendations/);
+});
+
 test("manifest grants only known AI sites by default", () => {
   const manifest = JSON.parse(
     fs.readFileSync(
@@ -226,7 +250,7 @@ test("manifest grants only known AI sites by default", () => {
     ),
   );
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, "0.5.4");
+  assert.equal(manifest.version, "0.6.0");
   assert.ok(manifest.host_permissions.includes("https://chatgpt.com/*"));
   assert.ok(manifest.host_permissions.includes("https://chat.deepseek.com/*"));
   assert.ok(manifest.optional_host_permissions.includes("https://*/*"));

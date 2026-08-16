@@ -110,5 +110,51 @@
   },
   "audit": {
     "integrityKey": null
+  },
+  "recommendation": {
+    "contextTokens": {
+      "economy": 16000,
+      "balanced": 64000,
+      "deep": 128000
+    },
+    "latencyTargetMs": {
+      "economy": 2000,
+      "balanced": 4000,
+      "deep": 8000
+    },
+    "costCap": {
+      "economy": 0.2,
+      "balanced": 2,
+      "deep": 10
+    },
+    "weights": {
+      "economy": {
+        "capability_fit": 30,
+        "confidence": 10,
+        "health": 10,
+        "latency": 10,
+        "pricing": 30,
+        "tier": 0,
+        "freshness": 10
+      },
+      "balanced": {
+        "capability_fit": 30,
+        "confidence": 15,
+        "health": 10,
+        "latency": 10,
+        "pricing": 15,
+        "tier": 5,
+        "freshness": 15
+      },
+      "deep": {
+        "capability_fit": 40,
+        "confidence": 15,
+        "health": 10,
+        "latency": 5,
+        "pricing": 10,
+        "tier": 5,
+        "freshness": 15
+      }
+    }
   }
 }

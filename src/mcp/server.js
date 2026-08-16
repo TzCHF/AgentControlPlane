@@ -335,6 +335,33 @@ function buildToolSpecs({ orchestrator, store, config }) {
       },
     },
     {
+      name: "recommend_models",
+      title: "Recommend engineering models",
+      description:
+        "Use this to rank available model endpoints for an engineering objective. The recommendation is advisory: it never changes a dispatch and never overrides an explicit model. Returns ranked candidates with scores, reasons, warnings, and excluded candidates.",
+      inputSchema: {
+        objective: z.string().min(1),
+        profile: z.enum(["economy", "balanced", "deep"]).optional(),
+        reasoning_effort: z.string().nullable().optional(),
+        executor: z.string().nullable().optional(),
+        allowed_models: z.array(z.string()).optional(),
+        model: z.string().nullable().optional(),
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        idempotentHint: true,
+      },
+      async handler(args) {
+        const recommendation = orchestrator.recommend(args);
+        return result(
+          { recommendation },
+          `Ranked ${recommendation.ranked.length} candidates; ${recommendation.excluded.length} excluded.`,
+        );
+      },
+    },
+    {
       name: "usage_report",
       title: "Read measured engineering token usage",
       description:

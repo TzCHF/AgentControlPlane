@@ -8,6 +8,11 @@ import { ControlPlaneError, asErrorPayload } from "./errors.js";
 import { resolveProfile, resolveEndpointModel, estimateTaskMinutes } from "./profiles.js";
 import { resolveWorkspace } from "./workspace.js";
 import { discoverExecutors } from "../executors/discovery.js";
+import {
+  extractTaskRequirements,
+  normalizeCandidate,
+  recommendModels,
+} from "./recommend.js";
 
 function zeroUsage() {
   return {
@@ -141,6 +146,7 @@ export class Orchestrator extends EventEmitter {
     this.queue = [];
     this.modelCatalog = [];
     this.modelCatalogs = new Map();
+    this.modelCatalogUpdatedAt = new Map();
     this.runtimeHealth = {
       windowsSandbox: process.platform === "win32" ? "unknown" : "not_applicable",
     };
@@ -268,10 +274,50 @@ export class Orchestrator extends EventEmitter {
           includeHidden: false,
         });
         this.modelCatalogs.set(id, models.data ?? []);
+        this.modelCatalogUpdatedAt.set(id, Date.now());
       } catch (error) {
         this.emit("diagnostic", { source: `${id}-models`, text: error.message });
       }
     }
+  }
+
+  recommend(request = {}) {
+    const requirements = extractTaskRequirements(
+      {
+        objective: request.objective,
+        profile: request.profile,
+        reasoning_effort: request.reasoning_effort ?? null,
+        allowed_models: request.allowed_models ?? null,
+        model: request.model ?? null,
+      },
+      this.config,
+    );
+    const wantedExecutor =
+      typeof request.executor === "string" &&
+      request.executor &&
+      request.executor !== "auto"
+        ? request.executor
+        : null;
+    const candidates = [];
+    for (const [executorId, executor] of this.executors) {
+      if (executor.kind !== "model-endpoint") continue;
+      if (wantedExecutor && executorId !== wantedExecutor) continue;
+      const catalog = this.modelCatalogs.get(executorId) ?? [];
+      const fetchedAt = this.modelCatalogUpdatedAt.get(executorId) ?? Date.now();
+      const freshness = Math.max(
+        0,
+        Math.round((Date.now() - fetchedAt) / 1000),
+      );
+      for (const model of catalog) {
+        candidates.push(
+          normalizeCandidate(executorId, {
+            ...model,
+            metadata_freshness_seconds: freshness,
+          }),
+        );
+      }
+    }
+    return recommendModels({ candidates, requirements, config: this.config });
   }
 
   getModels(executorId = null) {
@@ -337,6 +383,23 @@ export class Orchestrator extends EventEmitter {
         resolveEndpointModel(provider, request.model, allowed);
       }
     }
+    let recommendation = null;
+    try {
+      recommendation = this.recommend({
+        objective: brief.objective,
+        profile: policy.name,
+        reasoning_effort: policy.effort ?? null,
+        allowed_models: request.allowed_models ?? null,
+        model: request.model ?? null,
+        executor: provider,
+      });
+      recommendation.selected_model = policy.model ?? null;
+    } catch (error) {
+      this.emit("diagnostic", {
+        source: "recommendation",
+        text: error.message,
+      });
+    }
     const task = this.store.createTask({
       workspace,
       brief,
@@ -346,6 +409,7 @@ export class Orchestrator extends EventEmitter {
         policy.name,
         policy.timeLimitMinutes,
       ),
+      recommendation,
     });
     this.queue.push({ taskId: task.id, followUp: false });
     queueMicrotask(() => this.#drain());
@@ -1006,6 +1070,7 @@ export class Orchestrator extends EventEmitter {
       status: finalStatus,
       result: report,
       error,
+      retries: Number(params.turn.retries ?? 0),
       completedAt: new Date().toISOString(),
       ...(params.executorSessionId
         ? { executorSessionId: params.executorSessionId }

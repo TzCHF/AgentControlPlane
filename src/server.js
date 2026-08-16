@@ -421,6 +421,32 @@ export async function createApplication(overrides = {}) {
       }
 
       if (
+        request.method === "GET" &&
+        url.pathname === "/v1/recommendations"
+      ) {
+        const objective = url.searchParams.get("objective") ?? "";
+        if (!objective) {
+          sendJson(response, 400, {
+            error: {
+              code: "missing_objective",
+              message: "The objective query parameter is required",
+            },
+          });
+          return;
+        }
+        const recommendation = orchestrator.recommend({
+          objective,
+          profile: url.searchParams.get("profile") ?? undefined,
+          reasoning_effort:
+            url.searchParams.get("reasoning_effort") ?? undefined,
+          executor: url.searchParams.get("executor") ?? undefined,
+          model: url.searchParams.get("model") ?? undefined,
+        });
+        sendJson(response, 200, { recommendation });
+        return;
+      }
+
+      if (
         url.pathname === "/mcp" &&
         ["POST", "GET", "DELETE"].includes(request.method)
       ) {

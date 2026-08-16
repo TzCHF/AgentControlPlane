@@ -1,5 +1,42 @@
 # Changelog
 
+## v0.6.0 — 2026-08-16
+
+Task-aware model recommendation (advisory only).
+
+### Added
+
+- `src/core/recommend.js`: deterministic, provider-agnostic pipeline —
+  versioned task requirements extracted from the brief and profile (no
+  model calls), three-state candidate normalization, hard filtering, a
+  weighted scorer whose weights live in `config.recommendation`, and the
+  recommendation result schema (top 3 with score, estimated cost range,
+  reasons, warnings, capability source, health, latency, freshness, plus
+  excluded candidates with reasons).
+- Dispatch stores a recommendation snapshot per task: requirements,
+  catalog hash, ranked and excluded candidates, the requested model, and
+  the resolved model. Explicit models are never overridden;
+  `selected_model` stays null unless a dispatch resolves one.
+- `recommend_models` MCP tool and `GET /v1/recommendations` expose the
+  read-only recommender.
+- Task records store completion retries; protocol probe usage is recorded
+  in executor discovery (`protocols.probe_usage`) and stays separate from
+  task usage.
+- Dashboard gains a recommendation section; the companion panel gains a
+  Recommend models button whose results select a model only on click.
+- `npm run benchmark:recommend` prints ranked candidates for fixed
+  objectives and consumes no model quota.
+
+### Verified
+
+- 126 tests pass locally, covering the 14 required behaviors: explicit
+  model preservation, three-state filtering, route/capability separation,
+  context and status exclusion, unknown-cost and low-sample warnings,
+  stale metadata, bare-provider compatibility, deterministic replay,
+  probe/task usage separation, selection traceability, and the absence of
+  provider-specific branches.
+- Copy passes the grounded-copy gate with 0 findings.
+
 ## v0.5.4 — 2026-08-16
 
 Relay metadata, preferred protocol, and request attribution.

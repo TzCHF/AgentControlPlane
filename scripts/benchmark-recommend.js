@@ -1,0 +1,38 @@
+// Read-only recommendation benchmark: queries the local server's
+// /v1/recommendations endpoint for fixed objectives and prints ranked
+// candidates plus exclusion summaries. Consumes no model quota.
+const baseUrl = process.env.ACP_BASE_URL ?? "http://127.0.0.1:4318";
+
+const cases = [
+  { objective: "Create a hello.txt file with one line of text", profile: "economy" },
+  { objective: "Refactor the authentication module and add tests", profile: "balanced" },
+  { objective: "审计整个代码库的架构并给出迁移方案", profile: "deep" },
+  { objective: "识别截图中的文字并写入 notes.txt", profile: "balanced" },
+];
+
+for (const item of cases) {
+  const url = new URL(`${baseUrl}/v1/recommendations`);
+  url.searchParams.set("objective", item.objective);
+  url.searchParams.set("profile", item.profile);
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    console.log(`[${item.profile}] "${item.objective.slice(0, 40)}" → HTTP ${response.status}`);
+    continue;
+  }
+  const { recommendation } = await response.json();
+  console.log(`\n[${item.profile}] ${item.objective}`);
+  console.log(`catalog_hash=${recommendation.catalog_hash} version=${recommendation.version}`);
+  for (const entry of recommendation.ranked ?? []) {
+    const cost = entry.estimated_cost_range
+      ? `${entry.estimated_cost_range.min}–${entry.estimated_cost_range.max} ${entry.estimated_cost_range.currency}`
+      : "unknown";
+    console.log(
+      `  ${entry.score}  ${entry.executor}/${entry.model}  cost=${cost} reasons=[${entry.reasons.join(", ")}] warnings=[${entry.warnings.join(", ")}]`,
+    );
+  }
+  if ((recommendation.excluded ?? []).length > 0) {
+    console.log(
+      `  excluded: ${recommendation.excluded.map((entry) => `${entry.model} (${entry.reasons.join(",")})`).join("; ")}`,
+    );
+  }
+}
