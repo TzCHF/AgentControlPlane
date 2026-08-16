@@ -2,7 +2,13 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { ControlPlaneError } from "./errors.js";
-import { adaptV1Event, normalizeTaskKind } from "./usage-events.js";
+import {
+  adaptV1Event,
+  normalizePresence,
+  normalizeSettlement,
+  normalizeTaskKind,
+  normalizeToken,
+} from "./usage-events.js";
 
 function now() {
   return new Date().toISOString();
@@ -61,7 +67,24 @@ export class TaskStore {
     for (const line of lines.slice(-this.maxUsageEvents)) {
       try {
         const entry = JSON.parse(line);
-        if (entry?.request_id) this.reconciliations.set(entry.request_id, entry);
+        // Legacy entries were keyed by request_id; migrate to the frozen
+        // wire field asterroute_request_id and canonical state names.
+        const id = entry?.asterroute_request_id ?? entry?.request_id ?? null;
+        if (id) {
+          this.reconciliations.set(id, {
+            asterroute_request_id: id,
+            presence_state: normalizePresence(entry.presence_state),
+            token_state: normalizeToken(entry.token_state),
+            settlement_state: normalizeSettlement(entry.settlement_state),
+            settled_cost_microusd: entry.settled_cost_microusd ?? null,
+            credit_microusd: entry.credit_microusd ?? null,
+            net_cost_microusd: entry.net_cost_microusd ?? null,
+            currency: entry.currency ?? "USD",
+            pricing_version: entry.pricing_version ?? null,
+            billing_revision: entry.billing_revision ?? null,
+            reconciled_at: entry.reconciled_at ?? null,
+          });
+        }
       } catch {
         /* skip unreadable line */
       }
@@ -107,21 +130,13 @@ export class TaskStore {
   applyReconciliations(rows) {
     const applied = [];
     for (const row of rows ?? []) {
-      const requestId = String(row?.request_id ?? "");
+      const requestId = String(row?.asterroute_request_id ?? "");
       if (!requestId) continue;
-      const existing = this.reconciliations.get(requestId);
-      if (
-        existing &&
-        existing.billing_revision === row.billing_revision &&
-        existing.settled_cost_microusd === row.settled_cost_microusd
-      ) {
-        continue;
-      }
       const entry = {
-        request_id: requestId,
-        presence_state: row.presence_state ?? "matched",
-        token_state: row.token_state ?? "pending",
-        settlement_state: row.settlement_state ?? "pending",
+        asterroute_request_id: requestId,
+        presence_state: normalizePresence(row.presence_state),
+        token_state: normalizeToken(row.token_state),
+        settlement_state: normalizeSettlement(row.settlement_state),
         settled_cost_microusd: row.settled_cost_microusd ?? null,
         credit_microusd: row.credit_microusd ?? null,
         net_cost_microusd: row.net_cost_microusd ?? null,
@@ -130,6 +145,21 @@ export class TaskStore {
         billing_revision: row.billing_revision ?? null,
         reconciled_at: new Date().toISOString(),
       };
+      const existing = this.reconciliations.get(requestId);
+      if (
+        existing &&
+        existing.presence_state === entry.presence_state &&
+        existing.token_state === entry.token_state &&
+        existing.settlement_state === entry.settlement_state &&
+        existing.settled_cost_microusd === entry.settled_cost_microusd &&
+        existing.credit_microusd === entry.credit_microusd &&
+        existing.net_cost_microusd === entry.net_cost_microusd &&
+        existing.currency === entry.currency &&
+        existing.pricing_version === entry.pricing_version &&
+        existing.billing_revision === entry.billing_revision
+      ) {
+        continue;
+      }
       this.reconciliations.set(requestId, entry);
       fs.appendFileSync(
         this.reconciliationPath,

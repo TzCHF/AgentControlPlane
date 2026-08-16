@@ -29,7 +29,7 @@ export class ReconcileClient {
           "content-type": "application/json",
           authorization: `Bearer ${this.apiKey}`,
         },
-        body: JSON.stringify({ request_ids: ids }),
+        body: JSON.stringify({ ids }),
         signal: controller.signal,
       });
       if (!response.ok) {

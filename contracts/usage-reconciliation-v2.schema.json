@@ -1,49 +1,240 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agentcontrolplane.local/contracts/usage-reconciliation-v2.schema.json",
-  "title": "Usage / Reconciliation wire contract v2",
-  "description": "Frozen cross-repository contract for request-level usage events and reconciliation rows. Both repositories run their contract tests against this schema and report the same hash.",
-  "type": "object",
-  "required": [
-    "schema_version",
-    "client_event_id",
-    "asterroute_request_id",
-    "upstream_request_id",
-    "task_id",
-    "task_kind",
-    "request_kind",
-    "attempt"
-  ],
-  "properties": {
-    "schema_version": { "const": 2 },
-    "client_event_id": { "type": ["string", "null"] },
-    "asterroute_request_id": { "type": ["string", "null"] },
-    "upstream_request_id": { "type": ["string", "null"] },
-    "task_id": { "type": ["string", "null"] },
-    "turn_id": { "type": ["string", "null"] },
-    "task_kind": {
-      "enum": ["production", "certification", "benchmark", "maintenance"]
-    },
-    "request_kind": {
-      "enum": ["protocol_probe", "task_execution"]
-    },
-    "attempt": { "type": "integer", "minimum": 1 },
+  "$id": "https://asterroute.com/contracts/usage-reconciliation-v2.schema.json",
+  "title": "Usage / Reconciliation wire contract v2 (frozen)",
+  "description": "Frozen wire contract between AsterRoute and AgentControlPlane for Usage Intelligence and cross-system Reconciliation. Compatibility READ aliases: presence matched -> both, token match -> matched, settlement cost_pending -> pending. New writes must never produce the legacy alias values. All money fields are integer micro-USD. asterroute_request_id is the gateway request id from the x-asterroute-request-id response header; upstream_request_id is the provider request id from the x-asterroute-provider-request-id response header. Response body ids never substitute for either header.",
+  "contractVersion": "2.0",
+  "$defs": {
     "presence_state": {
+      "type": "string",
       "enum": ["both", "client_only", "provider_only", "unknown"]
     },
     "token_state": {
+      "type": "string",
       "enum": ["matched", "mismatch", "unknown"]
     },
     "settlement_state": {
+      "type": "string",
       "enum": ["pending", "settled", "adjusted", "not_billable"]
     },
-    "estimated_cost_microusd": { "type": ["integer", "null"] },
-    "settled_cost_microusd": { "type": ["integer", "null"] },
-    "credit_microusd": { "type": ["integer", "null"] },
-    "net_cost_microusd": { "type": ["integer", "null"] },
-    "currency": { "type": ["string", "null"] },
-    "pricing_version": { "type": ["string", "null"] },
-    "billing_revision": { "type": ["string", "null"] }
+    "task_kind": {
+      "type": "string",
+      "enum": ["production", "certification", "benchmark", "maintenance"]
+    },
+    "request_kind": {
+      "type": "string",
+      "enum": ["protocol_probe", "task_execution"]
+    },
+    "report_scope": {
+      "type": "string",
+      "enum": ["production", "diagnostic", "all"]
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{1,128}$"
+    },
+    "microusd": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "token_dimensions": {
+      "type": "object",
+      "required": ["input", "output", "cached_input", "reasoning_output"],
+      "properties": {
+        "input": { "type": "integer", "minimum": 0 },
+        "output": { "type": "integer", "minimum": 0 },
+        "cached_input": { "type": "integer", "minimum": 0 },
+        "reasoning_output": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "reconcile_lookup_row": {
+      "type": "object",
+      "required": ["asterroute_request_id"],
+      "properties": {
+        "asterroute_request_id": { "$ref": "#/$defs/request_id" },
+        "upstream_request_id": {
+          "oneOf": [{ "$ref": "#/$defs/request_id" }, { "type": "null" }]
+        },
+        "requested_model": { "type": "string" },
+        "resolved_model": { "type": ["string", "null"] },
+        "protocol": { "type": ["string", "null"] },
+        "status_code": { "type": "integer" },
+        "outcome": { "type": "string", "enum": ["success", "failure"] },
+        "token_dimensions": { "$ref": "#/$defs/token_dimensions" },
+        "presence_state": {
+          "oneOf": [{ "$ref": "#/$defs/presence_state" }, { "type": "null" }]
+        },
+        "token_state": {
+          "oneOf": [{ "$ref": "#/$defs/token_state" }, { "type": "null" }]
+        },
+        "settlement_state": {
+          "oneOf": [{ "$ref": "#/$defs/settlement_state" }, { "type": "null" }]
+        },
+        "estimated_cost_microusd": { "$ref": "#/$defs/microusd" },
+        "settled_cost_microusd": { "$ref": "#/$defs/microusd" },
+        "credit_microusd": { "$ref": "#/$defs/microusd" },
+        "net_cost_microusd": { "$ref": "#/$defs/microusd" },
+        "currency": { "type": ["string", "null"] },
+        "pricing_version": { "type": ["string", "null"] },
+        "billing_revision": { "type": ["string", "null"] },
+        "settled_at": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "reconcile_record_item": {
+      "type": "object",
+      "required": ["asterroute_request_id"],
+      "properties": {
+        "asterroute_request_id": { "$ref": "#/$defs/request_id" },
+        "presence_state": {
+          "oneOf": [{ "$ref": "#/$defs/presence_state" }, { "type": "null" }]
+        },
+        "token_state": {
+          "oneOf": [{ "$ref": "#/$defs/token_state" }, { "type": "null" }]
+        }
+      },
+      "additionalProperties": false
+    },
+    "report_row": {
+      "type": "object",
+      "required": ["groupKey", "requests"],
+      "properties": {
+        "groupKey": { "type": "string" },
+        "requests": { "type": "integer", "minimum": 0 },
+        "successCount": { "type": "integer", "minimum": 0 },
+        "rateLimitedCount": { "type": "integer", "minimum": 0 },
+        "errorCount": { "type": "integer", "minimum": 0 },
+        "inputTokens": { "type": "integer", "minimum": 0 },
+        "outputTokens": { "type": "integer", "minimum": 0 },
+        "cachedInputTokens": { "type": "integer", "minimum": 0 },
+        "reasoningOutputTokens": { "type": "integer", "minimum": 0 },
+        "estimatedMicrousd": { "$ref": "#/$defs/microusd" },
+        "actualMicrousd": { "$ref": "#/$defs/microusd" },
+        "netMicrousd": { "$ref": "#/$defs/microusd" },
+        "creditMicrousd": { "$ref": "#/$defs/microusd" },
+        "upstreamMicrousd": { "$ref": "#/$defs/microusd" },
+        "avgLatencyMs": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "usage_event": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "client_event_id",
+        "asterroute_request_id",
+        "upstream_request_id",
+        "task_id",
+        "task_kind",
+        "request_kind",
+        "attempt"
+      ],
+      "properties": {
+        "schema_version": { "type": "integer", "const": 2 },
+        "client_event_id": { "type": ["string", "null"] },
+        "asterroute_request_id": { "type": ["string", "null"] },
+        "upstream_request_id": { "type": ["string", "null"] },
+        "task_id": { "type": ["string", "null"] },
+        "turn_id": { "type": ["string", "null"] },
+        "task_kind": { "$ref": "#/$defs/task_kind" },
+        "request_kind": { "$ref": "#/$defs/request_kind" },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "presence_state": {
+          "oneOf": [{ "$ref": "#/$defs/presence_state" }, { "type": "null" }]
+        },
+        "token_state": {
+          "oneOf": [{ "$ref": "#/$defs/token_state" }, { "type": "null" }]
+        },
+        "settlement_state": {
+          "oneOf": [{ "$ref": "#/$defs/settlement_state" }, { "type": "null" }]
+        },
+        "estimated_cost_microusd": {
+          "oneOf": [{ "$ref": "#/$defs/microusd" }, { "type": "null" }]
+        },
+        "settled_cost_microusd": {
+          "oneOf": [{ "$ref": "#/$defs/microusd" }, { "type": "null" }]
+        },
+        "credit_microusd": {
+          "oneOf": [{ "$ref": "#/$defs/microusd" }, { "type": "null" }]
+        },
+        "net_cost_microusd": {
+          "oneOf": [{ "$ref": "#/$defs/microusd" }, { "type": "null" }]
+        },
+        "currency": { "type": ["string", "null"] },
+        "pricing_version": { "type": ["string", "null"] },
+        "billing_revision": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
   },
-  "additionalProperties": false
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["ids"],
+      "properties": {
+        "ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": { "$ref": "#/$defs/request_id" }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["rows"],
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reconcile_lookup_row" }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["source", "observed_at", "items"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "observed_at": { "type": "string" },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": { "$ref": "#/$defs/reconcile_record_item" }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["run_id", "items"],
+      "properties": {
+        "run_id": { "$ref": "#/$defs/request_id" },
+        "items": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["group_by", "hours", "scope", "offset", "limit", "rows"],
+      "properties": {
+        "group_by": { "type": "string" },
+        "hours": { "type": "integer", "minimum": 1 },
+        "scope": { "$ref": "#/$defs/report_scope" },
+        "offset": { "type": "integer", "minimum": 0 },
+        "limit": { "type": "integer", "minimum": 1 },
+        "rows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/report_row" }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "$ref": "#/$defs/usage_event"
+    }
+  ]
 }

@@ -1,5 +1,46 @@
 # Changelog
 
+## v0.8.1 — 2026-08-16
+
+Phase 3.1 Usage/Reconciliation v2 joint certification with AsterRoute v71
+(builds on the v0.7.3 frozen contract).
+
+### Fixed
+
+- The bulk lookup client now posts `{ ids: [...] }` and matches provider
+  rows by `asterroute_request_id` plus `token_dimensions` — the actual
+  AsterRoute lookup row shape. The previous `request_ids` request key and
+  `request_id` / `total_tokens` row fields are retired everywhere
+  (`reconcile_usage` MCP schema included).
+- Reconciliation entries are keyed by `asterroute_request_id`; legacy
+  `request_id` entries migrate on load; stored entries keep canonical
+  state names. Duplicate application compares the full entry, keeping
+  `reconcile_now` idempotent.
+- Reconciliation now also refines events whose ids the provider does not
+  return (`presence_state: unknown`) and records provider-only rows, so
+  presence stays partitioned into both / client_only / provider_only /
+  unknown.
+- `scope=diagnostic` added to dimensional usage queries (production /
+  diagnostic / all); `production_only` remains a legacy alias.
+
+### Shared contract
+
+- `contracts/usage-reconciliation-v2.schema.json` is now the byte-identical
+  schema shared with AsterRoute (sha256
+  `64900f5746ebe239dfaf7ecb4efae80c76c1bc79cf4536a934abbb3777166dc8`,
+  `contractVersion: 2.0`, draft 2020-12), covering wire messages (lookup,
+  record, report) and usage events.
+- `tests/contract-schema.test.mjs` is byte-identical with the AsterRoute
+  copy and validates sample payloads against the schema in addition to
+  the pinned hash.
+
+### Verified
+
+- 160+ tests pass locally: shared schema conformance, canonical state
+  partition, id-source separation, retry attempts, explicit production
+  scope, cross-origin key refusal, idempotent reconciliation, and
+  micro-USD integer invariants.
+
 ## v0.8.0 — 2026-08-16
 
 Phase 4A: estimate-aware cost selector.

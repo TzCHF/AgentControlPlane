@@ -6,14 +6,20 @@ import path from "node:path";
 import test from "node:test";
 import { TaskStore } from "../src/core/store.js";
 import {
+  PRESENCE_STATES,
+  SETTLEMENT_STATES,
+  TOKEN_STATES,
   normalizeUsage,
+  normalizePresence,
+  normalizeSettlement,
+  normalizeToken,
   createUsageEvent,
   adaptV1Event,
   csvCell,
   usageEventsToCsv,
 } from "../src/core/usage-events.js";
 import { usageDimensions, reconcileUsage } from "../src/core/usage-dimensions.js";
-import { ReconcileClient } from "../src/core/reconcile-client.js";
+import { ReconcileClient, reconcileClientFor } from "../src/core/reconcile-client.js";
 import { OpenAICompatibleExecutor } from "../src/executors/openai-compatible-executor.js";
 
 function freshStore() {
@@ -116,11 +122,83 @@ test("production scope excludes probes and non-production task kinds", () => {
     productionView.rows.map((row) => row.model),
     ["prod-model"],
   );
+  // Frozen contract: the production scope is passed explicitly.
+  const explicitProduction = usageDimensions(store, { by: "model", scope: "production" });
+  assert.equal(explicitProduction.scope, "production");
+  assert.deepEqual(
+    explicitProduction.rows.map((row) => row.model),
+    ["prod-model"],
+  );
+  const diagnostic = usageDimensions(store, { by: "model", scope: "diagnostic" });
+  assert.equal(diagnostic.scope, "diagnostic");
+  assert.deepEqual(
+    diagnostic.rows.map((row) => row.model),
+    ["cert-model", "probe-model"],
+  );
   const fullView = usageDimensions(store, { by: "model", production_only: false });
   assert.deepEqual(
     fullView.rows.map((row) => row.model),
     ["cert-model", "probe-model", "prod-model"],
   );
+});
+
+test("new writes emit only frozen enumeration values", () => {
+  const entry = event({ asterroute_request_id: "req-1" });
+  assert.ok(PRESENCE_STATES.has(entry.presence_state));
+  assert.ok(TOKEN_STATES.has(entry.token_state));
+  assert.ok(SETTLEMENT_STATES.has(entry.settlement_state));
+  assert.ok(!["matched", "match", "cost_pending"].includes(entry.presence_state));
+  assert.ok(!["match", "pending"].includes(entry.token_state));
+  assert.ok(!["cost_pending"].includes(entry.settlement_state));
+});
+
+test("legacy aliases normalize on read", () => {
+  assert.equal(normalizePresence("matched"), "both");
+  assert.equal(normalizeToken("match"), "matched");
+  assert.equal(normalizeSettlement("cost_pending"), "pending");
+  assert.equal(normalizePresence("both"), "both");
+  assert.equal(normalizeToken("mismatch"), "mismatch");
+  assert.equal(normalizeSettlement("adjusted"), "adjusted");
+});
+
+test("same-origin reconcile endpoints reuse the relay key", () => {
+  const { client, error } = reconcileClientFor({
+    relayConfig: { apiKey: "relay-key", reconcileUrl: "https://relay.example/v1/reconcile" },
+    executorBaseUrl: "https://relay.example/v1",
+  });
+  assert.equal(error, null);
+  assert.equal(client.apiKey, "relay-key");
+});
+
+test("cross-origin reconcile endpoints refuse the relay key", () => {
+  const { client, error } = reconcileClientFor({
+    relayConfig: { apiKey: "relay-key", reconcileUrl: "https://other.example/reconcile" },
+    executorBaseUrl: "https://relay.example/v1",
+  });
+  assert.equal(error, "reconcile_cross_origin_without_key");
+  assert.equal(client, null);
+});
+
+test("cross-origin reconcile endpoints accept a dedicated key", () => {
+  const { client, error } = reconcileClientFor({
+    relayConfig: {
+      apiKey: "relay-key",
+      reconcileUrl: "https://other.example/reconcile",
+      reconcileApiKey: "dedicated-key",
+    },
+    executorBaseUrl: "https://relay.example/v1",
+  });
+  assert.equal(error, null);
+  assert.equal(client.apiKey, "dedicated-key");
+});
+
+test("relay key is not sent when no reconcile endpoint is configured", () => {
+  const { client, error } = reconcileClientFor({
+    relayConfig: { apiKey: "relay-key" },
+    executorBaseUrl: "https://relay.example/v1",
+  });
+  assert.equal(error, "reconcile_client_unconfigured");
+  assert.equal(client, null);
 });
 
 test("presence both and settlement pending coexist on one event", () => {
@@ -140,25 +218,41 @@ test("token mismatch and settlement pending coexist after reconcile", () => {
     }),
   );
   const { statuses } = reconcileUsage(store, [
-    { request_id: "req-mismatch", total_tokens: 99, settled_cost_microusd: null },
+    {
+      asterroute_request_id: "req-mismatch",
+      token_dimensions: { input: 90, output: 9, cached_input: 0, reasoning_output: 0 },
+      settlement_state: null,
+      settled_cost_microusd: null,
+    },
   ]);
   assert.equal(statuses.token.mismatch, 1);
+  assert.equal(statuses.presence.both, 1);
   assert.equal(statuses.settlement.pending, 1);
 });
 
-test("bulk lookup client matches request ids exactly", async () => {
+test("bulk lookup client posts {ids} and reads asterroute_request_id rows", async () => {
   const seen = [];
   const server = http.createServer(async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    seen.push(body.request_ids);
+    seen.push(body.ids);
     res.setHeader("content-type", "application/json");
     res.end(
       JSON.stringify({
         rows: [
-          { request_id: "a", total_tokens: 14, settled_cost_microusd: 12000 },
-          { request_id: "b", total_tokens: 9, settled_cost_microusd: null },
+          {
+            asterroute_request_id: "a",
+            token_dimensions: { input: 10, output: 4, cached_input: 0, reasoning_output: 0 },
+            settlement_state: "settled",
+            settled_cost_microusd: 12000,
+          },
+          {
+            asterroute_request_id: "b",
+            token_dimensions: { input: 5, output: 4, cached_input: 0, reasoning_output: 0 },
+            settlement_state: "pending",
+            settled_cost_microusd: null,
+          },
         ],
       }),
     );
@@ -171,29 +265,29 @@ test("bulk lookup client matches request ids exactly", async () => {
     assert.equal(seen[0].length, 3);
     assert.deepEqual(seen[0], ["a", "b", "missing"]);
     assert.equal(rows.length, 2);
-    assert.equal(rows[0].request_id, "a");
+    assert.equal(rows[0].asterroute_request_id, "a");
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
 });
 
-test("missing provider rows leave events client_only", () => {
+test("events whose ids the provider does not return become presence unknown", () => {
   const store = freshStore();
   const task = seedTask(store);
   store.appendUsageEvent(
     event({ task_id: task.id, asterroute_request_id: "req-x" }),
   );
   const { statuses } = reconcileUsage(store, [
-    { request_id: "some-other-id", total_tokens: 5 },
+    { asterroute_request_id: "some-other-id", token_dimensions: { input: 5 } },
   ]);
   assert.equal(statuses.presence.provider_only, 1);
-  assert.equal(statuses.presence.both, 1);
+  assert.equal(statuses.presence.unknown, 1);
 });
 
 test("provider-only rows are counted on import", () => {
   const store = freshStore();
   const { statuses } = reconcileUsage(store, [
-    { request_id: "only-at-provider", total_tokens: 7 },
+    { asterroute_request_id: "only-at-provider", token_dimensions: { input: 7 } },
   ]);
   assert.equal(statuses.presence.provider_only, 1);
 });
@@ -260,10 +354,10 @@ test("v1 rows without any id map to client_only; ambiguous ids stay unknown", ()
 test("duplicate reconciliation application is idempotent", () => {
   const store = freshStore();
   const first = store.applyReconciliations([
-    { request_id: "r", settled_cost_microusd: 100, billing_revision: "v1" },
+    { asterroute_request_id: "r", settled_cost_microusd: 100, billing_revision: "v1" },
   ]);
   const second = store.applyReconciliations([
-    { request_id: "r", settled_cost_microusd: 100, billing_revision: "v1" },
+    { asterroute_request_id: "r", settled_cost_microusd: 100, billing_revision: "v1" },
   ]);
   assert.equal(first.length, 1);
   assert.equal(second.length, 0);

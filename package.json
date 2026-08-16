@@ -1,32 +1,32 @@
 {
-  "name": "agent-control-plane",
-  "version": "0.8.0",
-  "private": true,
-  "license": "AGPL-3.0",
-  "description": "A local, model-agnostic control plane that lets web AI dispatch compact briefs to interchangeable engineering executors.",
-  "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
-  "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "test": "node --test",
-    "check": "node --check src/server.js && node scripts/check-browser-companion.js",
-    "companion:check": "node scripts/check-browser-companion.js",
-    "doctor": "node scripts/doctor.js",
-    "smoke": "node scripts/smoke.js",
-    "smoke:companion": "node scripts/smoke-companion.js",
-    "harness:companion": "node scripts/serve-companion-harness.js",
-    "smoke:budget": "node scripts/smoke-budget.js",
-    "benchmark:real": "node scripts/benchmark-real.js",
-    "benchmark:report": "node scripts/benchmark-report.js",
-    "benchmark:recommend": "node scripts/benchmark-recommend.js",
-    "verify:audit": "node scripts/verify-audit.js",
-    "sandbox:setup": "node scripts/setup-windows-sandbox.js"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.0",
-    "zod": "^3.25.0"
-  }
+    "name":  "agent-control-plane",
+    "version":  "0.8.1",
+    "private":  true,
+    "license":  "AGPL-3.0",
+    "description":  "A local, model-agnostic control plane that lets web AI dispatch compact briefs to interchangeable engineering executors.",
+    "type":  "module",
+    "engines":  {
+                    "node":  "\u003e=22"
+                },
+    "scripts":  {
+                    "start":  "node src/server.js",
+                    "dev":  "node --watch src/server.js",
+                    "test":  "node --test",
+                    "check":  "node --check src/server.js \u0026\u0026 node scripts/check-browser-companion.js",
+                    "companion:check":  "node scripts/check-browser-companion.js",
+                    "doctor":  "node scripts/doctor.js",
+                    "smoke":  "node scripts/smoke.js",
+                    "smoke:companion":  "node scripts/smoke-companion.js",
+                    "harness:companion":  "node scripts/serve-companion-harness.js",
+                    "smoke:budget":  "node scripts/smoke-budget.js",
+                    "benchmark:real":  "node scripts/benchmark-real.js",
+                    "benchmark:report":  "node scripts/benchmark-report.js",
+                    "benchmark:recommend":  "node scripts/benchmark-recommend.js",
+                    "verify:audit":  "node scripts/verify-audit.js",
+                    "sandbox:setup":  "node scripts/setup-windows-sandbox.js"
+                },
+    "dependencies":  {
+                         "@modelcontextprotocol/sdk":  "^1.17.0",
+                         "zod":  "^3.25.0"
+                     }
 }
