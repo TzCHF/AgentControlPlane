@@ -8,13 +8,13 @@ users, provides no enterprise SLA, and offers no self-service signup.
 
 1. Request an invite from the operator. Each user receives a dedicated
    project and API key; keys are never shared between users.
-2. Base URL: `https://www.asterroute.com/v1` (OpenAI-compatible).
+2. Base URL: `https://asterroute.com/v1` (OpenAI-compatible).
 3. Model catalog: `GET /v1/models`; the live catalog and route health are
    authoritative at request time.
 4. Example chat completion:
 
    ```bash
-   curl https://www.asterroute.com/v1/chat/completions \
+   curl https://asterroute.com/v1/chat/completions \
      -H "Authorization: Bearer $ASTERROUTE_API_KEY" \
      -H "Content-Type: application/json" \
      -d '{"model":"gpt-5.6-sol-economy","messages":[{"role":"user","content":"Reply with OK"}]}'
@@ -22,6 +22,11 @@ users, provides no enterprise SLA, and offers no self-service signup.
 
 5. Each key carries a model allowlist, RPM, daily limit, and monthly
    budget configured by the operator.
+
+The step-by-step provider walkthrough lives in
+[docs/PROVIDER-ASTERROUTE.md](PROVIDER-ASTERROUTE.md); AsterRoute mirrors it
+in its integration guide at
+[`https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp`](https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp).
 
 ## Path B — AsterRoute + ACP assisted setup
 
@@ -69,8 +74,9 @@ users, provides no enterprise SLA, and offers no self-service signup.
   exhausted; contact the operator.
 - `429 rate_limit_exceeded`: the key's RPM or daily limit is reached;
   retry after the window.
-- `5xx`: gateway or upstream trouble; check the status page and the
-  operator's incident channel.
+- `5xx`: gateway or upstream trouble; check the
+  [status page](https://asterroute.com/status?utm_source=agentcontrolplane&utm_medium=error&utm_campaign=asterroute-acp)
+  and the operator's incident channel.
 
 ## Key rotation
 

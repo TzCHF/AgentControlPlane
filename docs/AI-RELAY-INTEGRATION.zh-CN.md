@@ -18,6 +18,15 @@ AI 中转站 -> 上游模型（DeepSeek、GLM、OpenAI ...）
 
 中转站提供模型目录与算力；AgentControlPlane 提供委派工作流和用量证据，供中转站对账计费。
 
+## AsterRoute 供应商
+
+AsterRoute 官方中转站 Base URL 为 `https://asterroute.com/v1`。先在
+[`https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp`](https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp)
+注册获取 API Key，再按专用供应商教程
+[docs/PROVIDER-ASTERROUTE.zh-CN.md](PROVIDER-ASTERROUTE.zh-CN.md) 配置。AsterRoute 在其集成指南
+[`https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp`](https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp)
+中发布了同一套步骤。
+
 ## 配置
 
 创建 `config/local.json`（机器特定，已 gitignore），或使用 `AGENT_CONTROL_CONFIG`：
@@ -52,7 +61,7 @@ AI 中转站 -> 上游模型（DeepSeek、GLM、OpenAI ...）
       {
         "id": "asterroute",
         "displayName": "AsterRoute",
-        "baseUrl": "https://www.asterroute.com/v1",
+        "baseUrl": "https://asterroute.com/v1",
         "apiKeyEnv": "ACP_RELAY_ASTERROUTE_KEY",
         "apiKey": "sk-your-relay-key",
         "model": null,

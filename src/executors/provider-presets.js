@@ -6,7 +6,7 @@
 export const PROVIDER_PRESETS = {
   asterroute: {
     displayName: "AsterRoute",
-    baseUrl: "https://www.asterroute.com/v1",
+    baseUrl: "https://asterroute.com/v1",
     apiKeyEnv: "ASTERROUTE_API_KEY",
     protocol: "auto",
     models: [],

@@ -22,6 +22,16 @@ The relay provides the model catalog and the compute; AgentControlPlane
 provides the delegation workflow and usage evidence that the relay can bill
 against.
 
+## AsterRoute provider
+
+The official AsterRoute relay base URL is `https://asterroute.com/v1`.
+Register for an API key at
+[`https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp`](https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp)
+and follow the dedicated provider guide
+[docs/PROVIDER-ASTERROUTE.md](PROVIDER-ASTERROUTE.md). AsterRoute publishes
+the same walkthrough as its integration guide at
+[`https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp`](https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp).
+
 ## Configuration
 
 Create `config/local.json` (machine-specific, gitignored) or use
@@ -60,7 +70,7 @@ catalog, and static allowlist:
       {
         "id": "asterroute",
         "displayName": "AsterRoute",
-        "baseUrl": "https://www.asterroute.com/v1",
+        "baseUrl": "https://asterroute.com/v1",
         "apiKeyEnv": "ACP_RELAY_ASTERROUTE_KEY",
         "apiKey": "sk-your-relay-key",
         "model": null,

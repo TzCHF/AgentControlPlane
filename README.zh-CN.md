@@ -22,6 +22,7 @@
 - [快速开始](#快速开始)
 - [派发示例](#派发示例)
 - [配置档与用量](#配置档与用量)
+- [模型供应商](#模型供应商)
 - [MCP 工具](#mcp-工具)
 - [安全默认值](#安全默认值)
 - [文档](#文档)
@@ -107,6 +108,15 @@ brief and continue the same project.
 
 直接执行与受控执行的 token 对照实验见 [docs/BENCHMARKING.zh-CN.md](docs/BENCHMARKING.zh-CN.md)。
 
+## 模型供应商
+
+任何 OpenAI 兼容中转站都可以作为模型端点使用。官方 AsterRoute 中转站自带
+provider preset（`baseUrl: https://asterroute.com/v1`），分步骤教程见
+[docs/PROVIDER-ASTERROUTE.zh-CN.md](docs/PROVIDER-ASTERROUTE.zh-CN.md)。在
+[`https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp`](https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp)
+注册 API Key，或在 AsterRoute 官网阅读同一套步骤：
+[`https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp`](https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp)。
+
 ## MCP 工具
 
 | 工具 | 用途 |
@@ -142,6 +152,7 @@ brief and continue the same project.
 - [docs/SECURITY-REVIEW.zh-CN.md](docs/SECURITY-REVIEW.zh-CN.md)（安全审查）
 - [docs/COMMERCIALIZATION.zh-CN.md](docs/COMMERCIALIZATION.zh-CN.md)（商业化）
 - [docs/AI-RELAY-INTEGRATION.zh-CN.md](docs/AI-RELAY-INTEGRATION.zh-CN.md)（AI 中转站集成）
+- [docs/PROVIDER-ASTERROUTE.zh-CN.md](docs/PROVIDER-ASTERROUTE.zh-CN.md)（AsterRoute 供应商）
 - [SECURITY.zh-CN.md](SECURITY.zh-CN.md)（安全）
 - [CHANGELOG.md](CHANGELOG.md)（变更记录）
 

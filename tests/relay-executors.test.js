@@ -84,7 +84,7 @@ test("provider presets pre-fill relay fields and explicit fields win", () => {
   assert.deepEqual(presetNames(), ["asterroute"]);
   const preset = resolvePreset("asterroute");
   assert.equal(preset.displayName, "AsterRoute");
-  assert.equal(preset.baseUrl, "https://www.asterroute.com/v1");
+  assert.equal(preset.baseUrl, "https://asterroute.com/v1");
   assert.equal(preset.protocol, "auto");
   assert.equal(preset.official, true);
   assert.equal(resolvePreset("unknown"), null);
@@ -104,7 +104,7 @@ test("provider presets pre-fill relay fields and explicit fields win", () => {
   );
   const asterroute = executors.get("asterroute");
   assert.equal(asterroute.describe().display_name, "AsterRoute");
-  assert.equal(asterroute.baseUrl, "https://www.asterroute.com/v1");
+  assert.equal(asterroute.baseUrl, "https://asterroute.com/v1");
   assert.equal(asterroute.protocol, "auto");
   assert.equal(asterroute.describe().official, true);
   assert.equal(asterroute.requestsPerMinute, 10);

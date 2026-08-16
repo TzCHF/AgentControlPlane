@@ -6,18 +6,22 @@ Beta 面向 3–5 名受邀用户，不提供企业 SLA，不支持自助注册�
 ## 路径 A —— AsterRoute API Beta
 
 1. 向运营方申请邀请。每位用户获得独立的项目与 API Key；Key 不在用户间共享。
-2. Base URL：`https://www.asterroute.com/v1`（OpenAI-compatible）。
+2. Base URL：`https://asterroute.com/v1`（OpenAI-compatible）。
 3. 模型目录：`GET /v1/models`；实时目录与线路状态以请求时刻为准。
 4. 补全示例：
 
    ```bash
-   curl https://www.asterroute.com/v1/chat/completions \
+   curl https://asterroute.com/v1/chat/completions \
      -H "Authorization: Bearer $ASTERROUTE_API_KEY" \
      -H "Content-Type: application/json" \
      -d '{"model":"gpt-5.6-sol-economy","messages":[{"role":"user","content":"Reply with OK"}]}'
    ```
 
 5. 每个 Key 由运营方配置模型白名单、RPM、日限额与月预算。
+
+分步骤的供应商教程见 [docs/PROVIDER-ASTERROUTE.zh-CN.md](PROVIDER-ASTERROUTE.zh-CN.md)；AsterRoute 在其集成指南
+[`https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp`](https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp)
+中发布了同一套步骤。
 
 ## 路径 B —— AsterRoute + ACP 协助安装
 
@@ -57,7 +61,9 @@ Beta 面向 3–5 名受邀用户，不提供企业 SLA，不支持自助注册�
 - `401 invalid_api_key`：Key 缺失、输错或已撤销；通过运营方轮换。
 - `402 / insufficient balance`：项目余额或月预算耗尽；联系运营方。
 - `429 rate_limit_exceeded`：Key 的 RPM 或日限额已达；窗口过后重试。
-- `5xx`：网关或上游故障；查看状态页与运营方事故公告入口。
+- `5xx`：网关或上游故障；查看
+  [状态页](https://asterroute.com/status?utm_source=agentcontrolplane&utm_medium=error&utm_campaign=asterroute-acp)
+  与运营方事故公告入口。
 
 ## Key 轮换
 

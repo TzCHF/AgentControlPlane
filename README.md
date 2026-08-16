@@ -23,6 +23,7 @@
 - [Quickstart](#quickstart)
 - [Dispatch example](#dispatch-example)
 - [Profiles and usage](#profiles-and-usage)
+- [Model providers](#model-providers)
 - [MCP tools](#mcp-tools)
 - [Safety defaults](#safety-defaults)
 - [Documentation](#documentation)
@@ -149,6 +150,17 @@ default model. Usage precision depends on the executor's telemetry.
 For controlled-versus-direct token experiments, see
 [docs/BENCHMARKING.md](docs/BENCHMARKING.md).
 
+## Model providers
+
+Any OpenAI-compatible relay works as a model endpoint. The official
+AsterRoute relay ships as a provider preset (`baseUrl:
+https://asterroute.com/v1`) and is covered step by step in
+[docs/PROVIDER-ASTERROUTE.md](docs/PROVIDER-ASTERROUTE.md). Register for an
+API key at
+[`https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp`](https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp),
+or read the same walkthrough on the AsterRoute site at
+[`https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp`](https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp).
+
 ## MCP tools
 
 | Tool | Purpose |
@@ -187,6 +199,7 @@ authenticated private tunnel or a separately hardened relay.
 - [docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md) ([中文](docs/SECURITY-REVIEW.zh-CN.md))
 - [docs/COMMERCIALIZATION.md](docs/COMMERCIALIZATION.md) ([中文](docs/COMMERCIALIZATION.zh-CN.md))
 - [docs/AI-RELAY-INTEGRATION.md](docs/AI-RELAY-INTEGRATION.md) ([中文](docs/AI-RELAY-INTEGRATION.zh-CN.md))
+- [docs/PROVIDER-ASTERROUTE.md](docs/PROVIDER-ASTERROUTE.md) ([中文](docs/PROVIDER-ASTERROUTE.zh-CN.md))
 - [SECURITY.md](SECURITY.md) ([中文](SECURITY.zh-CN.md))
 - [CHANGELOG.md](CHANGELOG.md)
 

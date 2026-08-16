@@ -13,6 +13,7 @@ export const DASHBOARD_STRINGS = {
     executors: "执行器",
     default: "默认",
     official: "官方",
+    relayTag: "中转端点",
     ready: "就绪",
     notReady: "未就绪",
     modelsInCatalog: "模型目录 {n} 个",
@@ -126,6 +127,7 @@ export const DASHBOARD_STRINGS = {
     executors: "Executors",
     default: "Default",
     official: "Official",
+    relayTag: "relay",
     ready: "Ready",
     notReady: "Not ready",
     modelsInCatalog: "{n} models in catalog",
@@ -593,6 +595,14 @@ function renderExecutors() {
       var detail = executor.discovery && executor.discovery.error
         ? '<div class="exec-detail">' + escapeHtml(String(executor.discovery.error)) + "</div>"
         : "";
+      // Relays are model-endpoint executors. Show their endpoint purely from
+      // executor data; no executor id or provider is special-cased here.
+      var relayDetail =
+        executor.kind === "model-endpoint" && executor.base_url
+          ? '<div class="exec-detail">' +
+            escapeHtml(executor.base_url) +
+            "</div>"
+          : "";
       var protocols = executor.discovery && executor.discovery.protocols;
       var probeLines = "";
       if (protocols) {
@@ -620,9 +630,11 @@ function renderExecutors() {
         '<span class="badge ' + (ready ? "ready" : "notready") + '">' + t(ready ? "ready" : "notReady") + "</span>" +
         (executor.official ? '<span class="badge official">' + t("official") + "</span>" : "") +
         (executor.selected ? '<span class="badge default">' + t("default") + "</span>" : "") +
+        (executor.kind === "model-endpoint" ? '<span class="muted">' + t("relayTag") + "</span>" : "") +
         '<span class="muted">' + fmt(t("modelsInCatalog"), { n: count }) + "</span>" +
         "</div>" +
         detail +
+        relayDetail +
         probeLines +
         "</div>"
       );
