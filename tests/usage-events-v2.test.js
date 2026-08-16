@@ -292,6 +292,36 @@ test("provider-only rows are counted on import", () => {
   assert.equal(statuses.presence.provider_only, 1);
 });
 
+test("repeated reconciliation is idempotent and never flips stored state", () => {
+  const store = freshStore();
+  const task = seedTask(store);
+  store.appendUsageEvent(
+    event({
+      task_id: task.id,
+      asterroute_request_id: "req-once",
+      usage: { input_tokens: 5, output_tokens: 2 },
+    }),
+  );
+  const first = reconcileUsage(store, [
+    {
+      asterroute_request_id: "req-once",
+      token_dimensions: { input: 5, output: 2, cached_input: 0, reasoning_output: 0 },
+      settlement_state: "settled",
+      settled_cost_microusd: 40,
+    },
+  ]);
+  assert.equal(first.applied, 1);
+  assert.equal(first.statuses.presence.both, 1);
+  // Second run: the id is already reconciled, the lookup returns no rows,
+  // and stored state must be reported as-is (both), never flipped to unknown.
+  const second = reconcileUsage(store, []);
+  assert.equal(second.applied, 0);
+  assert.equal(second.statuses.presence.both, 1);
+  assert.equal(second.statuses.presence.unknown, 0);
+  assert.equal(second.statuses.token.matched, 1);
+  assert.equal(second.statuses.settlement.settled, 1);
+});
+
 test("money uses integer micro-USD without float precision loss", () => {
   const entry = event({ estimated_cost: 0.123456789, settled_cost: 0.000001 });
   assert.equal(entry.estimated_cost_microusd, 123457);

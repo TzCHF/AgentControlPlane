@@ -243,29 +243,43 @@ export function reconcileUsage(store, providerRows = []) {
       billing_revision: row.billing_revision ?? null,
     });
   }
+  // Existing reconciliation entries are authoritative: events already
+  // reconciled are counted from their stored state and never refined again
+  // (keeps repeated reconcile_now runs idempotent).
+  const existing = new Map(
+    store
+      .listReconciliations()
+      .map((entry) => [entry.asterroute_request_id ?? entry.request_id, entry]),
+  );
   for (const event of events) {
     if (!event.asterroute_request_id) {
       statuses.presence.client_only += 1;
       statuses.settlement.pending += 1;
       continue;
     }
-    if (!matchedIds.has(event.asterroute_request_id)) {
-      statuses.presence.unknown += 1;
-      statuses.token.unknown += 1;
-      statuses.settlement.pending += 1;
-      updates.push({
-        asterroute_request_id: event.asterroute_request_id,
-        presence_state: "unknown",
-        token_state: "unknown",
-        settlement_state: "pending",
-        settled_cost_microusd: null,
-        credit_microusd: null,
-        net_cost_microusd: null,
-        currency: "USD",
-        pricing_version: null,
-        billing_revision: null,
-      });
+    if (matchedIds.has(event.asterroute_request_id)) continue;
+    const entry = existing.get(event.asterroute_request_id);
+    if (entry) {
+      statuses.presence[entry.presence_state] += 1;
+      statuses.token[entry.token_state] += 1;
+      statuses.settlement[entry.settlement_state] += 1;
+      continue;
     }
+    statuses.presence.unknown += 1;
+    statuses.token.unknown += 1;
+    statuses.settlement.pending += 1;
+    updates.push({
+      asterroute_request_id: event.asterroute_request_id,
+      presence_state: "unknown",
+      token_state: "unknown",
+      settlement_state: "pending",
+      settled_cost_microusd: null,
+      credit_microusd: null,
+      net_cost_microusd: null,
+      currency: "USD",
+      pricing_version: null,
+      billing_revision: null,
+    });
   }
   store.applyReconciliations(updates);
   return { statuses, applied: updates.length };
