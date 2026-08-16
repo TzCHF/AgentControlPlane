@@ -8,6 +8,7 @@ import { ControlPlaneError, asErrorPayload } from "./errors.js";
 import { resolveProfile, resolveEndpointModel, estimateTaskMinutes } from "./profiles.js";
 import { resolveWorkspace } from "./workspace.js";
 import { discoverExecutors } from "../executors/discovery.js";
+import { resolvePreset } from "../executors/provider-presets.js";
 import {
   extractTaskRequirements,
   normalizeCandidate,
@@ -343,11 +344,17 @@ export class Orchestrator extends EventEmitter {
     const results = [];
     for (const [executorId, executor] of this.executors) {
       if (executor.kind !== "model-endpoint") continue;
-      const relayConfig = (this.config.executor?.relays ?? []).find(
+      const relayConfigRaw = (this.config.executor?.relays ?? []).find(
         (relay) => relay.id === executorId,
       );
+      // apiKeyEnv/apiKey come from the preset (e.g. ASTERROUTE_API_KEY);
+      // merge it the same way buildExecutors does before building the client.
+      const preset = relayConfigRaw?.preset
+        ? resolvePreset(relayConfigRaw.preset)
+        : null;
+      const relayConfig = { ...(preset ?? {}), ...(relayConfigRaw ?? {}) };
       const { client, error } = reconcileClientFor({
-        relayConfig: relayConfig ?? {},
+        relayConfig,
         executorBaseUrl: executor.baseUrl,
       });
       if (!client) {
