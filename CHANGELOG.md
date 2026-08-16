@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.6.1 — 2026-08-16
+
+Null metadata guards in the recommender.
+
+### Fixed
+
+- Candidate normalization treats explicit null catalog fields (context,
+  latency, freshness) as unknown; the earlier `Number(null) === 0`
+  conversion excluded every model whose catalog carried `"context": null`.
+
+### Verified
+
+- 127 tests pass locally, including a regression test for explicit null
+  metadata fields.
+
 ## v0.6.0 — 2026-08-16
 
 Task-aware model recommendation (advisory only).

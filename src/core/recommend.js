@@ -75,6 +75,10 @@ export function normalizeCandidate(executorId, model) {
   const pricing = model?.pricing && typeof model.pricing === "object"
     ? model.pricing
     : null;
+  const rawContext = model?.context;
+  const rawLatencyAvg = latency?.avgMs;
+  const rawLatencySamples = latency?.sampleCount;
+  const rawFreshness = model?.metadata_freshness_seconds;
   return {
     model: model?.id ?? model?.model ?? null,
     executor: executorId,
@@ -89,14 +93,23 @@ export function normalizeCandidate(executorId, model) {
       : { chat: null, responses: null, tools: null, reasoning: null, vision: null },
     status: model?.status ?? null,
     route_health: model?.route_health ?? null,
-    context: Number.isFinite(Number(model?.context)) ? Number(model.context) : null,
-    latency_avg_ms: Number.isFinite(Number(latency?.avgMs)) ? Number(latency.avgMs) : null,
-    latency_samples: Number.isFinite(Number(latency?.sampleCount)) ? Number(latency.sampleCount) : 0,
+    context:
+      rawContext != null && Number.isFinite(Number(rawContext))
+        ? Number(rawContext)
+        : null,
+    latency_avg_ms:
+      rawLatencyAvg != null && Number.isFinite(Number(rawLatencyAvg))
+        ? Number(rawLatencyAvg)
+        : null,
+    latency_samples:
+      rawLatencySamples != null && Number.isFinite(Number(rawLatencySamples))
+        ? Number(rawLatencySamples)
+        : 0,
     pricing: pricing
       ? {
-          input: Number.isFinite(Number(pricing.input)) ? Number(pricing.input) : null,
-          output: Number.isFinite(Number(pricing.output)) ? Number(pricing.output) : null,
-          cached_input: Number.isFinite(Number(pricing.cached_input))
+          input: pricing.input != null && Number.isFinite(Number(pricing.input)) ? Number(pricing.input) : null,
+          output: pricing.output != null && Number.isFinite(Number(pricing.output)) ? Number(pricing.output) : null,
+          cached_input: pricing.cached_input != null && Number.isFinite(Number(pricing.cached_input))
             ? Number(pricing.cached_input)
             : null,
           currency: pricing.currency ?? "USD",
@@ -105,9 +118,10 @@ export function normalizeCandidate(executorId, model) {
     tier: model?.tier ?? model?.route_tier ?? null,
     preferred_protocol: model?.preferred_protocol ?? null,
     featured: model?.featured === true,
-    metadata_freshness_seconds: Number.isFinite(Number(model?.metadata_freshness_seconds))
-      ? Number(model.metadata_freshness_seconds)
-      : null,
+    metadata_freshness_seconds:
+      rawFreshness != null && Number.isFinite(Number(rawFreshness))
+        ? Number(rawFreshness)
+        : null,
     capability_source: capabilities ? "declared" : "unknown",
   };
 }

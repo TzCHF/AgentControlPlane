@@ -170,6 +170,29 @@ test("providers without extended metadata stay compatible", () => {
   }
 });
 
+test("explicit null metadata fields are unknown, never zero or excluded", () => {
+  const requirements = extractTaskRequirements({ objective: "x", profile: "economy" }, config);
+  const result = recommendModels({
+    candidates: [
+      candidate(
+        baseModel({
+          id: "null-fields",
+          context: null,
+          latency: { avgMs: null, sampleCount: null },
+          metadata_freshness_seconds: null,
+        }),
+      ),
+    ],
+    requirements,
+    config,
+  });
+  assert.equal(result.ranked.length, 1);
+  const entry = result.ranked[0];
+  assert.ok(entry.warnings.includes("context_unknown"));
+  assert.equal(entry.latency_avg_ms, null);
+  assert.equal(entry.metadata_freshness_seconds, null);
+});
+
 test("the recommender core carries no provider-specific branches", () => {
   const source = fs.readFileSync(
     new URL("../src/core/recommend.js", import.meta.url),
