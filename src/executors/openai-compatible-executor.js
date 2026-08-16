@@ -304,7 +304,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         instructions: "Reply with the word pong.",
         input: "ping",
         stream: false,
-        max_output_tokens: 16,
+        max_output_tokens: 1024,
       });
       responsesStatus = 200;
       recordReasoning(availability?.usage);
@@ -323,7 +323,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           input: "ping",
           tools: [probeToolResponses],
           stream: false,
-          max_output_tokens: 16,
+          max_output_tokens: 1024,
         });
         const output = Array.isArray(toolResponse?.output) ? toolResponse.output : [];
         result.responses.toolLoop = output.some(
@@ -344,7 +344,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           ],
           tools: [probeToolChat],
           stream: false,
-          max_tokens: 16,
+          max_tokens: 1024,
         });
         result.chat.available = true;
         const message = chatResponse?.choices?.[0]?.message ?? {};

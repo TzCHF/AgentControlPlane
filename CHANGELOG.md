@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.5.1 — 2026-08-16
+
+Protocol probe budget for reasoning models.
+
+### Fixed
+
+- Auto-detection probes cap output at 1024 tokens, which leaves reasoning
+  models room to emit a tool call; the earlier 16-token cap exhausted on
+  reasoning output and recorded false tool-loop failures.
+
+### Verified
+
+- 108 tests pass locally.
+- Live check on the AsterRoute preset: catalog capabilities pass through,
+  and the probe resolves the protocol.
+
 ## v0.5.0 — 2026-08-16
 
 Phase 1: provider-agnostic capability layer and official relay preset.

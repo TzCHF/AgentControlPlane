@@ -132,7 +132,8 @@ protocol that completes the agent tool loop:
 3. Chat Completions tool calling: the same check with `tool_calls`.
 4. The protocol that passed both checks is selected; responses wins ties.
 
-The probe uses a tiny output cap, runs once, and is cached for the process
+The probe uses a 1024-token output cap (room for reasoning models), runs
+once, and is cached for the process
 lifetime. Explicit `chat` or `responses` never probes. The detection result
 shows in executor discovery (`protocols.selected`, per-protocol tool loop
 checks, probe model).

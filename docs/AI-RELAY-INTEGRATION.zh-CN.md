@@ -110,7 +110,7 @@ preset 是一份预填 relay 字段的数据条目，用一个名字代替整段
 3. Chat Completions 工具调用：用 `tool_calls` 做同样检查。
 4. 通过两项检查的协议被选中；都通过时 responses 优先。
 
-探测输出上限很小、只跑一次、进程内缓存。显式 `chat` 或 `responses` 永不探测。
+探测输出上限为 1024 token（给推理模型留出思考预算）、只跑一次、进程内缓存。显式 `chat` 或 `responses` 永不探测。
 探测结果出现在执行器发现信息里（`protocols.selected`、各协议的 tool loop 检查、
 探测所用模型）。
 
