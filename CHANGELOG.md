@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.7.1 — 2026-08-16
+
+Dimensional view fixes.
+
+### Fixed
+
+- `GET /v1/usage/dimensions` honors `production_only=false` so
+  certification and smoke rows are inspectable; the default production
+  view keeps excluding them.
+- Unattached events (probes) report their task kind as `unattached`.
+
+### Verified
+
+- 138 tests pass locally, including production-view exclusion ordering.
+
 ## v0.7.0 — 2026-08-16
 
 Usage intelligence and cross-system reconciliation.

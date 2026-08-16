@@ -88,7 +88,7 @@ export function usageDimensions(
     }
     row.reconciliation[event.reconciliation] =
       (row.reconciliation[event.reconciliation] ?? 0) + 1;
-    const taskKind = task?.kind ?? "production";
+    const taskKind = task?.kind ?? "unattached";
     row.task_kinds[taskKind] = (row.task_kinds[taskKind] ?? 0) + 1;
     groups.set(key, row);
   }

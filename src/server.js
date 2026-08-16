@@ -437,6 +437,8 @@ export async function createApplication(overrides = {}) {
             kind: url.searchParams.get("kind") ?? null,
             limit: url.searchParams.get("limit") ?? 100,
             offset: url.searchParams.get("offset") ?? 0,
+            production_only:
+              url.searchParams.get("production_only") !== "false",
           }),
         );
         return;

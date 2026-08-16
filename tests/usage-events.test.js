@@ -283,10 +283,24 @@ test("certification tasks are excluded from production aggregation", () => {
       resolved_model: "cert-model",
     }),
   );
+  store.appendUsageEvent(
+    createUsageEvent({
+      usage: { input_tokens: 3, output_tokens: 1 },
+      resolved_model: "probe-model",
+    }),
+  );
   const productionReport = usageDimensions(store, { by: "model" });
-  assert.deepEqual(productionReport.rows.map((row) => row.model), ["prod-model"]);
+  assert.deepEqual(
+    productionReport.rows.map((row) => row.model),
+    ["probe-model", "prod-model"],
+  );
   const fullReport = usageDimensions(store, { by: "model", production_only: false });
-  assert.deepEqual(fullReport.rows.map((row) => row.model), ["cert-model", "prod-model"]);
+  assert.deepEqual(
+    fullReport.rows.map((row) => row.model),
+    ["cert-model", "probe-model", "prod-model"],
+  );
+  const probeRow = fullReport.rows.find((row) => row.model === "probe-model");
+  assert.equal(probeRow.task_kinds.unattached, 1);
   store.markTaskKind(certification.id, "certification");
   assert.equal(store.getTask(certification.id).kind, "certification");
 });
