@@ -11,6 +11,9 @@
 
 > Experimental, local-first software for single-user evaluation.
 >
+> Current certified release: **v0.8.4** (invite-only paid beta baseline;
+> install and upgrade instructions below).
+>
 > [中文文档](README.zh-CN.md)
 
 ## Contents
