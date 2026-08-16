@@ -35,7 +35,9 @@ users, provides no enterprise SLA, and offers no self-service signup.
 
 2. Keep the relay key out of files:
 
-   - Set the `ASTERROUTE_API_KEY` environment variable.
+   - Set the `ASTERROUTE_API_KEY` environment variable. On Windows, the
+     persistent location is the User environment (registry); the start
+     script reads it from there.
    - Add the official preset relay in `config/local.json`:
 
      ```json
@@ -49,7 +51,12 @@ users, provides no enterprise SLA, and offers no self-service signup.
      ```
 
 3. Start the service: `npm start`. The service binds to
-   `127.0.0.1:4318` only; it is not a public endpoint.
+   `127.0.0.1:4318` only; it is not a public endpoint. On Windows,
+   `pwsh -File scripts/start-server.ps1` starts the service detached,
+   waits for `/health`, and prints the pid and the health body. The
+   script reads the key from the User environment (registry) and puts it
+   into the server process environment; it writes no key material to the
+   console, logs, or files.
 4. The first dispatch runs `protocol:auto` detection and stores the
    selected protocol; recommendation lists are advisory and never switch
    the model you picked.
@@ -69,7 +76,10 @@ users, provides no enterprise SLA, and offers no self-service signup.
 
 Ask the operator to issue a new key when needed. Update the
 `ASTERROUTE_API_KEY` environment variable, restart ACP, and ask the
-operator to revoke the old key.
+operator to revoke the old key. On Windows, update the value in the User
+environment (registry), stop the running server with
+`pwsh -File scripts/stop-server.ps1`, and start it again with
+`pwsh -File scripts/start-server.ps1`.
 
 ## Support
 

@@ -31,7 +31,8 @@ Beta 面向 3–5 名受邀用户，不提供企业 SLA，不支持自助注册�
 
 2. Key 不进文件：
 
-   - 设置环境变量 `ASTERROUTE_API_KEY`。
+   - 设置环境变量 `ASTERROUTE_API_KEY`。在 Windows 上，持久位置是用户环境
+     （注册表）；启动脚本从那里读取。
    - 在 `config/local.json` 里添加官方 preset relay：
 
      ```json
@@ -45,6 +46,9 @@ Beta 面向 3–5 名受邀用户，不提供企业 SLA，不支持自助注册�
      ```
 
 3. 启动服务：`npm start`。服务只绑定 `127.0.0.1:4318`，不是公网端点。
+   在 Windows 上，`pwsh -File scripts/start-server.ps1` 以分离方式启动服务，
+   等待 `/health`，并打印 pid 与健康响应体。脚本从用户环境（注册表）读取
+   Key，并将其放入服务进程环境；控制台、日志与文件中不含任何 Key 材料。
 4. 首次派发会执行 `protocol:auto` 探测并保存所选协议；推荐列表只作参考，
    绝不替换你选定的模型。
 
@@ -58,7 +62,9 @@ Beta 面向 3–5 名受邀用户，不提供企业 SLA，不支持自助注册�
 ## Key 轮换
 
 需要时向运营方申请新 Key。更新 `ASTERROUTE_API_KEY` 环境变量，重启 ACP，
-并请运营方撤销旧 Key。
+并请运营方撤销旧 Key。在 Windows 上，更新用户环境（注册表）中的值，
+先停止服务（`pwsh -File scripts/stop-server.ps1`），再用
+`pwsh -File scripts/start-server.ps1` 启动。
 
 ## 支持
 
