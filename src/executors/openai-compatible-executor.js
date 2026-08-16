@@ -1189,15 +1189,13 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         );
       }
       const payload = await response.json();
-      const asterrouteRequestId =
-        asterrouteHeaderId ??
-        (typeof payload?.id === "string" && payload.id ? payload.id : null);
+      const asterrouteRequestId = asterrouteHeaderId ?? null;
       this.#emitUsageEvent(eventMeta, {
         attempt,
         durationMs,
         outcome: "ok",
         asterrouteRequestId,
-        upstreamRequestId: upstreamHeaderId,
+        upstreamRequestId: upstreamHeaderId ?? null,
         usage: payload?.usage,
       });
       return payload;

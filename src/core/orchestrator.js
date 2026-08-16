@@ -16,7 +16,7 @@ import {
 } from "./recommend.js";
 import { createUsageEvent } from "./usage-events.js";
 import { reconcileUsage } from "./usage-dimensions.js";
-import { ReconcileClient } from "./reconcile-client.js";
+import { reconcileClientFor } from "./reconcile-client.js";
 
 function zeroUsage() {
   return {
@@ -344,15 +344,19 @@ export class Orchestrator extends EventEmitter {
       const relayConfig = (this.config.executor?.relays ?? []).find(
         (relay) => relay.id === executorId,
       );
-      const reconcileUrl = relayConfig?.reconcileUrl ?? null;
-      if (!reconcileUrl) continue;
-      const apiKey =
-        process.env[relayConfig.apiKeyEnv] ?? relayConfig.apiKey ?? null;
-      const client = new ReconcileClient({
-        baseUrl: reconcileUrl,
-        apiKey,
+      const { client, error } = reconcileClientFor({
+        relayConfig: relayConfig ?? {},
+        executorBaseUrl: executor.baseUrl,
       });
-      if (!client.available) continue;
+      if (!client) {
+        if (error) {
+          this.emit("diagnostic", {
+            source: `reconcile-${executorId}`,
+            text: error,
+          });
+        }
+        continue;
+      }
       const reconciledIds = new Set(
         this.store
           .listReconciliations()
@@ -366,11 +370,11 @@ export class Orchestrator extends EventEmitter {
         seen.add(id);
         pending.push(id);
       }
-      const { rows, error } = await client.lookup(pending);
-      if (error) {
+      const { rows, error: lookupError } = await client.lookup(pending);
+      if (lookupError) {
         this.emit("diagnostic", {
           source: `reconcile-${executorId}`,
-          text: error,
+          text: lookupError,
         });
         continue;
       }

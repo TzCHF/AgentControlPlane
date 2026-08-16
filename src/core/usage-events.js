@@ -46,6 +46,9 @@ export const USAGE_EVENT_FIELDS = [
 
 export const TASK_KINDS = new Set(["production", "certification", "benchmark", "maintenance"]);
 export const REQUEST_KINDS = new Set(["protocol_probe", "task_execution"]);
+export const PRESENCE_STATES = new Set(["both", "client_only", "provider_only", "unknown"]);
+export const TOKEN_STATES = new Set(["matched", "mismatch", "unknown"]);
+export const SETTLEMENT_STATES = new Set(["pending", "settled", "adjusted", "not_billable"]);
 
 export function normalizeTaskKind(kind) {
   const value = String(kind ?? "");
@@ -56,6 +59,24 @@ export function normalizeTaskKind(kind) {
 
 export function normalizeRequestKind(kind) {
   return REQUEST_KINDS.has(kind) ? kind : "task_execution";
+}
+
+export function normalizePresence(state) {
+  if (PRESENCE_STATES.has(state)) return state;
+  if (state === "matched") return "both";
+  return "unknown";
+}
+
+export function normalizeToken(state) {
+  if (TOKEN_STATES.has(state)) return state;
+  if (state === "match") return "matched";
+  return "unknown";
+}
+
+export function normalizeSettlement(state) {
+  if (SETTLEMENT_STATES.has(state)) return state;
+  if (state === "cost_pending") return "pending";
+  return "pending";
 }
 
 export function normalizeUsage(usage) {
@@ -111,9 +132,12 @@ export function createUsageEvent(fields) {
       fields.estimated_cost != null
         ? microUsd(fields.estimated_cost)
         : integerOrNull(fields.estimated_cost_microusd),
-    presence_state: fields.presence_state ?? (fields.asterroute_request_id ? "matched" : "client_only"),
-    token_state: fields.token_state ?? "pending",
-    settlement_state: fields.settlement_state ?? "pending",
+    presence_state: normalizePresence(
+      fields.presence_state ??
+        (fields.asterroute_request_id ? "both" : "client_only"),
+    ),
+    token_state: normalizeToken(fields.token_state ?? "unknown"),
+    settlement_state: normalizeSettlement(fields.settlement_state ?? "pending"),
     settled_cost_microusd:
       fields.settled_cost != null
         ? microUsd(fields.settled_cost)
@@ -154,15 +178,19 @@ export function adaptV1Event(row) {
     outcome: row.outcome === "error" ? "error" : "ok",
     usage: normalizeUsage(row.usage),
     estimated_cost_microusd: microUsd(row.estimated_cost),
-    presence_state:
+    presence_state: normalizePresence(
       row.provider_request_id != null
         ? row.provider_request_id
-          ? "matched"
+          ? "both"
           : "unknown"
         : "client_only",
-    token_state: row.reconciliation === "token_mismatch" ? "mismatch" : "pending",
-    settlement_state:
+    ),
+    token_state: normalizeToken(
+      row.reconciliation === "token_mismatch" ? "mismatch" : "unknown",
+    ),
+    settlement_state: normalizeSettlement(
       row.reconciliation === "settled" ? "settled" : "pending",
+    ),
     settled_cost_microusd: microUsd(row.actual_cost),
     credit_microusd: null,
     net_cost_microusd: null,

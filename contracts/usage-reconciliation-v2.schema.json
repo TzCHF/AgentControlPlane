@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentcontrolplane.local/contracts/usage-reconciliation-v2.schema.json",
+  "title": "Usage / Reconciliation wire contract v2",
+  "description": "Frozen cross-repository contract for request-level usage events and reconciliation rows. Both repositories run their contract tests against this schema and report the same hash.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "client_event_id",
+    "asterroute_request_id",
+    "upstream_request_id",
+    "task_id",
+    "task_kind",
+    "request_kind",
+    "attempt"
+  ],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "client_event_id": { "type": ["string", "null"] },
+    "asterroute_request_id": { "type": ["string", "null"] },
+    "upstream_request_id": { "type": ["string", "null"] },
+    "task_id": { "type": ["string", "null"] },
+    "turn_id": { "type": ["string", "null"] },
+    "task_kind": {
+      "enum": ["production", "certification", "benchmark", "maintenance"]
+    },
+    "request_kind": {
+      "enum": ["protocol_probe", "task_execution"]
+    },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "presence_state": {
+      "enum": ["both", "client_only", "provider_only", "unknown"]
+    },
+    "token_state": {
+      "enum": ["matched", "mismatch", "unknown"]
+    },
+    "settlement_state": {
+      "enum": ["pending", "settled", "adjusted", "not_billable"]
+    },
+    "estimated_cost_microusd": { "type": ["integer", "null"] },
+    "settled_cost_microusd": { "type": ["integer", "null"] },
+    "credit_microusd": { "type": ["integer", "null"] },
+    "net_cost_microusd": { "type": ["integer", "null"] },
+    "currency": { "type": ["string", "null"] },
+    "pricing_version": { "type": ["string", "null"] },
+    "billing_revision": { "type": ["string", "null"] }
+  },
+  "additionalProperties": false
+}

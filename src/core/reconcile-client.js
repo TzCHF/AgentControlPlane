@@ -47,3 +47,43 @@ export class ReconcileClient {
     }
   }
 }
+
+export function sameOrigin(left, right) {
+  try {
+    const a = new URL(left);
+    const b = new URL(right);
+    return a.protocol === b.protocol && a.host === b.host;
+  } catch {
+    return false;
+  }
+}
+
+// Builds the reconciliation client for a relay. The relay API key is reused
+// only when the reconcile endpoint shares the relay's origin; a cross-origin
+// endpoint requires its own key and refuses to fall back to the relay key.
+export function reconcileClientFor({ relayConfig, executorBaseUrl, env = process.env }) {
+  const reconcileUrl = relayConfig?.reconcileUrl ?? null;
+  if (!reconcileUrl) {
+    return { client: null, error: "reconcile_client_unconfigured" };
+  }
+  const relayKey =
+    env[relayConfig.apiKeyEnv] ?? relayConfig.apiKey ?? null;
+  if (!executorBaseUrl || sameOrigin(reconcileUrl, executorBaseUrl)) {
+    return {
+      client: new ReconcileClient({ baseUrl: reconcileUrl, apiKey: relayKey }),
+      error: null,
+    };
+  }
+  const separateKey =
+    env[relayConfig.reconcileApiKeyEnv] ?? relayConfig.reconcileApiKey ?? null;
+  if (!separateKey) {
+    return {
+      client: null,
+      error: "reconcile_cross_origin_without_key",
+    };
+  }
+  return {
+    client: new ReconcileClient({ baseUrl: reconcileUrl, apiKey: separateKey }),
+    error: null,
+  };
+}

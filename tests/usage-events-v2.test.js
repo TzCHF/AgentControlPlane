@@ -123,9 +123,9 @@ test("production scope excludes probes and non-production task kinds", () => {
   );
 });
 
-test("presence matched and settlement pending coexist on one event", () => {
+test("presence both and settlement pending coexist on one event", () => {
   const entry = event({ asterroute_request_id: "req-1" });
-  assert.equal(entry.presence_state, "matched");
+  assert.equal(entry.presence_state, "both");
   assert.equal(entry.settlement_state, "pending");
 });
 
@@ -143,7 +143,7 @@ test("token mismatch and settlement pending coexist after reconcile", () => {
     { request_id: "req-mismatch", total_tokens: 99, settled_cost_microusd: null },
   ]);
   assert.equal(statuses.token.mismatch, 1);
-  assert.equal(statuses.settlement.cost_pending, 1);
+  assert.equal(statuses.settlement.pending, 1);
 });
 
 test("bulk lookup client matches request ids exactly", async () => {
@@ -187,7 +187,7 @@ test("missing provider rows leave events client_only", () => {
     { request_id: "some-other-id", total_tokens: 5 },
   ]);
   assert.equal(statuses.presence.provider_only, 1);
-  assert.equal(statuses.presence.matched, 1);
+  assert.equal(statuses.presence.both, 1);
 });
 
 test("provider-only rows are counted on import", () => {
@@ -241,7 +241,7 @@ test("schema v1 rows load through the read adapter", () => {
   assert.equal(adapted.asterroute_request_id, "legacy-req");
   assert.equal(adapted.request_kind, "protocol_probe");
   assert.equal(adapted.attempt, 1);
-  assert.equal(adapted.presence_state, "matched");
+  assert.equal(adapted.presence_state, "both");
   assert.equal(adapted.estimated_cost_microusd, 2000);
   assert.ok(!("provider_request_id" in adapted));
 });
@@ -389,7 +389,7 @@ test("retry attempts are recorded as separate events with increasing attempts", 
     });
     const deadline = Date.now() + 3000;
     while (
-      !events.some((entry) => entry.asterrouteRequestId === "chatcmpl-provider-1") &&
+      !events.some((entry) => entry.usage && entry.usage.total_tokens === 5) &&
       Date.now() < deadline
     ) {
       await new Promise((resolve) => setTimeout(resolve, 5));
@@ -401,7 +401,7 @@ test("retry attempts are recorded as separate events with increasing attempts", 
       ["task_execution", "task_execution"],
     );
     assert.equal(events[0].asterrouteRequestId, "ar-429");
-    assert.equal(events[1].asterrouteRequestId, "chatcmpl-provider-1");
+    assert.equal(events[1].asterrouteRequestId, null);
     assert.equal(events[1].usage.total_tokens, 5);
   } finally {
     await executor.stop();

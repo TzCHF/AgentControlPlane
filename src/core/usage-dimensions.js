@@ -38,14 +38,24 @@ function inProductionScope(store, event) {
 
 export function usageDimensions(
   store,
-  { by = "model", since = null, kind = null, limit = 100, offset = 0, production_only = true } = {},
+  {
+    by = "model",
+    since = null,
+    kind = null,
+    limit = 100,
+    offset = 0,
+    scope = "production",
+    production_only = null,
+  } = {},
 ) {
   const dimension = DIMENSIONS.has(by) ? by : "model";
+  const effectiveScope =
+    production_only === false ? "all" : production_only === true ? "production" : scope;
   const { events } = store.listUsageEvents({ since, kind, limit: 100000, offset: 0 });
   const groups = new Map();
   for (const event of events) {
     const task = event.task_id ? store.getTask(event.task_id) : null;
-    if (production_only && !inProductionScope(store, event)) continue;
+    if (effectiveScope !== "all" && !inProductionScope(store, event)) continue;
     let key;
     switch (dimension) {
       case "task":
@@ -140,7 +150,7 @@ export function usageDimensions(
     by: dimension,
     since: since ?? null,
     kind: kind ?? null,
-    production_only,
+    scope: effectiveScope,
     total_groups: rows.length,
     offset: start,
     rows: rows.slice(start, start + bounded),
@@ -157,9 +167,9 @@ export function reconcileUsage(store, providerRows = []) {
   }
   const seenEvents = new Set();
   const statuses = {
-    presence: { matched: 0, client_only: 0, provider_only: 0, unknown: 0 },
-    token: { match: 0, mismatch: 0, pending: 0 },
-    settlement: { settled: 0, cost_pending: 0, pending: 0 },
+    presence: { both: 0, client_only: 0, provider_only: 0, unknown: 0 },
+    token: { matched: 0, mismatch: 0, unknown: 0 },
+    settlement: { pending: 0, settled: 0, adjusted: 0, not_billable: 0 },
   };
   for (const event of events) {
     if (!event.asterroute_request_id) {
@@ -169,7 +179,7 @@ export function reconcileUsage(store, providerRows = []) {
     }
     if (!seenEvents.has(event.asterroute_request_id)) {
       seenEvents.add(event.asterroute_request_id);
-      statuses.presence.matched += 1;
+      statuses.presence.both += 1;
     }
   }
   const processed = new Set();
@@ -183,20 +193,26 @@ export function reconcileUsage(store, providerRows = []) {
       statuses.presence.provider_only += 1;
       continue;
     }
-    statuses.presence.matched -= 1;
+    statuses.presence.both -= 1;
     const providerTokens = Number(row.total_tokens);
     const tokenState =
       Number.isFinite(providerTokens) &&
       providerTokens !== (event.usage?.total_tokens ?? 0)
         ? "mismatch"
-        : "match";
+        : "matched";
     statuses.token[tokenState] += 1;
     const settlement =
-      row.settled_cost_microusd != null ? "settled" : "cost_pending";
+      row.settlement_state === "adjusted"
+        ? "adjusted"
+        : row.settlement_state === "not_billable"
+          ? "not_billable"
+          : row.settled_cost_microusd != null
+            ? "settled"
+            : "pending";
     statuses.settlement[settlement] += 1;
     updates.push({
       request_id: requestId,
-      presence_state: "matched",
+      presence_state: "both",
       token_state: tokenState,
       settlement_state: settlement,
       settled_cost_microusd: row.settled_cost_microusd ?? null,

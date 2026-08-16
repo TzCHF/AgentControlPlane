@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.7.3 — 2026-08-16
+
+Usage/Reconciliation v2 joint certification fixes.
+
+### Fixed
+
+- Frozen wire enumeration: `presence_state` is both / client_only /
+  provider_only / unknown; `token_state` is matched / mismatch / unknown;
+  `settlement_state` is pending / settled / adjusted / not_billable.
+  Legacy aliases (matched → both, match → matched, cost_pending →
+  pending) normalize on read; new writes never emit legacy values.
+- Machine-readable contract schema at
+  `contracts/usage-reconciliation-v2.schema.json` with a pinned SHA-256
+  hash test.
+- `asterroute_request_id` comes only from the
+  `x-asterroute-request-id` header; the payload id is never used as a
+  fallback; missing headers stay null.
+- Queries take an explicit `scope` (production / all); production is
+  task_kind=production AND request_kind=task_execution including all
+  attempts.
+- `reconcileUrl` security: the relay key is reused only for same-origin
+  reconcile endpoints; cross-origin endpoints require a dedicated
+  `reconcileApiKey` and refuse the relay key otherwise.
+
+### Verified
+
+- 157 tests pass locally, including the frozen-enum emission, alias
+  reads, schema hash, header-only request ids, scope filtering, and
+  same-origin reconcile key security.
+
 ## v0.7.2 — 2026-08-16
 
 Contract hardening: usage and reconciliation v2.

@@ -379,7 +379,8 @@ function buildToolSpecs({ orchestrator, store, config }) {
         kind: z.string().nullable().optional(),
         limit: z.number().int().min(1).max(500).default(100),
         offset: z.number().int().min(0).default(0),
-        production_only: z.boolean().default(true),
+        scope: z.enum(["production", "all"]).default("production"),
+        production_only: z.boolean().optional(),
       },
       annotations: {
         readOnlyHint: true,
