@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.7.0 — 2026-08-16
+
+Usage intelligence and cross-system reconciliation.
+
+### Added
+
+- Request-level usage events (append-only `usage.jsonl`): task, turn,
+  request kind (execution / probe / retry / certification / smoke),
+  attempt, provider request id, executor, requested and resolved model,
+  protocol, duration, outcome, token dimensions, estimated cost, and
+  provider-reported actual cost. Events carry a closed whitelist of
+  fields; prompts, file contents, workspace paths, and credentials have
+  no field and are dropped by construction.
+- Token invariants enforced at event creation: cached input is a subset
+  of input, reasoning output is a subset of output, and total equals
+  input plus output.
+- Attribution headers extended: `x-acp-turn-id`, `x-acp-request-kind`,
+  `x-acp-attempt`, `x-acp-version`, `x-acp-recommendation-id`.
+- Provider request ids from chat and responses payloads are captured and
+  persisted; duplicate request ids are idempotent.
+- `usage_report_dimensions`, `reconcile_usage`, `usage_events_csv`, and
+  `mark_task_kind` MCP tools; `GET /v1/usage/dimensions` and
+  `POST /v1/tasks/:id/kind` HTTP routes. Reconciliation classifies
+  matched, client_only, provider_only, token_mismatch, cost_pending, and
+  settled.
+- Dispatch accepts `kind` (production / certification / smoke);
+  certification and smoke tasks are excluded from production aggregation.
+- CSV export neutralizes spreadsheet formula injection.
+- The web panel shows usage by model with request counts, outcome
+  counts, estimated/actual costs, and reconciliation counts.
+
+### Verified
+
+- 138 tests pass locally, covering the token invariants, whitelist
+  exclusion, CSV injection guard, idempotent provider ids, pagination,
+  separate retry and probe events, estimated/actual separation, stable
+  ordering, certification exclusion, and reconciliation classification.
+
 ## v0.6.2 — 2026-08-16
 
 Score computation fix.

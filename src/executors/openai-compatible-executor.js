@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { ControlPlaneError } from "../core/errors.js";
+import { normalizeUsage } from "../core/usage-events.js";
 import { ExecutorAdapter } from "./executor.js";
 
 const TOOLS = [
@@ -137,6 +138,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     models = [],
     requestsPerMinute = null,
     official = false,
+    version = null,
   } = {}) {
     super({
       id,
@@ -163,6 +165,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       ? protocol
       : "responses";
     this.official = official === true;
+    this.version = typeof version === "string" && version ? version : null;
     this.requestTimeoutMs = requestTimeoutMs;
     this.maxToolRounds = maxToolRounds;
     this.workspaceRoots = workspaceRoots;
@@ -284,6 +287,13 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       reasoning: null,
       probe_usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
     };
+    const probeMeta = {
+      threadId: null,
+      turnId: null,
+      requestKind: "probe",
+      model,
+      requestedModel: null,
+    };
     const statusOf = (error) => Number(error?.details?.status ?? 0);
     const addProbeUsage = (usage) => {
       if (!usage) return;
@@ -318,7 +328,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           tools: [probeToolChat],
           stream: false,
           max_tokens: 1024,
-        });
+        }, null, null, null, probeMeta);
         outcome.chat.available = true;
         const message = chatResponse?.choices?.[0]?.message ?? {};
         outcome.chat.toolLoop = Array.isArray(message.tool_calls)
@@ -342,7 +352,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           input: "ping",
           stream: false,
           max_output_tokens: 1024,
-        });
+        }, null, null, null, probeMeta);
         responsesStatus = 200;
         recordReasoning(availability?.usage);
         addProbeUsage(availability?.usage);
@@ -362,7 +372,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           tools: [probeToolResponses],
           stream: false,
           max_output_tokens: 1024,
-        });
+        }, null, null, null, probeMeta);
         const output = Array.isArray(toolResponse?.output) ? toolResponse.output : [];
         outcome.responses.toolLoop = output.some(
           (item) => item.type === "function_call" && item.name === "ping",
@@ -664,6 +674,13 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     { threadId, input, model, cwd, outputSchema, attribution, retryCounter },
   ) {
     const protocol = await this.#ensureProtocol();
+    const eventMeta = {
+      threadId,
+      turnId,
+      requestKind: attribution?.requestKind ?? "execution",
+      model: model ?? this.model,
+      requestedModel: attribution?.requestedModel ?? null,
+    };
     if (protocol === "chat") {
       return this.#runChatTurn(turnId, {
         threadId,
@@ -673,6 +690,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         outputSchema,
         attribution,
         retryCounter,
+        eventMeta,
       });
     }
     const controller = this.turns.get(turnId)?.controller;
@@ -693,6 +711,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           controller,
           attribution,
           retryCounter,
+          eventMeta,
         },
       );
       usage = this.#addUsage(usage, response.usage);
@@ -904,7 +923,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
 
   async #runChatTurn(
     turnId,
-    { threadId, input, model, cwd, outputSchema, attribution, retryCounter },
+    { threadId, input, model, cwd, outputSchema, attribution, retryCounter, eventMeta },
   ) {
     const controller = this.turns.get(turnId)?.controller;
     const brief = this.#extractBrief(input);
@@ -925,6 +944,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         },
         attribution,
         retryCounter,
+        eventMeta,
       );
       usage = this.#addUsage(usage, response.usage);
       const goal = this.goals.get(threadId);
@@ -984,7 +1004,13 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     );
   }
 
-  async #callChat(messages, { model, controller }, attribution = null, retryCounter = null) {
+  async #callChat(
+    messages,
+    { model, controller },
+    attribution = null,
+    retryCounter = null,
+    eventMeta = null,
+  ) {
     const body = {
       model,
       messages,
@@ -998,6 +1024,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       controller,
       attribution,
       retryCounter,
+      eventMeta,
     );
     const message = response?.choices?.[0]?.message ?? {};
     const rawToolCalls = Array.isArray(message.tool_calls)
@@ -1037,7 +1064,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
 
   async #responses(
     inputItems,
-    { model, instructions, controller, attribution, retryCounter },
+    { model, instructions, controller, attribution, retryCounter, eventMeta },
   ) {
     const body = {
       model,
@@ -1053,6 +1080,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       controller,
       attribution,
       retryCounter,
+      eventMeta,
     );
     return {
       output: response?.output ?? [],
@@ -1079,26 +1107,58 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     controller,
     attribution = null,
     retryCounter = null,
+    eventMeta = null,
   ) {
-    const headers = { "content-type": "application/json" };
-    if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`;
-    headers["x-acp-executor"] = this.id;
-    if (attribution?.taskId) {
-      headers["x-acp-task-id"] = String(attribution.taskId);
-    }
-    if (attribution?.workspace) {
-      headers["x-acp-project"] = path.basename(String(attribution.workspace));
-    }
     for (let attempt = 0; ; attempt += 1) {
       await this.#paceCompletionRequest();
-      const response = await fetch(`${this.baseUrl}${pathname}`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(body),
-        signal: controller?.signal,
-      });
+      const headers = { "content-type": "application/json" };
+      if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`;
+      headers["x-acp-executor"] = this.id;
+      if (attribution?.taskId) {
+        headers["x-acp-task-id"] = String(attribution.taskId);
+      }
+      if (attribution?.workspace) {
+        headers["x-acp-project"] = path.basename(String(attribution.workspace));
+      }
+      if (eventMeta?.turnId) headers["x-acp-turn-id"] = String(eventMeta.turnId);
+      if (eventMeta?.requestKind) {
+        headers["x-acp-request-kind"] = String(eventMeta.requestKind);
+      }
+      headers["x-acp-attempt"] = String(attempt);
+      if (this.version) headers["x-acp-version"] = this.version;
+      if (attribution?.recommendationId) {
+        headers["x-acp-recommendation-id"] = String(attribution.recommendationId);
+      }
+      const startedAt = Date.now();
+      let response;
+      try {
+        response = await fetch(`${this.baseUrl}${pathname}`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+          signal: controller?.signal,
+        });
+      } catch (error) {
+        this.#emitUsageEvent(eventMeta, {
+          attempt,
+          durationMs: Date.now() - startedAt,
+          outcome: "error",
+          providerRequestId: null,
+          usage: null,
+        });
+        throw error;
+      }
+      const durationMs = Date.now() - startedAt;
+      const headerRequestId = response.headers.get("x-request-id");
       if (response.status === 429 && attempt < 2) {
         if (retryCounter) retryCounter.count += 1;
+        this.#emitUsageEvent(eventMeta, {
+          attempt,
+          durationMs,
+          outcome: "error",
+          providerRequestId: headerRequestId,
+          usage: null,
+        });
         const retryAfter = Number(response.headers.get("retry-after"));
         const delayMs =
           Number.isFinite(retryAfter) && retryAfter > 0
@@ -1109,14 +1169,59 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       }
       if (!response.ok) {
         const text = await response.text().catch(() => "");
+        this.#emitUsageEvent(eventMeta, {
+          attempt,
+          durationMs,
+          outcome: "error",
+          providerRequestId: headerRequestId,
+          usage: null,
+        });
         throw new ControlPlaneError(
           "upstream_error",
           `OpenAI-compatible endpoint returned ${response.status}: ${text.slice(0, 200)}`,
           { status: response.status },
         );
       }
-      return response.json();
+      const payload = await response.json();
+      const providerRequestId =
+        typeof payload?.id === "string" && payload.id
+          ? payload.id
+          : headerRequestId;
+      this.#emitUsageEvent(eventMeta, {
+        attempt,
+        durationMs,
+        outcome: "ok",
+        providerRequestId,
+        usage: payload?.usage,
+        actualCost: payload?.cost ?? payload?.billing?.cost ?? null,
+      });
+      return payload;
     }
+  }
+
+  #emitUsageEvent(eventMeta, info) {
+    if (!eventMeta) return;
+    const kind =
+      info.attempt > 0 && eventMeta.requestKind === "execution"
+        ? "retry"
+        : eventMeta.requestKind ?? "execution";
+    this.emit("notification", {
+      method: "usage/request",
+      params: {
+        threadId: eventMeta.threadId ?? null,
+        turnId: eventMeta.turnId ?? null,
+        requestKind: kind,
+        attempt: info.attempt,
+        durationMs: info.durationMs,
+        outcome: info.outcome,
+        providerRequestId: info.providerRequestId,
+        usage: normalizeUsage(info.usage),
+        protocol: this.protocol,
+        requestedModel: eventMeta.requestedModel ?? null,
+        resolvedModel: eventMeta.model ?? null,
+        actualCost: info.actualCost,
+      },
+    });
   }
 
   async #fetchJson(method, pathname, body, controller) {

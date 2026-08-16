@@ -19,6 +19,7 @@ import { createMcpHandler } from "./mcp/server.js";
 import { PairingManager } from "./companion/pairing-manager.js";
 import { CompanionRouter } from "./companion/router.js";
 import { dashboardHtml } from "./dashboard.js";
+import { usageDimensions, reconcileUsage } from "./core/usage-dimensions.js";
 
 export function buildExecutor(config, provider) {
   if (provider === "openai-compatible") {
@@ -35,6 +36,7 @@ export function buildExecutor(config, provider) {
       protocol: options.protocol,
       requestsPerMinute: options.requestsPerMinute ?? null,
       workspaceRoots: config.workspaceRoots,
+      version: config.version ?? null,
     });
   }
   if (provider === "deepseek") {
@@ -48,6 +50,7 @@ export function buildExecutor(config, provider) {
       protocol: options.protocol,
       requestsPerMinute: options.requestsPerMinute ?? null,
       workspaceRoots: config.workspaceRoots,
+      version: config.version ?? null,
     });
   }
   if (provider === "claude") {
@@ -126,6 +129,7 @@ export function buildExecutors(config) {
         requestsPerMinute: merged.requestsPerMinute ?? null,
         official: merged.official === true,
         workspaceRoots: config.workspaceRoots,
+        version: config.version ?? null,
       }),
     );
   }
@@ -417,6 +421,54 @@ export async function createApplication(overrides = {}) {
 
       if (request.method === "GET" && url.pathname === "/v1/usage") {
         sendJson(response, 200, { usage: store.usageReport() });
+        return;
+      }
+
+      if (
+        request.method === "GET" &&
+        url.pathname === "/v1/usage/dimensions"
+      ) {
+        sendJson(
+          response,
+          200,
+          usageDimensions(store, {
+            by: url.searchParams.get("by") ?? "model",
+            since: url.searchParams.get("since") ?? null,
+            kind: url.searchParams.get("kind") ?? null,
+            limit: url.searchParams.get("limit") ?? 100,
+            offset: url.searchParams.get("offset") ?? 0,
+          }),
+        );
+        return;
+      }
+
+      if (
+        request.method === "POST" &&
+        parts.length === 4 &&
+        parts[0] === "v1" &&
+        parts[1] === "tasks" &&
+        parts[3] === "kind"
+      ) {
+        const body = await readJson(request, 4 * 1024);
+        const kind = String(body?.kind ?? "");
+        if (!["production", "certification", "smoke"].includes(kind)) {
+          sendJson(response, 400, {
+            error: {
+              code: "invalid_kind",
+              message: "kind must be production, certification, or smoke",
+            },
+          });
+          return;
+        }
+        const resolvedId = store.resolveTaskId(parts[2]);
+        const task = resolvedId ? store.markTaskKind(resolvedId, kind) : null;
+        if (!task) {
+          sendJson(response, 404, {
+            error: { code: "task_not_found", message: "Task not found" },
+          });
+          return;
+        }
+        sendJson(response, 200, { task });
         return;
       }
 

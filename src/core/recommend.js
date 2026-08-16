@@ -365,11 +365,18 @@ export function recommendModels({ candidates, requirements, config = {} }) {
   const scored = ranked
     .map((candidate) => scoreCandidate(candidate, requirements, config))
     .sort((a, b) => b.score - a.score || String(a.model).localeCompare(String(b.model)));
+  const hash = catalogHash(candidates);
+  const recommendationId = crypto
+    .createHash("sha256")
+    .update(JSON.stringify({ requirements, catalog_hash: hash }))
+    .digest("hex")
+    .slice(0, 12);
   return {
     version: RECOMMENDATION_VERSION,
+    recommendation_id: recommendationId,
     generated_at: new Date().toISOString(),
     requirements,
-    catalog_hash: catalogHash(candidates),
+    catalog_hash: hash,
     ranked: scored.slice(0, 3),
     selected_model: null,
     excluded: excluded.map((entry) => ({

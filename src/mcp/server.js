@@ -10,6 +10,8 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { asErrorPayload } from "../core/errors.js";
 import { publicModels } from "../core/profiles.js";
 import { readPackageVersion } from "../core/config.js";
+import { usageDimensions, reconcileUsage } from "../core/usage-dimensions.js";
+import { usageEventsToCsv } from "../core/usage-events.js";
 
 const SERVER_INFO = { name: "agent-control-plane" };
 
@@ -52,6 +54,7 @@ const briefFields = {
   max_subagents: z.number().int().min(0).max(8).nullable().optional(),
   token_budget: z.number().int().min(1000).max(250000).nullable().optional(),
   time_limit_minutes: z.number().int().min(1).max(240).nullable().optional(),
+  kind: z.enum(["production", "certification", "smoke"]).optional(),
 };
 
 function result(payload, message) {
@@ -358,6 +361,115 @@ function buildToolSpecs({ orchestrator, store, config }) {
         return result(
           { recommendation },
           `Ranked ${recommendation.ranked.length} candidates; ${recommendation.excluded.length} excluded.`,
+        );
+      },
+    },
+    {
+      name: "usage_report_dimensions",
+      title: "Read dimensional usage report",
+      description:
+        "Use this to aggregate measured request-level usage by task, project, model, executor, protocol, or request kind. Estimated and actual costs stay in separate columns.",
+      inputSchema: {
+        by: z
+          .enum(["task", "project", "model", "executor", "protocol", "request_kind"])
+          .default("model"),
+        since: z.string().nullable().optional(),
+        kind: z.string().nullable().optional(),
+        limit: z.number().int().min(1).max(500).default(100),
+        offset: z.number().int().min(0).default(0),
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        idempotentHint: true,
+      },
+      async handler(args) {
+        return result(
+          usageDimensions(store, args),
+          "Returned the dimensional usage report.",
+        );
+      },
+    },
+    {
+      name: "mark_task_kind",
+      title: "Mark task kind",
+      description:
+        "Use this to classify a task as production, certification, or smoke. Certification and smoke usage is excluded from production aggregation.",
+      inputSchema: {
+        task_id: z.string().min(4),
+        kind: z.enum(["production", "certification", "smoke"]),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+        idempotentHint: true,
+      },
+      async handler({ task_id, kind }) {
+        const resolved = store.resolveTaskId(task_id);
+        const task = resolved ? store.markTaskKind(resolved, kind) : null;
+        if (!task) {
+          return failure(new Error(`Unknown or ambiguous task id: ${task_id}`));
+        }
+        return result({ task }, `Task ${task.id} is marked ${kind}.`);
+      },
+    },
+    {
+      name: "reconcile_usage",
+      title: "Reconcile usage against provider rows",
+      description:
+        "Use this to match recorded request events against provider-reported rows by request id and classify matched, client_only, provider_only, token_mismatch, cost_pending, and settled.",
+      inputSchema: {
+        provider_rows: z
+          .array(
+            z.object({
+              request_id: z.string(),
+              total_tokens: z.number().optional(),
+              actual_cost: z.number().nullable().optional(),
+            }),
+          )
+          .max(200),
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        idempotentHint: true,
+      },
+      async handler({ provider_rows }) {
+        const { statuses } = reconcileUsage(store, provider_rows);
+        return result({ statuses }, "Returned reconciliation statuses.");
+      },
+    },
+    {
+      name: "usage_events_csv",
+      title: "Export usage events as CSV",
+      description:
+        "Use this to export request-level usage events as CSV with formula-injection protection.",
+      inputSchema: {
+        task_id: z.string().min(4).optional(),
+        since: z.string().nullable().optional(),
+        kind: z.string().nullable().optional(),
+        limit: z.number().int().min(1).max(500).default(100),
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        idempotentHint: true,
+      },
+      async handler({ task_id, since, kind, limit }) {
+        const resolved = task_id ? store.resolveTaskId(task_id) : null;
+        const { events } = store.listUsageEvents({
+          taskId: resolved ?? null,
+          since,
+          kind,
+          limit,
+        });
+        return result(
+          { csv: usageEventsToCsv(events) },
+          `Exported ${events.length} usage events.`,
         );
       },
     },

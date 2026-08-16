@@ -101,6 +101,12 @@ export const DASHBOARD_STRINGS = {
     usageOutput: "输出令牌",
     usageReasoning: "推理令牌",
     usageTotal: "令牌合计",
+    dimTitle: "分模型用量",
+    dimColModel: "模型",
+    dimColTokens: "令牌",
+    dimColCost: "成本（估算/实际）",
+    dimColRequests: "请求数",
+    dimColReconcile: "对账",
     version: "版本",
     tokenPrompt: "该服务要求 Bearer 访问令牌。",
     tokenPlaceholder: "粘贴访问令牌",
@@ -206,6 +212,12 @@ export const DASHBOARD_STRINGS = {
     usageOutput: "Output tokens",
     usageReasoning: "Reasoning tokens",
     usageTotal: "Total tokens",
+    dimTitle: "Usage by model",
+    dimColModel: "Model",
+    dimColTokens: "Tokens",
+    dimColCost: "Cost (est./actual)",
+    dimColRequests: "Requests",
+    dimColReconcile: "Reconciliation",
     version: "Version",
     tokenPrompt: "This server requires a bearer access token.",
     tokenPlaceholder: "Paste the access token",
@@ -441,6 +453,8 @@ footer { padding: 10px 20px 18px; color: var(--muted); font-size: 12px; max-widt
   <section>
     <h2 id="kUsage"></h2>
     <table class="usage" id="usage"></table>
+    <h2 id="kDim" style="margin-top:18px"></h2>
+    <table class="usage" id="dimensions"></table>
   </section>
 </main>
 <footer>
@@ -482,6 +496,7 @@ var taskQuery = "";
 var selectedExecutor = null;
 var catalogs = {};
 var lastRecommendation = null;
+var lastDimensions = null;
 var lastData = { executors: [], tasks: [], usage: null, health: null };
 var liveSeconds = 0;
 
@@ -538,6 +553,7 @@ function setLang(next) {
   document.getElementById("kModels").textContent = t("models");
   document.getElementById("kTasks").textContent = t("tasks");
   document.getElementById("kUsage").textContent = t("usage");
+  document.getElementById("kDim").textContent = t("dimTitle");
   document.getElementById("modelFilter").placeholder = t("modelFilter");
   document.getElementById("kRecommend").textContent = t("recommendTitle");
   document.getElementById("recommendObjective").placeholder = t("recommendObjectivePlaceholder");
@@ -554,6 +570,7 @@ function setLang(next) {
   renderModels();
   renderTasks();
   renderUsage();
+  renderDimensions();
 }
 
 function renderExecutors() {
@@ -745,6 +762,49 @@ function renderTasks() {
   box.innerHTML = '<div class="card" style="overflow-x:auto; padding:0">' + head + rows + "</tbody></table></div>";
 }
 
+function renderDimensions() {
+  var box = document.getElementById("dimensions");
+  if (!box) return;
+  var rows = lastDimensions ?? [];
+  if (!rows.length) {
+    box.innerHTML = "";
+    return;
+  }
+  var reconcile = function (entry) {
+    var counts = entry.reconciliation ?? {};
+    return Object.entries(counts)
+      .map(function (pair) {
+        return pair[0] + ":" + pair[1];
+      })
+      .join(" ");
+  };
+  box.innerHTML =
+    "<thead><tr>" +
+    "<th>" + t("dimColModel") + "</th>" +
+    "<th>" + t("dimColRequests") + "</th>" +
+    "<th>" + t("dimColTokens") + "</th>" +
+    "<th>" + t("dimColCost") + "</th>" +
+    "<th>" + t("dimColReconcile") + "</th>" +
+    "</tr></thead><tbody>" +
+    rows
+      .map(function (row) {
+        var cost =
+          (row.estimated_cost != null ? "est " + row.estimated_cost : "") +
+          (row.actual_cost != null ? " / act " + row.actual_cost : "");
+        return (
+          "<tr>" +
+          "<td>" + escapeHtml(row.model ?? "unknown") + "</td>" +
+          '<td class="mono">' + number(row.events) + " (" + row.succeeded + " ok / " + row.failed + " fail)</td>" +
+          '<td class="mono">' + number(row.total_tokens) + "</td>" +
+          '<td class="mono">' + escapeHtml(cost || "—") + "</td>" +
+          '<td class="mono">' + escapeHtml(reconcile(row)) + "</td>" +
+          "</tr>"
+        );
+      })
+      .join("") +
+    "</tbody>";
+}
+
 function renderUsage() {
   var box = document.getElementById("usage");
   var usage = lastData.usage;
@@ -905,10 +965,11 @@ async function refresh() {
     if (taskQuery) {
       tasksUrl += "&query=" + encodeURIComponent(taskQuery);
     }
-    var [health, tasksRes, usageRes] = await Promise.all([
+    var [health, tasksRes, usageRes, dimensionsRes] = await Promise.all([
       api("/health"),
       api(tasksUrl),
       api("/v1/usage"),
+      api("/v1/usage/dimensions?by=model&limit=10"),
     ]);
     lastData.health = health;
     lastData.executors = executorList.executors || [];
@@ -930,6 +991,7 @@ async function refresh() {
     await Promise.all(catalogJobs);
     lastData.tasks = tasksRes.tasks || [];
     lastData.usage = usageRes.usage || null;
+    lastDimensions = dimensionsRes.rows || [];
     document.getElementById("errorBar").classList.add("hidden");
     renderAll();
   } catch (error) {

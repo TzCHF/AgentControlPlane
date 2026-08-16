@@ -22,25 +22,90 @@ export class TaskStore {
     maxTasks = 2000,
     maxAuditBytes = 10 * 1024 * 1024,
     integrityKey = null,
+    maxUsageEvents = 50000,
   ) {
     this.stateDir = stateDir;
     this.statePath = path.join(stateDir, "state.json");
     this.auditPath = path.join(stateDir, "audit.jsonl");
     this.auditArchivePath = path.join(stateDir, "audit.jsonl.1");
+    this.usagePath = path.join(stateDir, "usage.jsonl");
     this.maxEvents = maxEvents;
     this.maxTasks = maxTasks;
     this.maxAuditBytes = maxAuditBytes;
+    this.maxUsageEvents = maxUsageEvents;
     this.integrityKey =
       typeof integrityKey === "string" && integrityKey.length > 0
         ? integrityKey
         : null;
     this.auditSeq = 1;
     this.auditPrev = null;
+    this.usageEvents = [];
     fs.mkdirSync(stateDir, { recursive: true });
     this.state = fs.existsSync(this.statePath)
       ? JSON.parse(fs.readFileSync(this.statePath, "utf8"))
       : emptyState();
+    this.#loadUsageEvents();
     this.#restoreAuditChain();
+  }
+
+  #loadUsageEvents() {
+    if (!fs.existsSync(this.usagePath)) return;
+    const lines = fs
+      .readFileSync(this.usagePath, "utf8")
+      .split("\n")
+      .filter(Boolean);
+    const tail = lines.slice(-this.maxUsageEvents);
+    this.usageEvents = tail
+      .map((line) => {
+        try {
+          return JSON.parse(line);
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  }
+
+  appendUsageEvent(event) {
+    const existing = this.usageEvents.find(
+      (entry) =>
+        entry.provider_request_id &&
+        entry.provider_request_id === event.provider_request_id &&
+        entry.task_id === event.task_id,
+    );
+    if (existing) return structuredClone(existing);
+    this.usageEvents.push(event);
+    if (this.usageEvents.length > this.maxUsageEvents) {
+      this.usageEvents.splice(0, this.usageEvents.length - this.maxUsageEvents);
+    }
+    fs.appendFileSync(this.usagePath, `${JSON.stringify(event)}\n`, "utf8");
+    return structuredClone(event);
+  }
+
+  listUsageEvents({ taskId = null, since = null, kind = null, limit = 100, offset = 0 } = {}) {
+    const filtered = this.usageEvents.filter((event) => {
+      if (taskId && event.task_id !== taskId) return false;
+      if (kind && event.request_kind !== kind) return false;
+      if (since && String(event.at) < String(since)) return false;
+      return true;
+    });
+    const bounded = Math.min(500, Math.max(1, Number(limit) || 100));
+    const start = Math.max(0, Number(offset) || 0);
+    return {
+      total: filtered.length,
+      offset: start,
+      events: structuredClone(filtered.slice(start, start + bounded)),
+    };
+  }
+
+  markTaskKind(taskId, kind) {
+    const task = this.state.tasks[taskId];
+    if (!task) return null;
+    task.kind = kind;
+    task.updatedAt = now();
+    this.persist();
+    this.audit("task.kind", { taskId, kind });
+    return structuredClone(task);
   }
 
   persist() {
@@ -117,6 +182,7 @@ export class TaskStore {
     executor = null,
     estimatedMinutes = null,
     recommendation = null,
+    kind = "production",
   }) {
     this.#pruneTasks();
     const id = crypto.randomUUID();
@@ -128,6 +194,9 @@ export class TaskStore {
       policy,
       executor,
       estimatedMinutes,
+      kind: ["production", "certification", "smoke"].includes(kind)
+        ? kind
+        : "production",
       status: "queued",
       createdAt: now(),
       updatedAt: now(),

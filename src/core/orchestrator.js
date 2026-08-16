@@ -12,7 +12,9 @@ import {
   extractTaskRequirements,
   normalizeCandidate,
   recommendModels,
+  estimateCost,
 } from "./recommend.js";
+import { createUsageEvent } from "./usage-events.js";
 
 function zeroUsage() {
   return {
@@ -410,6 +412,7 @@ export class Orchestrator extends EventEmitter {
         policy.timeLimitMinutes,
       ),
       recommendation,
+      kind: request.kind ?? "production",
     });
     this.queue.push({ taskId: task.id, followUp: false });
     queueMicrotask(() => this.#drain());
@@ -623,7 +626,16 @@ export class Orchestrator extends EventEmitter {
         approvalPolicy: this.config.codex.approvalPolicy,
         outputSchema: finalReportSchema,
         ...(executor.kind === "model-endpoint"
-          ? { attribution: { taskId, workspace } }
+          ? {
+              attribution: {
+                taskId,
+                workspace,
+                requestKind: task.kind ?? "production",
+                requestedModel: task.policy?.model ?? null,
+                recommendationId:
+                  task.recommendation?.recommendation_id ?? null,
+              },
+            }
           : {}),
         responsesapiClientMetadata: {
           control_plane: "agent-control-plane",
@@ -918,8 +930,57 @@ export class Orchestrator extends EventEmitter {
     return matches.length === 1 ? matches[0] : null;
   }
 
+  #estimatedCostFor(executorId, modelId, profileName) {
+    const catalog = this.modelCatalogs.get(executorId) ?? [];
+    const entry = catalog.find((model) => (model.id ?? model.model) === modelId);
+    if (!entry?.pricing) return null;
+    const { range } = estimateCost(
+      {
+        pricing: {
+          input: entry.pricing.input,
+          output: entry.pricing.output,
+          cached_input: entry.pricing.cached_input,
+        },
+      },
+      { profile: profileName ?? "balanced" },
+    );
+    return range ? Math.round(((range.min + range.max) / 2) * 1e6) / 1e6 : null;
+  }
+
+  #recordUsageEvent(message, executor, params) {
+    const taskId = this.#taskForNotification(params);
+    const task = taskId ? this.store.getTask(taskId) : null;
+    const event = createUsageEvent({
+      task_id: taskId ?? null,
+      turn_id: params.turnId ?? null,
+      request_kind: params.requestKind,
+      attempt: params.attempt ?? 0,
+      provider_request_id: params.providerRequestId ?? null,
+      executor: executor.id,
+      provider: executor.id,
+      requested_model: params.requestedModel ?? null,
+      resolved_model: params.resolvedModel ?? null,
+      protocol: params.protocol ?? null,
+      duration_ms: params.durationMs ?? 0,
+      outcome: params.outcome ?? "ok",
+      usage: params.usage,
+      estimated_cost: this.#estimatedCostFor(
+        executor.id,
+        params.resolvedModel,
+        task?.policy?.name ?? null,
+      ),
+      actual_cost: params.actualCost ?? null,
+      reconciliation: params.providerRequestId ? "matched" : "client_only",
+    });
+    this.store.appendUsageEvent(event);
+  }
+
   #onNotification(message, executor) {
     const params = message.params ?? {};
+    if (message.method === "usage/request") {
+      this.#recordUsageEvent(message, executor, params);
+      return;
+    }
     const taskId = this.#taskForNotification(params);
     if (!taskId) return;
 
