@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.8.4 — 2026-08-16
+
+Beta launch baseline: joint-certification fixes.
+
+### Fixed
+
+- Reconcile client construction merges the relay preset first, so the
+  preset `apiKeyEnv` reaches the client and the environment key is used.
+- Attribution headers include `x-acp-task-kind`, so certification tasks
+  reach the relay with their task kind.
+
+### Verified
+
+- 178 tests pass locally on main.
+
 ## v0.8.3 — 2026-08-16
 
 Responses tool-loop compatibility with the relay contract.
