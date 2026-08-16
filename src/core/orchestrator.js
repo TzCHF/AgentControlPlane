@@ -15,6 +15,8 @@ import {
   estimateCost,
 } from "./recommend.js";
 import { createUsageEvent } from "./usage-events.js";
+import { reconcileUsage } from "./usage-dimensions.js";
+import { ReconcileClient } from "./reconcile-client.js";
 
 function zeroUsage() {
   return {
@@ -258,6 +260,20 @@ export class Orchestrator extends EventEmitter {
       }, refreshMs);
       this.discoveryTimer.unref?.();
     }
+    const reconcileMinutes = Number(
+      this.config.reconciliation?.intervalMinutes ?? 0,
+    );
+    if (reconcileMinutes > 0 && !this.reconcileTimer) {
+      this.reconcileTimer = setInterval(() => {
+        this.reconcileNow().catch((error) => {
+          this.emit("diagnostic", {
+            source: "reconcile",
+            text: error.message,
+          });
+        });
+      }, reconcileMinutes * 60 * 1000);
+      this.reconcileTimer.unref?.();
+    }
   }
 
   async #refreshDiscovery() {
@@ -283,8 +299,7 @@ export class Orchestrator extends EventEmitter {
     }
   }
 
-  recommend(request = {}) {
-    const requirements = extractTaskRequirements(
+  recommend(request = {}) {    const requirements = extractTaskRequirements(
       {
         objective: request.objective,
         profile: request.profile,
@@ -320,6 +335,49 @@ export class Orchestrator extends EventEmitter {
       }
     }
     return recommendModels({ candidates, requirements, config: this.config });
+  }
+
+  async reconcileNow() {
+    const results = [];
+    for (const [executorId, executor] of this.executors) {
+      if (executor.kind !== "model-endpoint") continue;
+      const relayConfig = (this.config.executor?.relays ?? []).find(
+        (relay) => relay.id === executorId,
+      );
+      const reconcileUrl = relayConfig?.reconcileUrl ?? null;
+      if (!reconcileUrl) continue;
+      const apiKey =
+        process.env[relayConfig.apiKeyEnv] ?? relayConfig.apiKey ?? null;
+      const client = new ReconcileClient({
+        baseUrl: reconcileUrl,
+        apiKey,
+      });
+      if (!client.available) continue;
+      const reconciledIds = new Set(
+        this.store
+          .listReconciliations()
+          .map((entry) => entry.request_id),
+      );
+      const pending = [];
+      const seen = new Set();
+      for (const event of this.store.listUsageEvents({ limit: 100000 }).events) {
+        const id = event.asterroute_request_id;
+        if (!id || reconciledIds.has(id) || seen.has(id)) continue;
+        seen.add(id);
+        pending.push(id);
+      }
+      const { rows, error } = await client.lookup(pending);
+      if (error) {
+        this.emit("diagnostic", {
+          source: `reconcile-${executorId}`,
+          text: error,
+        });
+        continue;
+      }
+      const { statuses, applied } = reconcileUsage(this.store, rows);
+      results.push({ executor: executorId, statuses, applied });
+    }
+    return results;
   }
 
   getModels(executorId = null) {
@@ -630,7 +688,7 @@ export class Orchestrator extends EventEmitter {
               attribution: {
                 taskId,
                 workspace,
-                requestKind: task.kind ?? "production",
+                taskKind: task.kind ?? "production",
                 requestedModel: task.policy?.model ?? null,
                 recommendationId:
                   task.recommendation?.recommendation_id ?? null,
@@ -953,11 +1011,12 @@ export class Orchestrator extends EventEmitter {
     const event = createUsageEvent({
       task_id: taskId ?? null,
       turn_id: params.turnId ?? null,
-      request_kind: params.requestKind,
-      attempt: params.attempt ?? 0,
-      provider_request_id: params.providerRequestId ?? null,
+      task_kind: params.taskKind ?? task?.kind ?? "production",
+      request_kind: params.requestKind ?? "task_execution",
+      attempt: params.attempt ?? 1,
+      asterroute_request_id: params.asterrouteRequestId ?? null,
+      upstream_request_id: params.upstreamRequestId ?? null,
       executor: executor.id,
-      provider: executor.id,
       requested_model: params.requestedModel ?? null,
       resolved_model: params.resolvedModel ?? null,
       protocol: params.protocol ?? null,
@@ -969,8 +1028,6 @@ export class Orchestrator extends EventEmitter {
         params.resolvedModel,
         task?.policy?.name ?? null,
       ),
-      actual_cost: params.actualCost ?? null,
-      reconciliation: params.providerRequestId ? "matched" : "client_only",
     });
     this.store.appendUsageEvent(event);
   }

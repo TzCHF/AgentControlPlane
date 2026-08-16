@@ -156,5 +156,8 @@
         "freshness": 15
       }
     }
+  },
+  "reconciliation": {
+    "intervalMinutes": 30
   }
 }

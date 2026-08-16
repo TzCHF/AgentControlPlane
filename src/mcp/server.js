@@ -54,7 +54,9 @@ const briefFields = {
   max_subagents: z.number().int().min(0).max(8).nullable().optional(),
   token_budget: z.number().int().min(1000).max(250000).nullable().optional(),
   time_limit_minutes: z.number().int().min(1).max(240).nullable().optional(),
-  kind: z.enum(["production", "certification", "smoke"]).optional(),
+  kind: z
+    .enum(["production", "certification", "benchmark", "maintenance", "smoke"])
+    .optional(),
 };
 
 function result(payload, message) {
@@ -368,15 +370,16 @@ function buildToolSpecs({ orchestrator, store, config }) {
       name: "usage_report_dimensions",
       title: "Read dimensional usage report",
       description:
-        "Use this to aggregate measured request-level usage by task, project, model, executor, protocol, or request kind. Estimated and actual costs stay in separate columns.",
+        "Use this to aggregate measured request-level usage by task, project, model, executor, protocol, request kind, or task kind. The default production scope includes task_kind=production and request_kind=task_execution only (all attempts, retries included). Estimated and settled costs stay in separate integer micro-USD columns.",
       inputSchema: {
         by: z
-          .enum(["task", "project", "model", "executor", "protocol", "request_kind"])
+          .enum(["task", "project", "model", "executor", "protocol", "request_kind", "task_kind"])
           .default("model"),
         since: z.string().nullable().optional(),
         kind: z.string().nullable().optional(),
         limit: z.number().int().min(1).max(500).default(100),
         offset: z.number().int().min(0).default(0),
+        production_only: z.boolean().default(true),
       },
       annotations: {
         readOnlyHint: true,
@@ -395,10 +398,10 @@ function buildToolSpecs({ orchestrator, store, config }) {
       name: "mark_task_kind",
       title: "Mark task kind",
       description:
-        "Use this to classify a task as production, certification, or smoke. Certification and smoke usage is excluded from production aggregation.",
+        "Use this to classify a task as production, certification, benchmark, or maintenance. The production scope excludes every other task kind.",
       inputSchema: {
         task_id: z.string().min(4),
-        kind: z.enum(["production", "certification", "smoke"]),
+        kind: z.enum(["production", "certification", "benchmark", "maintenance", "smoke"]),
       },
       annotations: {
         readOnlyHint: false,
@@ -412,21 +415,26 @@ function buildToolSpecs({ orchestrator, store, config }) {
         if (!task) {
           return failure(new Error(`Unknown or ambiguous task id: ${task_id}`));
         }
-        return result({ task }, `Task ${task.id} is marked ${kind}.`);
+        return result({ task }, `Task ${task.id} is marked ${task.kind}.`);
       },
     },
     {
       name: "reconcile_usage",
       title: "Reconcile usage against provider rows",
       description:
-        "Use this to match recorded request events against provider-reported rows by request id and classify matched, client_only, provider_only, token_mismatch, cost_pending, and settled.",
+        "Use this to match recorded request events against provider-reported rows by asterroute_request_id and compute presence, token, and settlement states. Reads settlement fields from the provider rows; never writes actual cost or settled state to the provider.",
       inputSchema: {
         provider_rows: z
           .array(
             z.object({
               request_id: z.string(),
               total_tokens: z.number().optional(),
-              actual_cost: z.number().nullable().optional(),
+              settled_cost_microusd: z.number().nullable().optional(),
+              credit_microusd: z.number().nullable().optional(),
+              net_cost_microusd: z.number().nullable().optional(),
+              currency: z.string().nullable().optional(),
+              pricing_version: z.string().nullable().optional(),
+              billing_revision: z.string().nullable().optional(),
             }),
           )
           .max(200),
@@ -438,8 +446,28 @@ function buildToolSpecs({ orchestrator, store, config }) {
         idempotentHint: true,
       },
       async handler({ provider_rows }) {
-        const { statuses } = reconcileUsage(store, provider_rows);
-        return result({ statuses }, "Returned reconciliation statuses.");
+        const { statuses, applied } = reconcileUsage(store, provider_rows);
+        return result(
+          { statuses, applied },
+          "Returned reconciliation statuses.",
+        );
+      },
+    },
+    {
+      name: "reconcile_now",
+      title: "Run read-only reconciliation lookup",
+      description:
+        "Use this to trigger the bulk lookup for local request ids that have no reconciliation entry yet. Configured per relay through reconcileUrl.",
+      inputSchema: {},
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        idempotentHint: true,
+      },
+      async handler() {
+        const results = await orchestrator.reconcileNow();
+        return result({ results }, "Reconciliation lookup finished.");
       },
     },
     {

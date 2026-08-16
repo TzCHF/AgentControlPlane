@@ -290,7 +290,8 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     const probeMeta = {
       threadId: null,
       turnId: null,
-      requestKind: "probe",
+      taskKind: "production",
+      requestKind: "protocol_probe",
       model,
       requestedModel: null,
     };
@@ -677,7 +678,8 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     const eventMeta = {
       threadId,
       turnId,
-      requestKind: attribution?.requestKind ?? "execution",
+      taskKind: attribution?.taskKind ?? "production",
+      requestKind: "task_execution",
       model: model ?? this.model,
       requestedModel: attribution?.requestedModel ?? null,
     };
@@ -1109,7 +1111,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     retryCounter = null,
     eventMeta = null,
   ) {
-    for (let attempt = 0; ; attempt += 1) {
+    for (let attempt = 1; ; attempt += 1) {
       await this.#paceCompletionRequest();
       const headers = { "content-type": "application/json" };
       if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`;
@@ -1143,27 +1145,30 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           attempt,
           durationMs: Date.now() - startedAt,
           outcome: "error",
-          providerRequestId: null,
+          asterrouteRequestId: null,
+          upstreamRequestId: null,
           usage: null,
         });
         throw error;
       }
       const durationMs = Date.now() - startedAt;
-      const headerRequestId = response.headers.get("x-request-id");
-      if (response.status === 429 && attempt < 2) {
+      const asterrouteHeaderId = response.headers.get("x-asterroute-request-id");
+      const upstreamHeaderId = response.headers.get("x-asterroute-provider-request-id");
+      if (response.status === 429 && attempt <= 2) {
         if (retryCounter) retryCounter.count += 1;
         this.#emitUsageEvent(eventMeta, {
           attempt,
           durationMs,
           outcome: "error",
-          providerRequestId: headerRequestId,
+          asterrouteRequestId: asterrouteHeaderId,
+          upstreamRequestId: upstreamHeaderId,
           usage: null,
         });
         const retryAfter = Number(response.headers.get("retry-after"));
         const delayMs =
           Number.isFinite(retryAfter) && retryAfter > 0
             ? Math.min(30000, retryAfter * 1000)
-            : 2000 * (attempt + 1);
+            : 2000 * attempt;
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         continue;
       }
@@ -1173,7 +1178,8 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           attempt,
           durationMs,
           outcome: "error",
-          providerRequestId: headerRequestId,
+          asterrouteRequestId: asterrouteHeaderId,
+          upstreamRequestId: upstreamHeaderId,
           usage: null,
         });
         throw new ControlPlaneError(
@@ -1183,17 +1189,16 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         );
       }
       const payload = await response.json();
-      const providerRequestId =
-        typeof payload?.id === "string" && payload.id
-          ? payload.id
-          : headerRequestId;
+      const asterrouteRequestId =
+        asterrouteHeaderId ??
+        (typeof payload?.id === "string" && payload.id ? payload.id : null);
       this.#emitUsageEvent(eventMeta, {
         attempt,
         durationMs,
         outcome: "ok",
-        providerRequestId,
+        asterrouteRequestId,
+        upstreamRequestId: upstreamHeaderId,
         usage: payload?.usage,
-        actualCost: payload?.cost ?? payload?.billing?.cost ?? null,
       });
       return payload;
     }
@@ -1201,25 +1206,22 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
 
   #emitUsageEvent(eventMeta, info) {
     if (!eventMeta) return;
-    const kind =
-      info.attempt > 0 && eventMeta.requestKind === "execution"
-        ? "retry"
-        : eventMeta.requestKind ?? "execution";
     this.emit("notification", {
       method: "usage/request",
       params: {
         threadId: eventMeta.threadId ?? null,
         turnId: eventMeta.turnId ?? null,
-        requestKind: kind,
+        taskKind: eventMeta.taskKind ?? "production",
+        requestKind: eventMeta.requestKind ?? "task_execution",
         attempt: info.attempt,
         durationMs: info.durationMs,
         outcome: info.outcome,
-        providerRequestId: info.providerRequestId,
+        asterrouteRequestId: info.asterrouteRequestId,
+        upstreamRequestId: info.upstreamRequestId,
         usage: normalizeUsage(info.usage),
         protocol: this.protocol,
         requestedModel: eventMeta.requestedModel ?? null,
         resolvedModel: eventMeta.model ?? null,
-        actualCost: info.actualCost,
       },
     });
   }

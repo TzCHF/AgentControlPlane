@@ -453,11 +453,16 @@ export async function createApplication(overrides = {}) {
       ) {
         const body = await readJson(request, 4 * 1024);
         const kind = String(body?.kind ?? "");
-        if (!["production", "certification", "smoke"].includes(kind)) {
+        if (
+          !["production", "certification", "benchmark", "maintenance", "smoke"].includes(
+            kind,
+          )
+        ) {
           sendJson(response, 400, {
             error: {
               code: "invalid_kind",
-              message: "kind must be production, certification, or smoke",
+              message:
+                "kind must be production, certification, benchmark, maintenance, or smoke",
             },
           });
           return;

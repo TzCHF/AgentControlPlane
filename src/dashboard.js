@@ -104,9 +104,9 @@ export const DASHBOARD_STRINGS = {
     dimTitle: "分模型用量",
     dimColModel: "模型",
     dimColTokens: "令牌",
-    dimColCost: "成本（估算/实际）",
+    dimColCost: "成本（估算/结算）",
     dimColRequests: "请求数",
-    dimColReconcile: "对账",
+    dimColReconcile: "对账状态",
     version: "版本",
     tokenPrompt: "该服务要求 Bearer 访问令牌。",
     tokenPlaceholder: "粘贴访问令牌",
@@ -215,9 +215,9 @@ export const DASHBOARD_STRINGS = {
     dimTitle: "Usage by model",
     dimColModel: "Model",
     dimColTokens: "Tokens",
-    dimColCost: "Cost (est./actual)",
+    dimColCost: "Cost (est./settled)",
     dimColRequests: "Requests",
-    dimColReconcile: "Reconciliation",
+    dimColReconcile: "Reconciliation states",
     version: "Version",
     tokenPrompt: "This server requires a bearer access token.",
     tokenPlaceholder: "Paste the access token",
@@ -770,13 +770,30 @@ function renderDimensions() {
     box.innerHTML = "";
     return;
   }
-  var reconcile = function (entry) {
-    var counts = entry.reconciliation ?? {};
-    return Object.entries(counts)
+  var usd = function (microusd) {
+    return microusd == null ? null : (microusd / 1e6).toFixed(6);
+  };
+  var states = function (entry) {
+    var parts = [];
+    var present = Object.entries(entry.presence ?? {})
       .map(function (pair) {
         return pair[0] + ":" + pair[1];
       })
-      .join(" ");
+      .join(",");
+    var token = Object.entries(entry.token ?? {})
+      .map(function (pair) {
+        return pair[0] + ":" + pair[1];
+      })
+      .join(",");
+    var settlement = Object.entries(entry.settlement ?? {})
+      .map(function (pair) {
+        return pair[0] + ":" + pair[1];
+      })
+      .join(",");
+    if (present) parts.push("presence{" + present + "}");
+    if (token) parts.push("token{" + token + "}");
+    if (settlement) parts.push("settlement{" + settlement + "}");
+    return parts.join(" ");
   };
   box.innerHTML =
     "<thead><tr>" +
@@ -788,16 +805,18 @@ function renderDimensions() {
     "</tr></thead><tbody>" +
     rows
       .map(function (row) {
+        var estimated = usd(row.estimated_cost_microusd);
+        var settled = usd(row.settled_cost_microusd);
         var cost =
-          (row.estimated_cost != null ? "est " + row.estimated_cost : "") +
-          (row.actual_cost != null ? " / act " + row.actual_cost : "");
+          (estimated != null ? "est $" + estimated : "") +
+          (settled != null ? " / settled $" + settled : "");
         return (
           "<tr>" +
           "<td>" + escapeHtml(row.model ?? "unknown") + "</td>" +
-          '<td class="mono">' + number(row.events) + " (" + row.succeeded + " ok / " + row.failed + " fail)</td>" +
+          '<td class="mono">' + number(row.events) + " (" + row.succeeded + " ok / " + row.failed + " fail · retries " + row.retries + ")</td>" +
           '<td class="mono">' + number(row.total_tokens) + "</td>" +
           '<td class="mono">' + escapeHtml(cost || "—") + "</td>" +
-          '<td class="mono">' + escapeHtml(reconcile(row)) + "</td>" +
+          '<td class="mono">' + escapeHtml(states(row)) + "</td>" +
           "</tr>"
         );
       })

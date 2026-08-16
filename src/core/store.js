@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { ControlPlaneError } from "./errors.js";
+import { adaptV1Event, normalizeTaskKind } from "./usage-events.js";
 
 function now() {
   return new Date().toISOString();
@@ -29,6 +30,7 @@ export class TaskStore {
     this.auditPath = path.join(stateDir, "audit.jsonl");
     this.auditArchivePath = path.join(stateDir, "audit.jsonl.1");
     this.usagePath = path.join(stateDir, "usage.jsonl");
+    this.reconciliationPath = path.join(stateDir, "usage-reconciliation.jsonl");
     this.maxEvents = maxEvents;
     this.maxTasks = maxTasks;
     this.maxAuditBytes = maxAuditBytes;
@@ -40,12 +42,30 @@ export class TaskStore {
     this.auditSeq = 1;
     this.auditPrev = null;
     this.usageEvents = [];
+    this.reconciliations = new Map();
     fs.mkdirSync(stateDir, { recursive: true });
     this.state = fs.existsSync(this.statePath)
       ? JSON.parse(fs.readFileSync(this.statePath, "utf8"))
       : emptyState();
     this.#loadUsageEvents();
+    this.#loadReconciliations();
     this.#restoreAuditChain();
+  }
+
+  #loadReconciliations() {
+    if (!fs.existsSync(this.reconciliationPath)) return;
+    const lines = fs
+      .readFileSync(this.reconciliationPath, "utf8")
+      .split("\n")
+      .filter(Boolean);
+    for (const line of lines.slice(-this.maxUsageEvents)) {
+      try {
+        const entry = JSON.parse(line);
+        if (entry?.request_id) this.reconciliations.set(entry.request_id, entry);
+      } catch {
+        /* skip unreadable line */
+      }
+    }
   }
 
   #loadUsageEvents() {
@@ -58,7 +78,8 @@ export class TaskStore {
     this.usageEvents = tail
       .map((line) => {
         try {
-          return JSON.parse(line);
+          const row = JSON.parse(line);
+          return row.schema_version ? row : adaptV1Event(row);
         } catch {
           return null;
         }
@@ -69,9 +90,10 @@ export class TaskStore {
   appendUsageEvent(event) {
     const existing = this.usageEvents.find(
       (entry) =>
-        entry.provider_request_id &&
-        entry.provider_request_id === event.provider_request_id &&
-        entry.task_id === event.task_id,
+        entry.asterroute_request_id &&
+        entry.asterroute_request_id === event.asterroute_request_id &&
+        entry.task_id === event.task_id &&
+        entry.attempt === event.attempt,
     );
     if (existing) return structuredClone(existing);
     this.usageEvents.push(event);
@@ -80,6 +102,47 @@ export class TaskStore {
     }
     fs.appendFileSync(this.usagePath, `${JSON.stringify(event)}\n`, "utf8");
     return structuredClone(event);
+  }
+
+  applyReconciliations(rows) {
+    const applied = [];
+    for (const row of rows ?? []) {
+      const requestId = String(row?.request_id ?? "");
+      if (!requestId) continue;
+      const existing = this.reconciliations.get(requestId);
+      if (
+        existing &&
+        existing.billing_revision === row.billing_revision &&
+        existing.settled_cost_microusd === row.settled_cost_microusd
+      ) {
+        continue;
+      }
+      const entry = {
+        request_id: requestId,
+        presence_state: row.presence_state ?? "matched",
+        token_state: row.token_state ?? "pending",
+        settlement_state: row.settlement_state ?? "pending",
+        settled_cost_microusd: row.settled_cost_microusd ?? null,
+        credit_microusd: row.credit_microusd ?? null,
+        net_cost_microusd: row.net_cost_microusd ?? null,
+        currency: row.currency ?? "USD",
+        pricing_version: row.pricing_version ?? null,
+        billing_revision: row.billing_revision ?? null,
+        reconciled_at: new Date().toISOString(),
+      };
+      this.reconciliations.set(requestId, entry);
+      fs.appendFileSync(
+        this.reconciliationPath,
+        `${JSON.stringify(entry)}\n`,
+        "utf8",
+      );
+      applied.push(entry);
+    }
+    return applied;
+  }
+
+  listReconciliations() {
+    return structuredClone([...this.reconciliations.values()]);
   }
 
   listUsageEvents({ taskId = null, since = null, kind = null, limit = 100, offset = 0 } = {}) {
@@ -101,10 +164,10 @@ export class TaskStore {
   markTaskKind(taskId, kind) {
     const task = this.state.tasks[taskId];
     if (!task) return null;
-    task.kind = kind;
+    task.kind = normalizeTaskKind(kind);
     task.updatedAt = now();
     this.persist();
-    this.audit("task.kind", { taskId, kind });
+    this.audit("task.kind", { taskId, kind: task.kind });
     return structuredClone(task);
   }
 
@@ -194,9 +257,7 @@ export class TaskStore {
       policy,
       executor,
       estimatedMinutes,
-      kind: ["production", "certification", "smoke"].includes(kind)
-        ? kind
-        : "production",
+      kind: normalizeTaskKind(kind),
       status: "queued",
       createdAt: now(),
       updatedAt: now(),

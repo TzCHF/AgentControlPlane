@@ -93,6 +93,16 @@ catalog, and static allowlist:
   RPM window, including retried 429s, and the pacer counts each attempt;
   concurrent tasks share one window per relay. `/v1/models` discovery
   requests are paced separately and stay outside this limit.
+- The executor captures two request identifiers from responses: the
+  `x-asterroute-request-id` header (falling back to the payload id) as
+  `asterroute_request_id`, and `x-asterroute-provider-request-id` as
+  `upstream_request_id`. The first drives ACP-to-gateway reconciliation;
+  the second stays with upstream billing and diagnostics.
+- `reconcileUrl` (optional) names the relay's read-only bulk lookup
+  endpoint (`POST /api/usage/reconcile/lookup`). When configured, ACP
+  posts local request ids that have no reconciliation entry yet, computes
+  presence and token states locally, and reads settlement fields from the
+  response; ACP never writes actual cost or settled state to the relay.
 - Dispatch selects a relay with `"executor": "asterroute"` or by its
   display name; each relay's catalog appears in `list_models`, the web
   panel, and the companion executor list under model endpoints.

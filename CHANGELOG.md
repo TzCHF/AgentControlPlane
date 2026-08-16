@@ -1,5 +1,47 @@
 # Changelog
 
+## v0.7.2 — 2026-08-16
+
+Contract hardening: usage and reconciliation v2.
+
+### Added
+
+- UsageEvent schema v2 (`schema_version: 2`): `client_event_id`,
+  `asterroute_request_id`, `upstream_request_id`, `task_id`, `turn_id`,
+  `task_kind`, `request_kind`, `attempt`; the dual-purpose
+  `provider_request_id` field is retired.
+- Classification semantics: `task_kind` is production, certification,
+  benchmark, or maintenance; `request_kind` is `protocol_probe` or
+  `task_execution`; attempts are 1-based and `is_retry` derives from
+  `attempt > 1`.
+- The executor captures `x-asterroute-request-id` and
+  `x-asterroute-provider-request-id` separately.
+- Reconciliation splits into `presence_state` (matched / client_only /
+  provider_only / unknown), `token_state` (match / mismatch / pending),
+  and `settlement_state` (settled / cost_pending / pending).
+- Money fields use integer micro-USD: `estimated_cost_microusd`,
+  `settled_cost_microusd`, `credit_microusd`, `net_cost_microusd`,
+  `currency`, `pricing_version`, `billing_revision`.
+- A read-only bulk lookup client (`POST /api/usage/reconcile/lookup`,
+  configured per relay through `reconcileUrl`) plus a periodic
+  reconciliation job (`config.reconciliation.intervalMinutes`) and the
+  `reconcile_now` MCP tool. ACP computes presence and token states
+  locally and reads settlement from the provider.
+- Production scope is `task_kind=production AND
+  request_kind=task_execution` including every attempt; probes,
+  certification, benchmark, and maintenance stay out of the default view.
+- Backward compatibility: existing `usage.jsonl` rows are read through a
+  v1 adapter (lazy, no file rewrite); v1 `provider_request_id` maps to
+  `asterroute_request_id`; undeterminable ids stay unknown.
+
+### Verified
+
+- 150 tests pass locally, covering the fourteen contract items including
+  dual-id separation, 1-based attempts, retry classification, production
+  scope, three-way reconciliation states, bulk lookup matching,
+  micro-USD precision, credit/net cost, v1 read compatibility, idempotent
+  reconciliation, and PII exclusion.
+
 ## v0.7.1 — 2026-08-16
 
 Dimensional view fixes.
