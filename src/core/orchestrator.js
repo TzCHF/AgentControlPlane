@@ -362,7 +362,7 @@ export class Orchestrator extends EventEmitter {
       const reconciledIds = new Set(
         this.store
           .listReconciliations()
-          .map((entry) => entry.request_id),
+          .map((entry) => entry.asterroute_request_id ?? entry.request_id),
       );
       const pending = [];
       const seen = new Set();
