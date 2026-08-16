@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.8.1 — 2026-08-16
+
+Credential handling hardening.
+
+### Added
+
+- `npm run key:fingerprint` prints the configured relay key's SHA-256
+  fingerprint prefix, length, and source without ever printing the key.
+- Repository instructions record the rule: key material is referenced by
+  fingerprint only and never written to logs, reports, or commits.
+
+### Changed
+
+- `config/local.json` template usage: the relay key comes from the
+  `ASTERROUTE_API_KEY` environment variable; the config file holds null.
+
+### Verified
+
+- 170 tests pass locally.
+
 ## v0.8.0 — 2026-08-16
 
 Phase 4A: estimate-aware cost selector.

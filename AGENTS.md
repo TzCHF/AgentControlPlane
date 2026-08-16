@@ -9,6 +9,10 @@
 - Relay stations (for example AsterRoute) are separate projects. ACP interacts
   with them only as an API client using the keys in `config/local.json`; never
   modify relay-side code, deployment, routes, or admin settings.
+- API keys are never written to logs, reports, or commits. Key material is
+  referenced by SHA-256 fingerprint prefix only; `scripts/key-fingerprint.js`
+  prints that identity without the key. Key rotation happens on the provider
+  side; ACP consumes the new key from the environment or local config.
 - ACP is provider-agnostic: it must not become a client of one provider, and
   no provider may become a hard dependency. Core orchestration, executors, and
   the capability layer speak standard OpenAI-compatible wire shapes only.
