@@ -344,7 +344,11 @@ export async function createApplication(overrides = {}) {
 
       if (request.method === "GET" && url.pathname === "/v1/tasks") {
         const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") ?? 20)));
-        sendJson(response, 200, { tasks: store.listTasks(limit) });
+        const query = url.searchParams.get("query") ?? "";
+        const status = url.searchParams.get("status") ?? null;
+        sendJson(response, 200, {
+          tasks: store.findTasks({ query, status, limit }),
+        });
         return;
       }
 
@@ -361,10 +365,10 @@ export async function createApplication(overrides = {}) {
         parts[0] === "v1" &&
         parts[1] === "tasks"
       ) {
-        const task = store.getTask(
-          parts[2],
-          url.searchParams.get("events") === "1",
-        );
+        const resolvedId = store.resolveTaskId(parts[2]);
+        const task = resolvedId
+          ? store.getTask(resolvedId, url.searchParams.get("events") === "1")
+          : null;
         if (!task) {
           sendJson(response, 404, {
             error: { code: "task_not_found", message: "Task not found" },

@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.4.10 — 2026-08-16
+
+Task search and id-prefix lookup.
+
+### Added
+
+- `search_tasks` MCP tool and `GET /v1/tasks?query=&status=` filter tasks by
+  id prefix, objective text, result summary, and status.
+- `task_status`, `continue_project`, `cancel_task`, and `GET /v1/tasks/:id`
+  accept an unambiguous id prefix (8 or more characters) in addition to the
+  full task id.
+- The web panel and the companion task history gain a search box; the
+  companion search runs against the paired client's own tasks.
+- Repository instructions record the provider-independence boundary, and
+  `docs/ROADMAP.md` (Chinese version included) fixes the interface shapes
+  for the model-routing, usage-intelligence, and cost-aware picker phases.
+
+### Verified
+
+- 96 tests pass locally, including deterministic prefix-ambiguity, content
+  search, HTTP filtering, and MCP tool tests.
+- Copy passes the grounded-copy gate with 0 findings.
+
 ## v0.4.9 — 2026-08-16
 
 Relay request pacing and 429 retries.

@@ -200,8 +200,11 @@ async function handle(message) {
       return result;
     }
     case "ACP_TASK_LIST": {
-      const limit = Number(message.limit) || 20;
-      return api(`/v1/companion/tasks?limit=${Math.min(50, limit)}`);
+      const params = new URLSearchParams();
+      params.set("limit", String(Math.min(50, Number(message.limit) || 20)));
+      if (message.query) params.set("query", String(message.query));
+      if (message.status) params.set("status", String(message.status));
+      return api(`/v1/companion/tasks?${params.toString()}`);
     }
     case "ACP_FOLLOW_UP":
       return api(`/v1/companion/tasks/${encodeURIComponent(message.taskId)}/follow-up`, {

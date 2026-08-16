@@ -193,6 +193,38 @@ export class TaskStore {
       });
   }
 
+  resolveTaskId(prefixOrId) {
+    const value = String(prefixOrId ?? "").trim();
+    if (!value) return null;
+    if (this.state.tasks[value]) return value;
+    const matches = Object.keys(this.state.tasks).filter((id) =>
+      id.startsWith(value),
+    );
+    return matches.length === 1 ? matches[0] : null;
+  }
+
+  findTasks({ query = "", status = null, limit = 20 } = {}) {
+    const needle = String(query ?? "").trim().toLowerCase();
+    const wanted = status ? new Set([status]) : null;
+    const matches = Object.values(this.state.tasks).filter((task) => {
+      if (wanted && !wanted.has(task.status)) return false;
+      if (!needle) return true;
+      const objective = String(task.brief?.objective ?? "").toLowerCase();
+      const summary = String(task.result?.summary ?? "").toLowerCase();
+      return (
+        task.id.toLowerCase().startsWith(needle) ||
+        objective.includes(needle) ||
+        summary.includes(needle)
+      );
+    });
+    matches.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return matches.slice(0, Math.min(100, Math.max(1, Number(limit) || 20))).map((task) => {
+      const copy = structuredClone(task);
+      delete copy.events;
+      return copy;
+    });
+  }
+
   listByStatus(statuses) {
     const wanted = new Set(statuses);
     return Object.values(this.state.tasks)

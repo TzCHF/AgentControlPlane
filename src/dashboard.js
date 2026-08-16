@@ -20,6 +20,8 @@ export const DASHBOARD_STRINGS = {
     noModels: "该执行器暂无模型目录。",
     tasks: "任务",
     noTasks: "暂无任务记录。",
+    searchTasks: "按编号或内容搜索任务",
+    searchButton: "搜索",
     colTime: "时间",
     colTask: "任务",
     colStatus: "状态",
@@ -73,6 +75,8 @@ export const DASHBOARD_STRINGS = {
     noModels: "This executor has no model catalog.",
     tasks: "Tasks",
     noTasks: "No task records yet.",
+    searchTasks: "Search tasks by id or content",
+    searchButton: "Search",
     colTime: "Time",
     colTask: "Task",
     colStatus: "Status",
@@ -313,6 +317,10 @@ footer { padding: 10px 20px 18px; color: var(--muted); font-size: 12px; max-widt
 
   <section>
     <h2 id="kTasks"></h2>
+    <div class="row">
+      <input type="text" id="taskSearch">
+      <button class="save" id="taskSearchButton"></button>
+    </div>
     <div id="tasks"></div>
   </section>
 
@@ -356,6 +364,7 @@ function number(value) {
 var lang = localStorage.getItem("acp-dash-lang") || "zh";
 var token = localStorage.getItem("acp-dash-token") || "";
 var modelFilter = "";
+var taskQuery = "";
 var selectedExecutor = null;
 var catalogs = {};
 var lastData = { executors: [], tasks: [], usage: null, health: null };
@@ -415,6 +424,8 @@ function setLang(next) {
   document.getElementById("kTasks").textContent = t("tasks");
   document.getElementById("kUsage").textContent = t("usage");
   document.getElementById("modelFilter").placeholder = t("modelFilter");
+  document.getElementById("taskSearch").placeholder = t("searchTasks");
+  document.getElementById("taskSearchButton").textContent = t("searchButton");
   document.getElementById("tokenPrompt").textContent = t("tokenPrompt");
   document.getElementById("tokenInput").placeholder = t("tokenPlaceholder");
   document.getElementById("tokenSave").textContent = t("tokenSave");
@@ -623,9 +634,13 @@ function renderAll() {
 async function refresh() {
   try {
     var executorList = await api("/v1/executors");
+    var tasksUrl = "/v1/tasks?limit=30";
+    if (taskQuery) {
+      tasksUrl += "&query=" + encodeURIComponent(taskQuery);
+    }
     var [health, tasksRes, usageRes] = await Promise.all([
       api("/health"),
-      api("/v1/tasks?limit=30"),
+      api(tasksUrl),
       api("/v1/usage"),
     ]);
     lastData.health = health;
@@ -671,6 +686,15 @@ document.getElementById("execSelect").addEventListener("change", function (event
 document.getElementById("modelFilter").addEventListener("input", function (event) {
   modelFilter = event.target.value.trim();
   renderModels();
+});
+document.getElementById("taskSearchButton").addEventListener("click", function () {
+  taskQuery = document.getElementById("taskSearch").value.trim();
+  refresh();
+});
+document.getElementById("taskSearch").addEventListener("keydown", function (event) {
+  if (event.key !== "Enter") return;
+  taskQuery = event.target.value.trim();
+  refresh();
 });
 document.getElementById("tokenSave").addEventListener("click", function () {
   token = document.getElementById("tokenInput").value.trim();

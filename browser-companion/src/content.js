@@ -45,6 +45,7 @@
       disconnect: () => disconnect().catch(reportError),
       settings: (values) => saveSettings(values).catch(reportError),
       history: () => loadHistory().catch(reportError),
+      historySearch: (query) => searchHistory(query),
       continueProject: (taskId) => startFollowUp(taskId),
       sendFollowUp: () => sendFollowUp().catch(reportError),
     },
@@ -78,14 +79,27 @@
       .catch(() => null);
   }
 
-  async function loadHistory() {
+  async function loadHistory(query = "") {
     if (!currentState?.connected) await refreshState();
     if (!currentState?.connected) throw new Error(t("pairBeforeDispatch"));
-    const response = await message("ACP_TASK_LIST", { limit: 20 });
+    const response = await message("ACP_TASK_LIST", { limit: 20, query });
     const tasks = response.tasks ?? [];
     panel.setTasks(tasks);
     panel.open();
     panel.setStatus(t("historyLoaded", { count: tasks.length }), "success");
+  }
+
+  let historySearchTimer = null;
+  let historySearchQuery = "";
+
+  function searchHistory(query) {
+    historySearchQuery = query;
+    if (historySearchTimer) clearTimeout(historySearchTimer);
+    historySearchTimer = setTimeout(() => {
+      historySearchTimer = null;
+      panel.setHistoryQuery(historySearchQuery);
+      loadHistory(historySearchQuery).catch(reportError);
+    }, 400);
   }
 
   let followUpTaskId = null;

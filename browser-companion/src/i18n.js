@@ -69,6 +69,7 @@ export const STRINGS = {
     historyHint:
       "Recent tasks from this companion. A completed task can continue as a child task in the same workspace.",
     historyRefresh: "Refresh",
+    historySearch: "Search by id or content",
     historyEmpty: "No task records yet.",
     continueProject: "Continue project",
     followUpLabel:
@@ -164,6 +165,7 @@ export const STRINGS = {
     historyHint:
       "该伴侣最近派发的任务。已完成的任务可在同一工作区继续为子任务。",
     historyRefresh: "刷新",
+    historySearch: "按编号或内容搜索",
     historyEmpty: "暂无任务记录。",
     continueProject: "继续项目",
     followUpLabel: "继续指令（在同一工作区、同一执行器上派发子任务）",

@@ -30,6 +30,7 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
   let continueTaskId = null;
   let versionEl = null;
   let currentVersion = "";
+  let currentHistoryQuery = "";
 
   function render() {
     shadow.innerHTML = `
@@ -55,6 +56,7 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
         <details class="advanced"><summary>${t("historySummary")}</summary>
           <p class="hint">${t("historyHint")}</p>
           <div class="actions"><button data-action="history">${t("historyRefresh")}</button></div>
+          <input type="text" data-field="historyQuery" placeholder="${t("historySearch")}">
           <div class="tasks"></div>
           <div class="stack followup" hidden>
             <label>${t("followUpLabel")}</label>
@@ -92,6 +94,11 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     for (const name of ["workspace", "profile", "executor", "confirmWords", "autoSubmitResults"]) {
       fields[name].addEventListener("change", () => handlers.settings?.(getValues()));
     }
+    if (fields.historyQuery) {
+      fields.historyQuery.addEventListener("input", () =>
+        handlers.historySearch?.(fields.historyQuery.value.trim()),
+      );
+    }
     fields.language.addEventListener("change", () => {
       setLanguage(fields.language.value);
       handlers.settings?.({ language: lang });
@@ -108,6 +115,7 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     if (currentOptions) applyOptions(currentOptions, currentSettings);
     else applySettings(currentSettings);
     fields.objective.value = currentObjective;
+    if (fields.historyQuery) fields.historyQuery.value = currentHistoryQuery;
     if (versionEl) versionEl.textContent = currentVersion ? `v${currentVersion}` : "";
     renderTasks();
     if (continueTaskId && followUpBlock) followUpBlock.hidden = false;
@@ -289,6 +297,10 @@ export function createPanel({ adapterId, handlers, language = "zh" }) {
     setTasks(tasks) {
       currentTasks = tasks ?? [];
       renderTasks();
+    },
+    setHistoryQuery(value) {
+      currentHistoryQuery = value ?? "";
+      if (fields.historyQuery) fields.historyQuery.value = currentHistoryQuery;
     },
     setFollowUpVisible(visible) {
       if (followUpBlock) followUpBlock.hidden = !visible;

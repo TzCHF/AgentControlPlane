@@ -132,9 +132,9 @@ function buildToolSpecs({ orchestrator, store, config }) {
       name: "task_status",
       title: "Read engineering task status",
       description:
-        "Use this when checking whether a dispatched engineering task finished or needs attention.",
+        "Use this when checking whether a dispatched engineering task finished or needs attention. Accepts a full task id or an unambiguous id prefix (8 or more characters).",
       inputSchema: {
-        task_id: z.string().uuid(),
+        task_id: z.string().min(4),
         include_events: z.boolean().default(false),
       },
       annotations: {
@@ -144,9 +144,46 @@ function buildToolSpecs({ orchestrator, store, config }) {
         idempotentHint: true,
       },
       async handler({ task_id, include_events }) {
-        const task = store.getTask(task_id, include_events);
-        if (!task) return failure(new Error(`Unknown task: ${task_id}`));
+        const resolved = store.resolveTaskId(task_id);
+        const task = resolved ? store.getTask(resolved, include_events) : null;
+        if (!task) {
+          return failure(
+            new Error(`Unknown or ambiguous task id: ${task_id}`),
+          );
+        }
         return result({ task }, `Task ${task.id} is ${task.status}.`);
+      },
+    },
+    {
+      name: "search_tasks",
+      title: "Search engineering tasks",
+      description:
+        "Use this when the user wants to find an earlier task by its id prefix, objective text, result summary, or status.",
+      inputSchema: {
+        query: z.string().default(""),
+        status: z
+          .enum([
+            "queued",
+            "running",
+            "completed",
+            "partial",
+            "blocked",
+            "failed",
+            "cancelled",
+            "interrupted",
+          ])
+          .optional(),
+        limit: z.number().int().min(1).max(100).default(20),
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        idempotentHint: true,
+      },
+      async handler({ query, status, limit }) {
+        const tasks = store.findTasks({ query, status, limit });
+        return result({ tasks }, `Returned ${tasks.length} matching tasks.`);
       },
     },
     {
@@ -155,7 +192,7 @@ function buildToolSpecs({ orchestrator, store, config }) {
       description:
         "Use this when acceptance or review found a concrete follow-up for the same persistent Codex project thread.",
       inputSchema: {
-        task_id: z.string().uuid(),
+        task_id: z.string().min(4),
         objective: z.string().min(1),
         constraints: z.array(z.string()).optional(),
         acceptance_criteria: z.array(z.string()).optional(),
@@ -176,7 +213,11 @@ function buildToolSpecs({ orchestrator, store, config }) {
       },
       async handler({ task_id, ...args }) {
         try {
-          const task = orchestrator.continueTask(task_id, args);
+          const resolved = store.resolveTaskId(task_id);
+          if (!resolved) {
+            throw new Error(`Unknown or ambiguous task id: ${task_id}`);
+          }
+          const task = orchestrator.continueTask(resolved, args);
           return result(
             { task },
             `Follow-up task ${task.id} was queued on the existing project thread.`,
@@ -190,8 +231,8 @@ function buildToolSpecs({ orchestrator, store, config }) {
       name: "cancel_task",
       title: "Cancel engineering task",
       description:
-        "Use this when the user explicitly asks to stop an active engineering task.",
-      inputSchema: { task_id: z.string().uuid() },
+        "Use this when the user explicitly asks to stop an active engineering task. Accepts a full task id or an unambiguous id prefix.",
+      inputSchema: { task_id: z.string().min(4) },
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
@@ -200,7 +241,11 @@ function buildToolSpecs({ orchestrator, store, config }) {
       },
       async handler({ task_id }) {
         try {
-          const task = await orchestrator.cancel(task_id);
+          const resolved = store.resolveTaskId(task_id);
+          if (!resolved) {
+            throw new Error(`Unknown or ambiguous task id: ${task_id}`);
+          }
+          const task = await orchestrator.cancel(resolved);
           return result({ task }, `Task ${task.id} is cancelled.`);
         } catch (error) {
           return failure(error);

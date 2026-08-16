@@ -315,11 +315,25 @@ export class CompanionRouter {
         50,
         Math.max(1, Number(url.searchParams.get("limit") ?? 20)),
       );
+      const query = String(url.searchParams.get("query") ?? "").trim().toLowerCase();
+      const status = url.searchParams.get("status") ?? null;
+      const wanted = status ? new Set([status]) : null;
       const tasks = this.pairingManager
         .listTaskIds(client.id)
-        .slice(0, limit)
         .map((taskId) => this.store.getTask(taskId))
         .filter(Boolean)
+        .filter((task) => {
+          if (wanted && !wanted.has(task.status)) return false;
+          if (!query) return true;
+          const objective = String(task.brief?.objective ?? "").toLowerCase();
+          const summary = String(task.result?.summary ?? "").toLowerCase();
+          return (
+            task.id.toLowerCase().startsWith(query) ||
+            objective.includes(query) ||
+            summary.includes(query)
+          );
+        })
+        .slice(0, limit)
         .map((task) => publicTask(task));
       sendJson(response, 200, { tasks }, cors);
       return true;
