@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.8.3 — 2026-08-16
+
+Responses tool-loop compatibility with the relay contract.
+
+### Fixed
+
+- `function_call` continuations now carry `status: "completed"` and
+  `function_call_output` items carry a `summary`, matching the relay's
+  Responses API validation.
+
+### Verified
+
+- 178 tests pass locally.
+
 ## v0.8.2 — 2026-08-16
 
 Credential handling hardening.

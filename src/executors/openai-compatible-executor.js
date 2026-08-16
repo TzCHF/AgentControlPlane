@@ -778,11 +778,13 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
             typeof call.arguments === "string"
               ? call.arguments
               : JSON.stringify(call.arguments ?? {}),
+          status: "completed",
         });
         inputItems.push({
           type: "function_call_output",
           call_id: callId,
           output: result,
+          summary: String(result).slice(0, 200),
         });
       }
     }
