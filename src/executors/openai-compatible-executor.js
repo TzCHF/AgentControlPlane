@@ -251,50 +251,39 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     );
   }
 
-  async #pickProbeModel() {
-    if (this.model) return this.model;
-    if (this.staticModels.length > 0) return this.staticModels[0];
-    const catalog = await this.listModels();
-    const first = catalog.data?.[0];
-    return first?.id ?? first?.model ?? null;
+  async #pickProbeModels() {
+    const candidates = [];
+    if (this.model) candidates.push(this.model);
+    for (const entry of this.staticModels) candidates.push(entry);
+    const catalog = (await this.listModels()).data ?? [];
+    const capable = catalog.filter(
+      (entry) =>
+        entry.capabilities?.chat === true ||
+        entry.capabilities?.tools === true ||
+        entry.capabilities?.responses === true,
+    );
+    for (const entry of capable) candidates.push(entry.id ?? entry.model);
+    for (const entry of catalog) candidates.push(entry.id ?? entry.model);
+    return [...new Set(candidates.filter(Boolean))].slice(0, 3);
   }
 
-  async #detectProtocol() {
-    const probeToolResponses = {
-      type: "function",
-      name: "ping",
-      description: "Reply with pong.",
-      parameters: { type: "object", properties: {} },
-    };
-    const probeToolChat = {
-      type: "function",
-      function: {
-        name: "ping",
-        description: "Reply with pong.",
-        parameters: { type: "object", properties: {} },
-      },
-    };
-    const model = await this.#pickProbeModel();
-    const result = {
-      protocol: null,
-      model: model ?? null,
+  async #probeModelProtocol(model, probeToolResponses, probeToolChat) {
+    const outcome = {
       responses: { available: false, toolLoop: false },
       chat: { available: false, toolLoop: false },
       reasoning: null,
-      reason: null,
     };
-    if (!model) {
-      result.reason = "no_model_to_probe";
-      return result;
-    }
-
     const statusOf = (error) => Number(error?.details?.status ?? 0);
     const recordReasoning = (usage) => {
-      if (!usage || typeof usage.completion_tokens_details?.reasoning_tokens !== "number") {
+      if (
+        !usage ||
+        typeof usage.completion_tokens_details?.reasoning_tokens !== "number"
+      ) {
         return;
       }
-      result.reasoning =
-        result.reasoning ?? usage.completion_tokens_details.reasoning_tokens > 0;
+      outcome.reasoning =
+        outcome.reasoning ??
+        usage.completion_tokens_details.reasoning_tokens > 0;
     };
 
     let responsesStatus = 0;
@@ -312,10 +301,10 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       responsesStatus = statusOf(error);
     }
     if (![404, 405, 0].includes(responsesStatus)) {
-      result.responses.available = true;
+      outcome.responses.available = true;
     }
 
-    if (result.responses.available) {
+    if (outcome.responses.available) {
       try {
         const toolResponse = await this.#requestCompletion("/responses", {
           model,
@@ -326,16 +315,16 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           max_output_tokens: 1024,
         });
         const output = Array.isArray(toolResponse?.output) ? toolResponse.output : [];
-        result.responses.toolLoop = output.some(
+        outcome.responses.toolLoop = output.some(
           (item) => item.type === "function_call" && item.name === "ping",
         );
         recordReasoning(toolResponse?.usage);
       } catch {
-        result.responses.toolLoop = false;
+        outcome.responses.toolLoop = false;
       }
     }
 
-    if (!result.responses.toolLoop) {
+    if (!outcome.responses.toolLoop) {
       try {
         const chatResponse = await this.#requestCompletion("/chat/completions", {
           model,
@@ -346,34 +335,90 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           stream: false,
           max_tokens: 1024,
         });
-        result.chat.available = true;
+        outcome.chat.available = true;
         const message = chatResponse?.choices?.[0]?.message ?? {};
-        result.chat.toolLoop = Array.isArray(message.tool_calls)
+        outcome.chat.toolLoop = Array.isArray(message.tool_calls)
           ? message.tool_calls.some((call) => call?.function?.name === "ping")
           : false;
         recordReasoning(chatResponse?.usage);
       } catch (error) {
         const status = statusOf(error);
-        result.chat.available = ![404, 405, 0].includes(status);
+        outcome.chat.available = ![404, 405, 0].includes(status);
       }
     }
+    return outcome;
+  }
 
-    if (result.responses.toolLoop) result.protocol = "responses";
-    else if (result.chat.toolLoop) result.protocol = "chat";
-    else if (result.responses.available || result.chat.available) {
-      result.reason = "tool_loop_unsupported";
-    } else {
-      result.reason = "endpoint_unreachable";
+  async #detectProtocol() {
+    const probeToolResponses = {
+      type: "function",
+      name: "ping",
+      description: "Reply with pong.",
+      parameters: { type: "object", properties: {} },
+    };
+    const probeToolChat = {
+      type: "function",
+      function: {
+        name: "ping",
+        description: "Reply with pong.",
+        parameters: { type: "object", properties: {} },
+      },
+    };
+    const candidates = await this.#pickProbeModels();
+    const result = {
+      protocol: null,
+      model: candidates[0] ?? null,
+      responses: { available: false, toolLoop: false },
+      chat: { available: false, toolLoop: false },
+      reasoning: null,
+      reason: null,
+    };
+    if (candidates.length === 0) {
+      result.reason = "no_model_to_probe";
+      return result;
     }
-
-    if (model) {
-      this.#modelCapabilities.set(model, {
-        chat: result.chat.toolLoop,
-        responses: result.responses.toolLoop,
-        tools: result.chat.toolLoop || result.responses.toolLoop,
-        reasoning: result.reasoning,
-        vision: null,
-      });
+    for (const model of candidates) {
+      result.model = model;
+      const outcome = await this.#probeModelProtocol(
+        model,
+        probeToolResponses,
+        probeToolChat,
+      );
+      result.responses = outcome.responses;
+      result.chat = outcome.chat;
+      if (outcome.reasoning != null) result.reasoning = outcome.reasoning;
+      if (outcome.responses.toolLoop) {
+        result.protocol = "responses";
+        this.#modelCapabilities.set(model, {
+          chat: false,
+          responses: true,
+          tools: true,
+          reasoning: outcome.reasoning,
+          vision: null,
+        });
+        break;
+      }
+      if (outcome.chat.toolLoop) {
+        result.protocol = "chat";
+        this.#modelCapabilities.set(model, {
+          chat: true,
+          responses: false,
+          tools: true,
+          reasoning: outcome.reasoning,
+          vision: null,
+        });
+        break;
+      }
+    }
+    if (!result.protocol) {
+      const anyAvailable =
+        result.responses.available || result.chat.available;
+      result.reason = anyAvailable
+        ? "tool_loop_unsupported"
+        : "endpoint_unreachable";
+    }
+    if (this.protocol === "auto" && result.protocol) {
+      this.protocol = result.protocol;
     }
     return result;
   }

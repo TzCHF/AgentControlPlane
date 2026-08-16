@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.5.2 — 2026-08-16
+
+Smarter protocol probe model selection.
+
+### Fixed
+
+- Auto-detection probes up to three candidate models in order: the
+  configured model, the static allowlist, models that declare chat, tool,
+  or responses capabilities in `/v1/models`, and the rest of the catalog.
+  This keeps probes away from catalog entries that lack an active tool
+  route.
+
+### Verified
+
+- 108 tests pass locally.
+- Live check on the AsterRoute preset resolves the protocol from a
+  capability-declaring model.
+
 ## v0.5.1 — 2026-08-16
 
 Protocol probe budget for reasoning models.
