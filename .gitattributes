@@ -1,0 +1,3 @@
+# Shared cross-repository contract files stay byte-identical: lock LF.
+contracts/*.json text eol=lf
+tests/contract-schema.test.mjs text eol=lf
