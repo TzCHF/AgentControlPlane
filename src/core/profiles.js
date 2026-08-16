@@ -141,6 +141,13 @@ export function publicModels(modelCatalog) {
     capabilities: model.capabilities ?? null,
     featured: model.featured ?? null,
     route_tier: model.route_tier ?? null,
+    preferred_protocol: model.preferred_protocol ?? null,
+    route_health: model.route_health ?? null,
+    latency: model.latency ?? null,
+    pricing: model.pricing ?? null,
+    status: model.status ?? null,
+    context: model.context ?? null,
+    tier: model.tier ?? null,
     supported_reasoning_efforts: model.supportedReasoningEfforts?.map(
       (entry) => entry.reasoningEffort,
     ) ?? [],

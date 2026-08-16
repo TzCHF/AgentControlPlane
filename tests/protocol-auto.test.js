@@ -456,6 +456,180 @@ test("explicit protocols skip detection requests", async () => {
   }
 });
 
+test("catalog preferred_protocol=chat probes chat first and selects it", async () => {
+  const { server, baseUrl, requests } = await startServer(async (req, res) => {
+    if (req.method === "GET" && req.url === "/v1/models") {
+      res.end(
+        JSON.stringify({
+          data: [{ id: "probe-model", preferred_protocol: "chat" }],
+        }),
+      );
+      return;
+    }
+    if (req.method === "POST" && req.url === "/v1/responses") {
+      res.end(JSON.stringify(responseWithToolCall("ping")));
+      return;
+    }
+    if (req.method === "POST" && req.url === "/v1/chat/completions") {
+      res.end(JSON.stringify(chatWithToolCall("ping")));
+      return;
+    }
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: "not found" }));
+  });
+  try {
+    const executor = new OpenAICompatibleExecutor({
+      baseUrl,
+      protocol: "auto",
+    });
+    const discovery = await executor.probe();
+    assert.equal(discovery.protocols.selected, "chat");
+    assert.equal(discovery.protocols.preferred_protocol, "chat");
+    assert.deepEqual(discovery.protocols.probe_order, ["chat", "responses"]);
+    assert.equal(discovery.protocols.responses.toolLoop, null);
+    const firstProbe = requests.find(
+      (entry) =>
+        entry.url === "/v1/chat/completions" || entry.url === "/v1/responses",
+    );
+    assert.equal(firstProbe.url, "/v1/chat/completions");
+    assert.equal(
+      requests.filter((entry) => entry.url === "/v1/responses").length,
+      0,
+    );
+    await executor.stop();
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("model catalog passes provider routing metadata", async () => {
+  const { server, baseUrl } = await startServer(async (req, res) => {
+    if (req.method === "GET" && req.url === "/v1/models") {
+      res.end(
+        JSON.stringify({
+          data: [
+            {
+              id: "m1",
+              capabilities: { chat: true, tools: true },
+              preferred_protocol: "chat",
+              route_health: "healthy",
+              latency: { p50_ms: 1200 },
+              pricing: { input_per_mtok: 0.4 },
+              status: "available",
+              context: 128000,
+              tier: "pro",
+            },
+          ],
+        }),
+      );
+      return;
+    }
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: "not found" }));
+  });
+  const executor = new OpenAICompatibleExecutor({
+    baseUrl,
+    protocol: "chat",
+  });
+  try {
+    const catalog = await executor.listModels();
+    const model = catalog.data[0];
+    assert.equal(model.preferred_protocol, "chat");
+    assert.equal(model.route_health, "healthy");
+    assert.deepEqual(model.latency, { p50_ms: 1200 });
+    assert.deepEqual(model.pricing, { input_per_mtok: 0.4 });
+    assert.equal(model.status, "available");
+    assert.equal(model.context, 128000);
+    assert.equal(model.tier, "pro");
+
+    const public_ = publicModels(catalog.data);
+    assert.equal(public_[0].preferred_protocol, "chat");
+    assert.equal(public_[0].route_health, "healthy");
+    assert.equal(public_[0].tier, "pro");
+  } finally {
+    await executor.stop();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("chat turns send task attribution headers", async () => {
+  const captured = [];
+  const { server, baseUrl } = await startServer(async (req, res, body) => {
+    if (req.method === "POST" && req.url === "/v1/chat/completions") {
+      captured.push(req.headers);
+      res.end(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                role: "assistant",
+                content: JSON.stringify({
+                  status: "completed",
+                  summary: "Done",
+                  changed_files: [],
+                  tests: [],
+                  blockers: [],
+                  next_action: null,
+                }),
+              },
+            },
+          ],
+          usage: {
+            prompt_tokens: 3,
+            completion_tokens: 2,
+            total_tokens: 5,
+            prompt_tokens_details: { cached_tokens: 0 },
+            completion_tokens_details: { reasoning_tokens: 0 },
+          },
+        }),
+      );
+      return;
+    }
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: "not found" }));
+  });
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "acp-attr-ws-"));
+  const executor = new OpenAICompatibleExecutor({
+    id: "relay-x",
+    baseUrl,
+    protocol: "chat",
+    workspaceRoots: [workspace],
+  });
+  try {
+    await executor.start();
+    const notifications = [];
+    executor.on("notification", (message) => notifications.push(message));
+    const { thread } = await executor.startThread({ cwd: workspace });
+    await executor.setGoal({
+      threadId: thread.id,
+      objective: "x",
+      tokenBudget: 5000,
+    });
+    await executor.startTurn({
+      threadId: thread.id,
+      input: [{ type: "text", text: "x" }],
+      model: "m",
+      cwd: workspace,
+      outputSchema: {},
+      attribution: { taskId: "task-123", workspace },
+    });
+    const deadline = Date.now() + 2000;
+    while (
+      !notifications.some((entry) => entry.method === "turn/completed") &&
+      Date.now() < deadline
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    assert.ok(captured.length > 0, "chat request captured");
+    assert.equal(captured[0]["x-acp-task-id"], "task-123");
+    assert.equal(captured[0]["x-acp-project"], path.basename(workspace));
+    assert.equal(captured[0]["x-acp-executor"], "relay-x");
+  } finally {
+    await executor.stop();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
 test("model catalog passes provider capabilities and probe cache through", async () => {
   const { server, baseUrl } = await startServer(async (req, res) => {
     if (req.method === "GET" && req.url === "/v1/models") {

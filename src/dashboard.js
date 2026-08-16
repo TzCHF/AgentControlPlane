@@ -475,17 +475,20 @@ function renderExecutors() {
       var protocols = executor.discovery && executor.discovery.protocols;
       var probeLines = "";
       if (protocols) {
-        var check = function (ok) {
-          return '<span style="color:' + (ok ? "#34c26b" : "#e0564f") + '">' + (ok ? "✓" : "✗") + "</span>";
+        var check = function (entry) {
+          if (!entry || entry.toolLoop == null) {
+            return '<span style="color:#8b93a1">—</span>';
+          }
+          return '<span style="color:' + (entry.toolLoop ? "#34c26b" : "#e0564f") + '">' + (entry.toolLoop ? "✓" : "✗") + "</span>";
         };
         probeLines =
           '<div class="exec-detail">' +
           t("protoLabel") + ": " +
           escapeHtml(protocols.selected ?? t("protoPending")) +
           "<br>" +
-          t("protoResponses") + " " + check(protocols.responses && protocols.responses.toolLoop) +
+          t("protoResponses") + " " + check(protocols.responses) +
           "<br>" +
-          t("protoChat") + " " + check(protocols.chat && protocols.chat.toolLoop) +
+          t("protoChat") + " " + check(protocols.chat) +
           "</div>";
       }
       return (

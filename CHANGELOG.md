@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.5.4 — 2026-08-16
+
+Relay metadata, preferred protocol, and request attribution.
+
+### Added
+
+- Model catalog entries pass through provider routing metadata:
+  `preferred_protocol`, `route_health`, `latency`, `pricing`, `status`,
+  `context`, and `tier`.
+- Auto-detection reads `preferred_protocol` from the catalog: a value of
+  `chat` probes Chat Completions first, `responses` keeps the default
+  order; the discovery record reports the preference and the probe order.
+- Model-endpoint executors send request attribution headers
+  (`x-acp-task-id`, `x-acp-project`, `x-acp-executor`) so providers can
+  match requests to ACP tasks in their request logs.
+- The web panel marks unprobed protocols with a dash in the probe
+  checklist.
+
+### Verified
+
+- 111 tests pass locally, including preferred-protocol ordering, routing
+  metadata passthrough, and attribution header assertions.
+
 ## v0.5.3 — 2026-08-16
 
 Probe checklist on the web panel.

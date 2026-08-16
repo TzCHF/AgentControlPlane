@@ -558,6 +558,9 @@ export class Orchestrator extends EventEmitter {
         },
         approvalPolicy: this.config.codex.approvalPolicy,
         outputSchema: finalReportSchema,
+        ...(executor.kind === "model-endpoint"
+          ? { attribution: { taskId, workspace } }
+          : {}),
         responsesapiClientMetadata: {
           control_plane: "agent-control-plane",
           task_id: taskId,

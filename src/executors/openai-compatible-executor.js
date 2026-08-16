@@ -204,6 +204,8 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
           responses: detection.responses,
           selected: detection.protocol,
           probe_model: detection.model,
+          preferred_protocol: detection.preferred_protocol ?? null,
+          probe_order: detection.probe_order ?? null,
         },
       };
     }
@@ -264,13 +266,16 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     );
     for (const entry of capable) candidates.push(entry.id ?? entry.model);
     for (const entry of catalog) candidates.push(entry.id ?? entry.model);
-    return [...new Set(candidates.filter(Boolean))].slice(0, 3);
+    return {
+      candidates: [...new Set(candidates.filter(Boolean))].slice(0, 3),
+      catalog,
+    };
   }
 
-  async #probeModelProtocol(model, probeToolResponses, probeToolChat) {
+  async #probeModelProtocol(model, probeToolResponses, probeToolChat, order) {
     const outcome = {
-      responses: { available: false, toolLoop: false },
-      chat: { available: false, toolLoop: false },
+      responses: { available: false, toolLoop: null },
+      chat: { available: false, toolLoop: null },
       reasoning: null,
     };
     const statusOf = (error) => Number(error?.details?.status ?? 0);
@@ -286,45 +291,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         usage.completion_tokens_details.reasoning_tokens > 0;
     };
 
-    let responsesStatus = 0;
-    try {
-      const availability = await this.#requestCompletion("/responses", {
-        model,
-        instructions: "Reply with the word pong.",
-        input: "ping",
-        stream: false,
-        max_output_tokens: 1024,
-      });
-      responsesStatus = 200;
-      recordReasoning(availability?.usage);
-    } catch (error) {
-      responsesStatus = statusOf(error);
-    }
-    if (![404, 405, 0].includes(responsesStatus)) {
-      outcome.responses.available = true;
-    }
-
-    if (outcome.responses.available) {
-      try {
-        const toolResponse = await this.#requestCompletion("/responses", {
-          model,
-          instructions: "Call the ping tool exactly once.",
-          input: "ping",
-          tools: [probeToolResponses],
-          stream: false,
-          max_output_tokens: 1024,
-        });
-        const output = Array.isArray(toolResponse?.output) ? toolResponse.output : [];
-        outcome.responses.toolLoop = output.some(
-          (item) => item.type === "function_call" && item.name === "ping",
-        );
-        recordReasoning(toolResponse?.usage);
-      } catch {
-        outcome.responses.toolLoop = false;
-      }
-    }
-
-    if (!outcome.responses.toolLoop) {
+    const probeChat = async () => {
       try {
         const chatResponse = await this.#requestCompletion("/chat/completions", {
           model,
@@ -344,8 +311,57 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       } catch (error) {
         const status = statusOf(error);
         outcome.chat.available = ![404, 405, 0].includes(status);
+        if (outcome.chat.available) outcome.chat.toolLoop = false;
       }
-    }
+    };
+
+    const probeResponses = async () => {
+      let responsesStatus = 0;
+      try {
+        const availability = await this.#requestCompletion("/responses", {
+          model,
+          instructions: "Reply with the word pong.",
+          input: "ping",
+          stream: false,
+          max_output_tokens: 1024,
+        });
+        responsesStatus = 200;
+        recordReasoning(availability?.usage);
+      } catch (error) {
+        responsesStatus = statusOf(error);
+      }
+      if ([404, 405, 0].includes(responsesStatus)) {
+        outcome.responses.available = false;
+        return;
+      }
+      outcome.responses.available = true;
+      try {
+        const toolResponse = await this.#requestCompletion("/responses", {
+          model,
+          instructions: "Call the ping tool exactly once.",
+          input: "ping",
+          tools: [probeToolResponses],
+          stream: false,
+          max_output_tokens: 1024,
+        });
+        const output = Array.isArray(toolResponse?.output) ? toolResponse.output : [];
+        outcome.responses.toolLoop = output.some(
+          (item) => item.type === "function_call" && item.name === "ping",
+        );
+        recordReasoning(toolResponse?.usage);
+      } catch {
+        outcome.responses.toolLoop = false;
+      }
+    };
+
+    const first = order[0] === "chat" ? probeChat : probeResponses;
+    const second = order[0] === "chat" ? probeResponses : probeChat;
+    await first();
+    const firstPassed =
+      order[0] === "chat"
+        ? outcome.chat.toolLoop === true
+        : outcome.responses.toolLoop === true;
+    if (!firstPassed) await second();
     return outcome;
   }
 
@@ -364,12 +380,12 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         parameters: { type: "object", properties: {} },
       },
     };
-    const candidates = await this.#pickProbeModels();
+    const { candidates, catalog } = await this.#pickProbeModels();
     const result = {
       protocol: null,
       model: candidates[0] ?? null,
-      responses: { available: false, toolLoop: false },
-      chat: { available: false, toolLoop: false },
+      responses: { available: false, toolLoop: null },
+      chat: { available: false, toolLoop: null },
       reasoning: null,
       reason: null,
     };
@@ -377,12 +393,27 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       result.reason = "no_model_to_probe";
       return result;
     }
+    const firstCandidate = candidates[0];
+    const preferred =
+      catalog.find((entry) => (entry.id ?? entry.model) === firstCandidate)
+        ?.preferred_protocol ??
+      catalog.find(
+        (entry) =>
+          entry.preferred_protocol === "chat" ||
+          entry.preferred_protocol === "responses",
+      )?.preferred_protocol ??
+      null;
+    const order =
+      preferred === "chat" ? ["chat", "responses"] : ["responses", "chat"];
+    result.preferred_protocol = preferred;
+    result.probe_order = order;
     for (const model of candidates) {
       result.model = model;
       const outcome = await this.#probeModelProtocol(
         model,
         probeToolResponses,
         probeToolChat,
+        order,
       );
       result.responses = outcome.responses;
       result.chat = outcome.chat;
@@ -479,14 +510,28 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       : probed
         ? { ...probed }
         : null;
+    const metadata = entry?.metadata && typeof entry.metadata === "object"
+      ? entry.metadata
+      : {};
     return {
       id,
       model: id,
       displayName: id,
       isDefault: Boolean(id && id === this.model),
       capabilities,
-      featured: entry?.metadata?.featured ?? entry?.featured ?? null,
-      route_tier: entry?.metadata?.routeTier ?? entry?.routeTier ?? null,
+      featured: metadata.featured ?? entry?.featured ?? null,
+      route_tier: metadata.routeTier ?? entry?.routeTier ?? null,
+      preferred_protocol:
+        entry?.preferred_protocol ??
+        entry?.preferredProtocol ??
+        metadata.preferred_protocol ??
+        null,
+      route_health: entry?.route_health ?? metadata.route_health ?? null,
+      latency: entry?.latency ?? metadata.latency ?? null,
+      pricing: entry?.pricing ?? metadata.pricing ?? null,
+      status: entry?.status ?? metadata.status ?? null,
+      context: entry?.context ?? metadata.context ?? null,
+      tier: entry?.tier ?? metadata.tier ?? null,
     };
   }
 
@@ -547,12 +592,20 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
   }
 
   async startTurn(params) {
-    const { threadId, input, model, cwd, outputSchema } = params ?? {};
+    const { threadId, input, model, cwd, outputSchema, attribution } =
+      params ?? {};
     const turnId = randomUUID();
     const controller = new AbortController();
     this.turns.set(turnId, { controller, threadId, cwd });
     queueMicrotask(() => {
-      this.#runTurn(turnId, { threadId, input, model, cwd, outputSchema }).catch(
+      this.#runTurn(turnId, {
+        threadId,
+        input,
+        model,
+        cwd,
+        outputSchema,
+        attribution,
+      }).catch(
         (error) => {
           this.emit("notification", {
             method: "turn/completed",
@@ -579,7 +632,10 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     return {};
   }
 
-  async #runTurn(turnId, { threadId, input, model, cwd, outputSchema }) {
+  async #runTurn(
+    turnId,
+    { threadId, input, model, cwd, outputSchema, attribution },
+  ) {
     const protocol = await this.#ensureProtocol();
     if (protocol === "chat") {
       return this.#runChatTurn(turnId, {
@@ -588,6 +644,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
         model,
         cwd,
         outputSchema,
+        attribution,
       });
     }
     const controller = this.turns.get(turnId)?.controller;
@@ -602,7 +659,12 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       if (controller?.signal.aborted) break;
       const response = await this.#responses(
         inputItems,
-        { model: model ?? this.model, instructions, controller },
+        {
+          model: model ?? this.model,
+          instructions,
+          controller,
+          attribution,
+        },
       );
       usage = this.#addUsage(usage, response.usage);
       const goal = this.goals.get(threadId);
@@ -810,7 +872,10 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     }
   }
 
-  async #runChatTurn(turnId, { threadId, input, model, cwd, outputSchema }) {
+  async #runChatTurn(
+    turnId,
+    { threadId, input, model, cwd, outputSchema, attribution },
+  ) {
     const controller = this.turns.get(turnId)?.controller;
     const brief = this.#extractBrief(input);
     const instructions = this.#buildInstructions(outputSchema);
@@ -822,10 +887,14 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
 
     for (let round = 0; round < this.maxToolRounds; round += 1) {
       if (controller?.signal.aborted) break;
-      const response = await this.#callChat(messages, {
-        model: model ?? this.model,
-        controller,
-      });
+      const response = await this.#callChat(
+        messages,
+        {
+          model: model ?? this.model,
+          controller,
+        },
+        attribution,
+      );
       usage = this.#addUsage(usage, response.usage);
       const goal = this.goals.get(threadId);
       if (goal) {
@@ -883,7 +952,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     );
   }
 
-  async #callChat(messages, { model, controller }) {
+  async #callChat(messages, { model, controller }, attribution = null) {
     const body = {
       model,
       messages,
@@ -895,6 +964,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       "/chat/completions",
       body,
       controller,
+      attribution,
     );
     const message = response?.choices?.[0]?.message ?? {};
     const rawToolCalls = Array.isArray(message.tool_calls)
@@ -932,7 +1002,7 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     };
   }
 
-  async #responses(inputItems, { model, instructions, controller }) {
+  async #responses(inputItems, { model, instructions, controller, attribution }) {
     const body = {
       model,
       instructions,
@@ -941,7 +1011,12 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
       stream: false,
       max_output_tokens: 4000,
     };
-    const response = await this.#requestCompletion("/responses", body, controller);
+    const response = await this.#requestCompletion(
+      "/responses",
+      body,
+      controller,
+      attribution,
+    );
     return {
       output: response?.output ?? [],
       usage: response?.usage ?? this.#zeroUsage(),
@@ -961,9 +1036,16 @@ export class OpenAICompatibleExecutor extends ExecutorAdapter {
     }
   }
 
-  async #requestCompletion(pathname, body, controller) {
+  async #requestCompletion(pathname, body, controller, attribution = null) {
     const headers = { "content-type": "application/json" };
     if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`;
+    headers["x-acp-executor"] = this.id;
+    if (attribution?.taskId) {
+      headers["x-acp-task-id"] = String(attribution.taskId);
+    }
+    if (attribution?.workspace) {
+      headers["x-acp-project"] = path.basename(String(attribution.workspace));
+    }
     for (let attempt = 0; ; attempt += 1) {
       await this.#paceCompletionRequest();
       const response = await fetch(`${this.baseUrl}${pathname}`, {
