@@ -8,7 +8,7 @@ Probe checklist on the web panel.
 
 - Executor cards for auto-protocol endpoints show the detection checklist:
   the selected protocol and per-protocol tool-loop results (✓/✗), so the
-  probing outcome is visible without reading discovery JSON.
+  probing outcome is visible directly on the card.
 
 ### Verified
 
