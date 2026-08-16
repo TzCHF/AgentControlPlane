@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.5.3 — 2026-08-16
+
+Probe checklist on the web panel.
+
+### Added
+
+- Executor cards for auto-protocol endpoints show the detection checklist:
+  the selected protocol and per-protocol tool-loop results (✓/✗), so the
+  probing outcome is visible without reading discovery JSON.
+
+### Verified
+
+- 108 tests pass locally; copy passes the grounded-copy gate with 0
+  findings.
+
 ## v0.5.2 — 2026-08-16
 
 Smarter protocol probe model selection.

@@ -24,6 +24,10 @@ export const DASHBOARD_STRINGS = {
     capReasoning: "推理",
     capVision: "视觉",
     capUnknown: "能力未知",
+    protoLabel: "协议",
+    protoResponses: "Responses 工具循环",
+    protoChat: "Chat 工具循环",
+    protoPending: "探测中",
     tasks: "任务",
     noTasks: "暂无任务记录。",
     searchTasks: "按编号或内容搜索任务",
@@ -85,6 +89,10 @@ export const DASHBOARD_STRINGS = {
     capReasoning: "reasoning",
     capVision: "vision",
     capUnknown: "capabilities unknown",
+    protoLabel: "Protocol",
+    protoResponses: "Responses tool loop",
+    protoChat: "Chat tool loop",
+    protoPending: "probing",
     tasks: "Tasks",
     noTasks: "No task records yet.",
     searchTasks: "Search tasks by id or content",
@@ -464,6 +472,22 @@ function renderExecutors() {
       var detail = executor.discovery && executor.discovery.error
         ? '<div class="exec-detail">' + escapeHtml(String(executor.discovery.error)) + "</div>"
         : "";
+      var protocols = executor.discovery && executor.discovery.protocols;
+      var probeLines = "";
+      if (protocols) {
+        var check = function (ok) {
+          return '<span style="color:' + (ok ? "#34c26b" : "#e0564f") + '">' + (ok ? "✓" : "✗") + "</span>";
+        };
+        probeLines =
+          '<div class="exec-detail">' +
+          t("protoLabel") + ": " +
+          escapeHtml(protocols.selected ?? t("protoPending")) +
+          "<br>" +
+          t("protoResponses") + " " + check(protocols.responses && protocols.responses.toolLoop) +
+          "<br>" +
+          t("protoChat") + " " + check(protocols.chat && protocols.chat.toolLoop) +
+          "</div>";
+      }
       return (
         '<div class="card">' +
         '<div class="exec-name">' + escapeHtml(executor.display_name || executor.id) + "</div>" +
@@ -475,6 +499,7 @@ function renderExecutors() {
         '<span class="muted">' + fmt(t("modelsInCatalog"), { n: count }) + "</span>" +
         "</div>" +
         detail +
+        probeLines +
         "</div>"
       );
     })
