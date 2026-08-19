@@ -499,7 +499,7 @@ export class Orchestrator extends EventEmitter {
     if (!parent.threadId) {
       throw new ControlPlaneError(
         "task_not_started",
-        "The original task has no Codex thread yet",
+        "The original task has no active executor session yet",
       );
     }
     const brief = normalizeBrief(

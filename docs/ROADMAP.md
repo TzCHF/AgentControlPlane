@@ -97,3 +97,49 @@ Contracts:
   durations.
 - Every label in the picker states a measurable fact; the picker never
   switches the model silently.
+
+## Phase 5 — cross-executor continuation (design intent)
+
+Current priority: next core runtime milestone.
+
+Phase numbers record when an interface shape was designed. Phase 5 is the
+next core runtime milestone and takes priority over later historical or
+cost-aware routing work.
+
+Goal: when an executor becomes unavailable (quota, rate limit, auth
+failure, outage, model, or local environment issue), a compatible
+executor continues the same logical development task from the persisted
+handoff, reusing the recorded state.
+
+Planned continuation package shape:
+
+```json
+{
+  "task_id": "...",
+  "objective": "...",
+  "current_state": "...",
+  "completed_steps": [],
+  "remaining_steps": [],
+  "changed_files": [],
+  "test_evidence": [],
+  "decisions": [],
+  "constraints": [],
+  "known_failures": [],
+  "previous_executor": "...",
+  "next_action": "..."
+}
+```
+
+Design constraints:
+
+- The runtime does not yet switch one `task_id` between executors; this
+  phase defines the interface for that switch.
+- `continue_project` currently reuses the original executor and its
+  persistent session; a capability-matched re-route path is the
+  implementation target of this phase.
+- Tasks record a single executor id today; this phase adds an executor
+  history to the task record.
+- Capability matching (task requirements ∩ executor capabilities) gates
+  any re-route.
+- Later phases (historical routing, cost-aware routing) build on the
+  data this phase records.

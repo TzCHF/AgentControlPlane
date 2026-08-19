@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `npm run verify` runs the full suite and the syntax check
+  (`npm test && npm run check`) as the single pre-handoff gate, mirroring
+  CI.
+- `docs/DEVELOPMENT.md` defines the executor-neutral development flow, the
+  DEVELOPMENT HANDOFF contract, the executor-switch procedure, and
+  working-tree safety rules.
+
+### Changed
+
+- `AGENTS.md` records the executor-neutral development rules: handoff
+  output at the end of each round, working-tree safety, logical task
+  continuity, and durable decision storage.
+- `docs/ROADMAP.md` adds Phase 5 (cross-executor continuation) as the next
+  core runtime milestone.
+- The generic continuation path reports a missing session using
+  executor-neutral wording.
+
 ## v0.8.4 — 2026-08-16
 
 Beta launch baseline: joint-certification fixes.
