@@ -53,8 +53,22 @@ the round.
   check and the browser-companion check.
 - `config/default.json` (user-owned) stays untouched and uncommitted.
 
+## Round 01 classification (post-review)
+
+| Category | Verdict |
+|---|---|
+| Startup failover | PASS — A (Codex) and B (OpenCode) failed before producing work; B2 (Harness) completed the task |
+| Working-tree preservation | PASS — the user-owned `config/default.json` change and the untracked scratch files stayed untouched through every executor attempt |
+| Task-contract portability | PASS — B2 completed the task from the standalone task contract with no chat history |
+| True development handoff | NOT YET TESTED — A and B produced no partial diff and no handoff; B2 started from clean task state |
+| Cross-executor continuation | NOT YET TESTED — no executor resumed a partial diff produced by another executor |
+
+Round 01 did not exercise "existing partial diff + DEVELOPMENT HANDOFF → a second
+executor resumes the same task". That scenario is the target of Round 02.
+
 ## Next
 
-Round 2 (planned): Codex/OpenCode → Harness handoff, to verify handoff
-between different executor implementation types after a completed first
-round with an actual handoff produced.
+Round 02 (planned): Executor A = Harness implements 40–60% of a real,
+low-risk task and leaves an uncommitted diff plus a DEVELOPMENT HANDOFF;
+Executor B = OpenCode resumes from the handoff, the repository, and the
+working tree only, without reading the Harness chat history.
