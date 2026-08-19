@@ -13,19 +13,18 @@ AgentControlPlane 与 OpenAI-compatible 的 AI API 中转站配对：中转站�
 AgentControlPlane
         |  openai-compatible 执行器（ACP agent 循环）
         v  OpenAI-compatible /v1 请求
-AI 中转站 -> 上游模型（DeepSeek、GLM、OpenAI ...）
+AI 中转站 -> 上游模型目录
 ```
 
 中转站提供模型目录与算力；AgentControlPlane 提供委派工作流和用量证据，供中转站对账计费。
 
 ## AsterRoute 供应商
 
-AsterRoute 官方中转站 Base URL 为 `https://asterroute.com/v1`。先在
-[`https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp`](https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp)
-注册获取 API Key，再按专用供应商教程
-[docs/PROVIDER-ASTERROUTE.zh-CN.md](PROVIDER-ASTERROUTE.zh-CN.md) 配置。AsterRoute 在其集成指南
-[`https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp`](https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp)
-中发布了同一套步骤。
+AsterRoute 官方中转站 Base URL 为 `https://asterroute.com/v1`。AsterRoute
+当前采用邀请制；审核通过的账户将获得对应的 API 凭据、模型权限和使用限额。
+按专用供应商教程 [docs/PROVIDER-ASTERROUTE.zh-CN.md](PROVIDER-ASTERROUTE.zh-CN.md)
+配置，或直接阅读
+[AsterRoute 集成指南](https://asterroute.com/integrations/agentcontrolplane)。
 
 ## 配置
 
@@ -85,8 +84,8 @@ AsterRoute 官方中转站 Base URL 为 `https://asterroute.com/v1`。先在
 
 - `id` 必填，且要与内置执行器 id（`codex`、`openai-compatible`、`deepseek`、`claude`、`opencode`）不同。
 - `apiKeyEnv` 指定环境变量名；当 `apiKey` 为空时从该环境变量取密钥，密钥可以不出现在配置文件里。
-- `requestsPerMinute` 控制对中转站的补全请求节奏：60 秒滑动窗口内超过上限时执行器会等待再发。执行器对 429 响应自动重试两次并遵守 `retry-after` 头。中转站对已授权请求（含重试的 429）都计入 RPM 窗口，节奏器同样计每一次尝试；并发任务共用一个窗口。`/v1/models` 目录发现请求单独限速，不占用该额度。
-- 执行器从响应中捕获两个请求标识：`x-asterroute-request-id` 头（无此头时回退到响应体 id）记为 `asterroute_request_id`，`x-asterroute-provider-request-id` 记为 `upstream_request_id`。前者用于 ACP ↔ 中转站对账；后者仅用于上游账单关联与诊断。
+- `requestsPerMinute` 控制对中转站的补全请求节奏：60 秒滑动窗口内超过上限时执行器会等待再发。执行器对 429 响应自动重试两次并遵守 `retry-after` 头。中转站对已授权请求（含重试的 429）都计入 RPM 窗口，节奏器同样计每一次尝试；并发任务共用一个窗口。`/v1/models` 目录发现请求单独限速，不占用该额度。示例中的数值仅为示意，以运营方为每个账户分配的限制为准。
+- 执行器从响应头中捕获两个请求标识：`x-asterroute-request-id` 记为 `asterroute_request_id`，`x-asterroute-provider-request-id` 记为 `upstream_request_id`。前者用于 ACP ↔ 中转站对账；后者仅用于上游账单关联与诊断。
 - `reconcileUrl`（可选）指向中转站只读批量查询端点（`POST /api/usage/reconcile/lookup`）。配置后，ACP 会把本地尚无对账条目的请求 id 批量发过去，本地计算 presence 与 token 状态，并从响应只读 settlement 字段；ACP 绝不向中转站写权威 actual cost 或 settled 状态。
 - 派发时用 `"executor": "asterroute"` 或显示名选中中转；每个中转的目录会出现在 `list_models`、网页面板，以及伴侣执行器列表的「模型端点」分组中。
 

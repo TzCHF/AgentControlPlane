@@ -15,7 +15,7 @@ web AI (ChatGPT / DeepSeek ...)
 AgentControlPlane
         |  openai-compatible executor (ACP agent loop)
         v  OpenAI-compatible /v1 requests
-AI relay (中转站) -> upstream models (DeepSeek, GLM, OpenAI ...)
+AI relay (中转站) -> upstream model catalog
 ```
 
 The relay provides the model catalog and the compute; AgentControlPlane
@@ -25,12 +25,10 @@ against.
 ## AsterRoute provider
 
 The official AsterRoute relay base URL is `https://asterroute.com/v1`.
-Register for an API key at
-[`https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp`](https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp)
-and follow the dedicated provider guide
-[docs/PROVIDER-ASTERROUTE.md](PROVIDER-ASTERROUTE.md). AsterRoute publishes
-the same walkthrough as its integration guide at
-[`https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp`](https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp).
+AsterRoute access is currently invite-only; approved accounts receive the
+API credentials, model access and usage limits assigned to them. Follow the
+dedicated provider guide [docs/PROVIDER-ASTERROUTE.md](PROVIDER-ASTERROUTE.md)
+or read the [AsterRoute integration guide](https://asterroute.com/integrations/agentcontrolplane).
 
 ## Configuration
 
@@ -102,12 +100,14 @@ catalog, and static allowlist:
   `retry-after` header. Every authorized request counts into the relay's
   RPM window, including retried 429s, and the pacer counts each attempt;
   concurrent tasks share one window per relay. `/v1/models` discovery
-  requests are paced separately and stay outside this limit.
-- The executor captures two request identifiers from responses: the
-  `x-asterroute-request-id` header (falling back to the payload id) as
-  `asterroute_request_id`, and `x-asterroute-provider-request-id` as
-  `upstream_request_id`. The first drives ACP-to-gateway reconciliation;
-  the second stays with upstream billing and diagnostics.
+  requests are paced separately and stay outside this limit. The values in
+  these examples are illustrative; the limit assigned to each account by
+  the operator is authoritative.
+- The executor captures two request identifiers from response headers:
+  `x-asterroute-request-id` as `asterroute_request_id`, and
+  `x-asterroute-provider-request-id` as `upstream_request_id`. The first
+  drives ACP-to-gateway reconciliation; the second stays with upstream
+  billing and diagnostics.
 - `reconcileUrl` (optional) names the relay's read-only bulk lookup
   endpoint (`POST /api/usage/reconcile/lookup`). When configured, ACP
   posts local request ids that have no reconciliation entry yet, computes

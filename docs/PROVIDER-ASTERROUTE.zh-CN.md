@@ -2,17 +2,24 @@
 
 > [English](PROVIDER-ASTERROUTE.md)
 
-AsterRoute 是 AgentControlPlane 的官方 AI 中转站。它是一台 OpenAI 兼容网关，
+AsterRoute 是 AgentControlPlane 的官方可选集成。它是一台 OpenAI 兼容网关，
 负责鉴权、转发、计量与计费；AgentControlPlane 提供 agent 循环、网页 AI 委派、
-任务状态与逐任务 token 用量记账。两者仅通过标准 OpenAI 协议集成：AsterRoute
-可对接任意 OpenAI/Anthropic SDK，AgentControlPlane 也可对接任意 OpenAI 兼容供应商。
+任务状态与逐任务 token 用量记账。ACP 独立运行，不依赖 AsterRoute：任何
+OpenAI 兼容供应商都可用，ACP 在没有配置任何中转站时也能正常工作。
+
+集成分两层：
+
+- 模型流量走 OpenAI 兼容 API。
+- 可选的高级集成增加请求归因与请求/用量关联（`x-acp-*` 头）以及只读用量
+  对账；符合条件的账户获得 ACP × AsterRoute Verified 认证与 Founding
+  Program 资格。
 
 ## 配置
 
-1. 在
-   [`https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp`](https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp)
-   注册 AsterRoute API Key（项目 + 预付余额）。
-2. Key 放入环境变量 `ASTERROUTE_API_KEY`，不要写进配置文件。
+1. 向运营方申请接入。AsterRoute 当前采用邀请制；审核通过的账户将获得对应的
+   API 凭据、模型权限和使用限额。运营方的操作指引见
+   [AsterRoute 集成指南](https://asterroute.com/integrations/agentcontrolplane)。
+2. Key 放入环境变量 `ASTERROUTE_API_KEY`；配置文件不含 Key 材料。
 3. 在 `config/local.json` 中添加官方 preset relay：
 
    ```json
@@ -32,11 +39,12 @@ AsterRoute 是 AgentControlPlane 的官方 AI 中转站。它是一台 OpenAI �
    ```
 
    preset 会预填 `baseUrl: "https://asterroute.com/v1"`（OpenAI 兼容 Base URL）
-   与 `protocol: "auto"`；显式字段覆盖 preset。
+   与 `protocol: "auto"`；显式字段覆盖 preset。示例中的 `requestsPerMinute`
+   仅为示意值，以运营方为每个账户分配的限制为准。
 4. 用 `npm start` 启动服务。本地面板绑定 `http://127.0.0.1:4318`。
 
 AsterRoute 官网上的同套集成步骤见
-[`https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp`](https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp)。
+[`https://asterroute.com/integrations/agentcontrolplane`](https://asterroute.com/integrations/agentcontrolplane)。
 
 ## 面板中的用量位置
 
@@ -57,11 +65,11 @@ AsterRoute 官网上的同套集成步骤见
 
 | AsterRoute 错误码 | 处理方式 |
 |---|---|
-| `401 invalid_api_key` | 到 AsterRoute 后台重发/更换 Key，然后更新 `ASTERROUTE_API_KEY` 并重启 ACP。 |
-| `402 insufficient_balance` | 到 AsterRoute 后台充值项目余额（最低 €25）。 |
+| `401 invalid_api_key` | 通过运营方轮换 Key，然后更新 `ASTERROUTE_API_KEY` 并重启 ACP。 |
+| `402 insufficient_balance` | 账户余额或适用的使用限额已耗尽。检查你的 AsterRoute 账户或联系支持。 |
 | `429 rate_limit_exceeded` | 账户限速已触发；指数退避重试，执行器会遵守 `retry-after` 头。 |
 | `400 model_not_allowed` / `400 model_required` | 修正模型 ID：以 AsterRoute Base URL 的 `GET /v1/models` 为准，派发时校验也使用该实时目录。 |
-| `503 provider_unavailable` | 上游供应商不可用；查看 [状态页](https://asterroute.com/status?utm_source=agentcontrolplane&utm_medium=error&utm_campaign=asterroute-acp) 并退避重试。 |
+| `503 provider_unavailable` | 上游供应商不可用；查看 [状态页](https://asterroute.com/status) 并退避重试。 |
 
 ## 相关文档
 

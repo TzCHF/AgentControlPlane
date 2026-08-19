@@ -152,14 +152,26 @@ For controlled-versus-direct token experiments, see
 
 ## Model providers
 
-Any OpenAI-compatible relay works as a model endpoint. The official
-AsterRoute relay ships as a provider preset (`baseUrl:
-https://asterroute.com/v1`) and is covered step by step in
-[docs/PROVIDER-ASTERROUTE.md](docs/PROVIDER-ASTERROUTE.md). Register for an
-API key at
-[`https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp`](https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp),
-or read the same walkthrough on the AsterRoute site at
-[`https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp`](https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp).
+### Bring your own provider
+
+Any OpenAI-compatible relay or model endpoint works as a model endpoint.
+ACP works independently and does not require AsterRoute.
+
+### AsterRoute — official optional integration
+
+AsterRoute ships as a provider preset (`baseUrl: https://asterroute.com/v1`)
+and is covered step by step in
+[docs/PROVIDER-ASTERROUTE.md](docs/PROVIDER-ASTERROUTE.md). It is a curated
+multi-model API that authenticates, relays, meters, and bills requests
+through one provider key. The integration covers OpenAI-compatible model
+traffic, request attribution and request/usage correlation (`x-acp-*`
+headers), and read-only usage reconciliation.
+
+AsterRoute access is currently invite-only. Approved accounts receive the
+API credentials, model access and usage limits assigned to them. Eligible
+accounts receive the ACP × AsterRoute Verified designation and Founding
+Program eligibility; program terms are published on the
+[AsterRoute integration guide](https://asterroute.com/integrations/agentcontrolplane).
 
 ## MCP tools
 

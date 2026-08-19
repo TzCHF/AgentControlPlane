@@ -110,12 +110,23 @@ brief and continue the same project.
 
 ## 模型供应商
 
-任何 OpenAI 兼容中转站都可以作为模型端点使用。官方 AsterRoute 中转站自带
-provider preset（`baseUrl: https://asterroute.com/v1`），分步骤教程见
-[docs/PROVIDER-ASTERROUTE.zh-CN.md](docs/PROVIDER-ASTERROUTE.zh-CN.md)。在
-[`https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp`](https://asterroute.com/register?utm_source=agentcontrolplane&utm_medium=integration&utm_campaign=asterroute-acp)
-注册 API Key，或在 AsterRoute 官网阅读同一套步骤：
-[`https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp`](https://asterroute.com/integrations/agentcontrolplane?utm_source=agentcontrolplane&utm_medium=docs&utm_campaign=asterroute-acp)。
+### 自带供应商（Bring your own provider）
+
+任何 OpenAI 兼容的中转站或模型端点都可以作为模型端点使用。ACP 独立运行，
+不依赖 AsterRoute。
+
+### AsterRoute —— 官方可选集成
+
+AsterRoute 自带 provider preset（`baseUrl: https://asterroute.com/v1`），
+分步骤教程见 [docs/PROVIDER-ASTERROUTE.zh-CN.md](docs/PROVIDER-ASTERROUTE.zh-CN.md)。
+它是一个精选多模型 API，通过一把供应商 Key 完成鉴权、转发、计量与计费。
+集成包含 OpenAI 兼容模型流量、请求归因与请求/用量关联（`x-acp-*` 头）、
+只读用量对账。
+
+AsterRoute 当前采用邀请制。审核通过的账户将获得对应的 API 凭据、模型权限
+和使用限额。符合条件的账户获得 ACP × AsterRoute Verified 认证与 Founding
+Program 资格；项目条款发布在
+[AsterRoute 集成指南](https://asterroute.com/integrations/agentcontrolplane)。
 
 ## MCP 工具
 
