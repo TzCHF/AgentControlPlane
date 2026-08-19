@@ -12,7 +12,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node --test",
-    "check": "node --check src/server.js && node scripts/check-browser-companion.js",
+    "check": "node --check src/server.js && node scripts/check-docs-links.js && node scripts/check-browser-companion.js",
     "verify": "npm test && npm run check",
     "companion:check": "node scripts/check-browser-companion.js",
     "doctor": "node scripts/doctor.js",
