@@ -120,6 +120,10 @@ test("server/discover is served statelessly without an MCP session", async () =>
       (tool) => tool.name === "dispatch_opencode",
     );
     assert.equal(dispatchOpenCode.inputSchema.properties.executor.type, "string");
+    const continuation = body.result.tools.find(
+      (tool) => tool.name === "continue_project",
+    );
+    assert.equal(continuation.inputSchema.properties.executor.type, "string");
   } finally {
     await app.close();
   }

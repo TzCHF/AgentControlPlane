@@ -232,6 +232,14 @@ test("MCP search_tasks finds content and task_status accepts prefixes", async ()
     const status = await call("task_status", { task_id: "aaaa1111" });
     assert.equal(status.result.structuredContent.task.id, ID_A);
     assert.equal(status.result.structuredContent.task.status, "completed");
+    assert.equal(
+      status.result.structuredContent.task.logical_task_id,
+      ID_A,
+    );
+    assert.ok(
+      Array.isArray(status.result.structuredContent.task.executor_history),
+    );
+    assert.equal(status.result.structuredContent.task.continuation, null);
 
     const bad = await call("task_status", { task_id: "aaaa" });
     assert.equal(bad.result.isError, true);

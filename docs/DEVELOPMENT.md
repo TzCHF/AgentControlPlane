@@ -95,20 +95,21 @@ Blockers:
 
 ## Continuity across executor switches
 
-Preserve logical task continuity. Until native cross-executor continuation
-exists:
+The runtime supports native cross-executor continuation. Every lineage has a
+stable `logical_task_id`, an append-only `executor_history`, and an optional
+structured continuation package. Automatic reroute remains disabled by
+default. `continue_project` without `executor` preserves the original
+executor/session; an explicit `executor` is capability-gated and starts a new
+session in the same logical lineage.
+
+Repository-level handoffs remain required when the development executor itself
+changes outside ACP. In either path:
 
 - preserve original task references
 - preserve `parentTaskId` / continuation relationships where applicable
 - preserve evidence / attempts / decisions / working-tree state
-- record the executor handoff
+- record the executor handoff when a development round stops
 - do not treat an executor switch as an unrelated fresh development task
-
-The runtime does not yet switch the same `task_id` from Codex to Claude or
-OpenCode. `continue_project` reuses the original executor and its
-persistent session. Handoffs therefore happen at the repository level:
-persist the handoff block, keep the working tree, and continue the same
-logical development task with the next executor.
 
 ## Executor switching procedure
 

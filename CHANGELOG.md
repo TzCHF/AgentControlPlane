@@ -4,6 +4,12 @@
 
 ### Added
 
+- Native cross-executor continuation with stable logical task ids,
+  append-only executor history, compact continuation packages, deterministic
+  failure classification, and capability-gated reroute execution.
+- `continue_project` accepts an optional executor override while preserving the
+  original same-executor behavior when omitted.
+
 - `npm run verify` runs the full suite and the syntax check
   (`npm test && npm run check`) as the single pre-handoff gate, mirroring
   CI.
@@ -12,6 +18,10 @@
   working-tree safety rules.
 
 ### Changed
+
+- `task_status` now exposes additive continuation and executor-history fields.
+- Automatic reroute is default-off, capped, and restricted to infrastructure
+  failures; task implementation and validation failures never auto-switch.
 
 - `AGENTS.md` records the executor-neutral development rules: handoff
   output at the end of each round, working-tree safety, logical task

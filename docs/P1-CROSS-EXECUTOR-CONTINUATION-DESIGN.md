@@ -1,6 +1,6 @@
 # P1 — Native Cross-Executor Continuation: design
 
-Status: design only. No runtime implementation yet.
+Status: implemented on `main`; automatic reroute remains disabled by default.
 
 Goal: one logical task continues across multiple executor sessions. The
 runtime does not require the same executor thread or session id; a

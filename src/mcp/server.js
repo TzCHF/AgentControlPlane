@@ -195,9 +195,10 @@ function buildToolSpecs({ orchestrator, store, config }) {
       name: "continue_project",
       title: "Continue engineering project",
       description:
-        "Use this when acceptance or review found a concrete follow-up for the same persistent Codex project thread.",
+        "Use this when acceptance or review found a concrete follow-up. By default it reuses the current executor session; optional executor starts a capability-gated continuation on another executor while preserving the logical task lineage.",
       inputSchema: {
         task_id: z.string().min(4),
+        executor: z.string().optional(),
         objective: z.string().min(1),
         constraints: z.array(z.string()).optional(),
         acceptance_criteria: z.array(z.string()).optional(),
@@ -225,7 +226,7 @@ function buildToolSpecs({ orchestrator, store, config }) {
           const task = orchestrator.continueTask(resolved, args);
           return result(
             { task },
-            `Follow-up task ${task.id} was queued on the existing project thread.`,
+            `Follow-up task ${task.id} was queued on executor ${task.executor} within logical task ${task.logical_task_id}.`,
           );
         } catch (error) {
           return failure(error);

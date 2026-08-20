@@ -98,9 +98,9 @@ Contracts:
 - Every label in the picker states a measurable fact; the picker never
   switches the model silently.
 
-## Phase 5 — cross-executor continuation (design intent)
+## Phase 5 — cross-executor continuation (implemented)
 
-Current priority: next core runtime milestone.
+Status: implemented on `main`, with automatic reroute disabled by default.
 
 Phase numbers record when an interface shape was designed. Phase 5 is the
 next core runtime milestone and takes priority over later historical or
@@ -111,11 +111,11 @@ failure, outage, model, or local environment issue), a compatible
 executor continues the same logical development task from the persisted
 handoff, reusing the recorded state.
 
-Planned continuation package shape:
+Continuation package shape:
 
 ```json
 {
-  "task_id": "...",
+  "logical_task_id": "...",
   "objective": "...",
   "current_state": "...",
   "completed_steps": [],
@@ -130,16 +130,19 @@ Planned continuation package shape:
 }
 ```
 
-Design constraints:
+Runtime constraints:
 
-- The runtime does not yet switch one `task_id` between executors; this
-  phase defines the interface for that switch.
-- `continue_project` currently reuses the original executor and its
-  persistent session; a capability-matched re-route path is the
-  implementation target of this phase.
-- Tasks record a single executor id today; this phase adds an executor
-  history to the task record.
+- Automatic reroute preserves the same task id and `logical_task_id` while
+  starting a new executor session. Explicit `continue_project executor=...`
+  creates a child task with the same logical id.
+- `continue_project` without an executor preserves the original executor and
+  persistent session for backward compatibility.
+- Tasks record an append-only executor history and the latest continuation
+  package.
 - Capability matching (task requirements ∩ executor capabilities) gates
   any re-route.
-- Later phases (historical routing, cost-aware routing) build on the
-  data this phase records.
+- Reroute is limited to infrastructure failures, capped, and blocked when no
+  compatible candidate exists. Test/build/implementation/validation failures
+  never switch automatically.
+- Later phases (historical routing, cost-aware routing) build on the data this
+  phase records.

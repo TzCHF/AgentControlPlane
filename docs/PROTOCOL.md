@@ -59,14 +59,33 @@ automatic feedback loop that replaces copying output between two conversations.
 
 - `dispatch_project` — create an asynchronous task with auto or explicit route.
 - `dispatch_opencode` — backwards-compatible OpenCode shortcut.
-- `task_status` — read compact state, result, usage, and optional recent events.
+- `task_status` — read compact state, result, usage, executor history, latest
+  continuation package, reroute reason, and optional recent events.
 - `continue_project` — send a correction or follow-up to the same project.
+  Optional `executor` starts a capability-gated continuation on that executor;
+  omitting it preserves the existing executor and persistent session.
 - `cancel_task` — interrupt queued or active work.
 - `list_tasks` — list recent tasks.
 - `list_executors` — inspect discovery, capabilities, and current default.
 - `list_profiles` — inspect model/budget policies.
 - `list_models` — inspect the cached catalog for one executor.
 - `usage_report` — aggregate measured engineering usage.
+
+## Cross-executor continuation
+
+Every task exposes a stable `logical_task_id`. Child continuations preserve that
+id and keep `parentTaskId` as the direct edge. `executor_history` is append-only
+and records each acquired executor session. When an allowed infrastructure
+failure occurs, ACP stores a compact `continuation` package and may select the
+next compatible executor.
+
+Automatic reroute is disabled by default. It is enabled only through
+`executor.reroute.enabled=true`, bounded by `max_reroutes`, and limited to
+`quota_exhausted`, `rate_limited`, `executor_unavailable`,
+`authentication_unavailable`, and `provider_unavailable`. Test, build,
+implementation, and validation failures stay on the current executor. If no
+compatible executor exists, the task becomes `blocked`; it never silently runs
+on an incompatible backend.
 
 ## Token budgets
 
