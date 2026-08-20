@@ -21,6 +21,23 @@ test("resolveRelayKey reads the preset apiKeyEnv when the relay omits it", () =>
   assert.equal(resolved.key, "k");
 });
 
+test("preset-only relay carries preset baseUrl and apiKeyEnv", async () => {
+  const presetOnly = { id: "asterroute", preset: "asterroute" };
+  const env = { ASTERROUTE_API_KEY: "k" };
+  const result = await checkRelay(presetOnly, env, fakeFetch(200));
+  assert.equal(result.available, true);
+  assert.equal(result.baseUrl, "https://asterroute.com/v1");
+  assert.equal(result.keySource, "env");
+});
+
+test("explicit relay baseUrl overrides the preset baseUrl", async () => {
+  const relay = { ...asterrouteRelay, baseUrl: "https://example.test/v1" };
+  const env = { ASTERROUTE_API_KEY: "k" };
+  const result = await checkRelay(relay, env, fakeFetch(200));
+  assert.equal(result.available, true);
+  assert.equal(result.baseUrl, "https://example.test/v1");
+});
+
 test("resolveRelayKey honors an explicit apiKeyEnv override", () => {
   const relay = { ...asterrouteRelay, apiKeyEnv: "ACP_RELAY_X_KEY" };
   const env = { ACP_RELAY_X_KEY: "kx" };

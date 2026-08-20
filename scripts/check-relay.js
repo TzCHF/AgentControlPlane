@@ -18,12 +18,21 @@ import { resolvePreset } from "../src/executors/provider-presets.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+// Resolves the effective relay configuration: the provider preset (when a
+// preset is named) merged with the explicit relay entry. Explicit fields
+// override the preset, so a preset-only relay entry like
+// { "id": "asterroute", "preset": "asterroute" } still carries the preset's
+// baseUrl and apiKeyEnv.
+export function resolveEffectiveRelay(relay) {
+  const preset = relay?.preset ? resolvePreset(relay.preset) : null;
+  return { ...(preset ?? {}), ...(relay ?? {}) };
+}
+
 // Resolves the effective API key source for one relay config entry.
 // Returns presence booleans and the key value; the key is used only inside
 // this module and is never printed.
 export function resolveRelayKey(relay, env = process.env) {
-  const preset = relay?.preset ? resolvePreset(relay.preset) : null;
-  const merged = { ...(preset ?? {}), ...(relay ?? {}) };
+  const merged = resolveEffectiveRelay(relay);
   const envName = merged.apiKeyEnv ?? null;
   const fromEnv = envName ? env[envName] : undefined;
   const fromConfig = merged.apiKey ?? null;
@@ -38,10 +47,11 @@ export function resolveRelayKey(relay, env = process.env) {
 // Checks one relay entry: key presence first, then a live /v1/models probe.
 // fetchImpl is injectable for tests.
 export async function checkRelay(relay, env = process.env, fetchImpl = fetch) {
+  const effective = resolveEffectiveRelay(relay);
   const resolved = resolveRelayKey(relay, env);
-  const baseUrl = String(relay?.baseUrl ?? "").replace(/\/+$/, "");
+  const baseUrl = String(effective.baseUrl ?? "").replace(/\/+$/, "");
   const result = {
-    id: relay?.id ?? "?",
+    id: effective.id ?? relay?.id ?? "?",
     baseUrl,
     apiKeyConfigured: Boolean(resolved.key),
     envName: resolved.envName ?? null,
