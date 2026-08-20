@@ -1265,7 +1265,8 @@ export class Orchestrator extends EventEmitter {
       if (task.status === "queued") {
         this.queue.push({
           taskId: task.id,
-          followUp: Boolean(task.parentTaskId),
+          followUp: Boolean(task.parentTaskId || task.continuation),
+          rerouted: Boolean(task.continuation),
         });
         continue;
       }
@@ -1289,16 +1290,36 @@ export class Orchestrator extends EventEmitter {
                   ? "blocked"
                   : "completed"
                 : lastTurn.status;
+            const completedAt = new Date().toISOString();
             this.store.updateTask(task.id, {
               status,
               turnId: lastTurn.id,
               result: report,
               error: lastTurn.error ?? null,
-              completedAt: new Date().toISOString(),
+              completedAt,
             });
             this.store.addEvent(task.id, {
               type: "task.recovered",
               recoveredStatus: status,
+            });
+            if (
+              ["failed", "blocked"].includes(status) &&
+              this.#attemptReroute(task.id, lastTurn.error ?? report, {
+                result: report,
+                recovered: true,
+              })
+            ) {
+              recovered = true;
+              continue;
+            }
+            const recoveredTask = this.store.getTask(task.id);
+            this.#updateCurrentExecutorHistory(task.id, {
+              ended_at: completedAt,
+              ended_reason: lastTurn.error?.code ?? status,
+              thread_id: recoveredTask.threadId,
+              turn_id: lastTurn.id,
+              attempts: Math.max(1, Number(lastTurn.retries ?? 0) + 1),
+              usage: structuredClone(recoveredTask.usage ?? zeroUsage()),
             });
             recovered = true;
           }
