@@ -20,6 +20,7 @@ import { extractTokenEstimate } from "./token-estimate.js";
 import { createUsageEvent } from "./usage-events.js";
 import { reconcileUsage } from "./usage-dimensions.js";
 import { reconcileClientFor } from "./reconcile-client.js";
+import { snapshotExecutorCapabilities } from "./reroute.js";
 
 function zeroUsage() {
   return {
@@ -473,6 +474,24 @@ export class Orchestrator extends EventEmitter {
         text: error.message,
       });
     }
+    const capabilityRequirements =
+      recommendation?.requirements ??
+      extractTaskRequirements(
+        {
+          objective: brief.objective,
+          profile: policy.name,
+          reasoning_effort: policy.effort ?? null,
+          allowed_models: request.allowed_models ?? null,
+          model: policy.model ?? null,
+        },
+        this.config,
+      );
+    const selectedExecutor = this.executors.get(provider);
+    const executorCapabilities = snapshotExecutorCapabilities(selectedExecutor, {
+      catalog,
+      model: policy.model ?? null,
+      discovery: this.executorDiscovery[provider] ?? null,
+    });
     const task = this.store.createTask({
       workspace,
       brief,
@@ -484,6 +503,8 @@ export class Orchestrator extends EventEmitter {
       ),
       recommendation,
       kind: request.kind ?? "production",
+      capabilityRequirements,
+      executorCapabilities,
     });
     this.queue.push({ taskId: task.id, followUp: false });
     queueMicrotask(() => this.#drain());
@@ -520,12 +541,29 @@ export class Orchestrator extends EventEmitter {
       token_budget: request.token_budget,
     }, this.modelCatalogs.get(parent.executor) ?? []);
     if (parent.executor !== "codex" && !request.model) policy.model = null;
+    const capabilityRequirements = extractTaskRequirements(
+      {
+        objective: brief.objective,
+        profile: policy.name,
+        reasoning_effort: policy.effort ?? null,
+        model: policy.model ?? null,
+      },
+      this.config,
+    );
+    const parentExecutor = this.executors.get(parent.executor);
+    const executorCapabilities = snapshotExecutorCapabilities(parentExecutor, {
+      catalog: this.modelCatalogs.get(parent.executor) ?? [],
+      model: policy.model ?? null,
+      discovery: this.executorDiscovery[parent.executor] ?? null,
+    });
     const task = this.store.createTask({
       workspace: parent.workspace,
       brief,
       policy,
       parentTaskId: parent.id,
       executor: parent.executor ?? this.defaultProvider,
+      capabilityRequirements,
+      executorCapabilities,
     });
     this.store.updateTask(task.id, { threadId: parent.threadId });
     this.queue.push({ taskId: task.id, followUp: true });

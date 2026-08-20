@@ -128,3 +128,95 @@ export function resolveRerouteConfig(value = undefined) {
     allowed_reasons: [...new Set(allowed)],
   };
 }
+
+function modelEntryFor(catalog, modelId) {
+  if (!Array.isArray(catalog) || !modelId) return null;
+  return (
+    catalog.find(
+      (entry) => (entry?.model ?? entry?.id) === modelId,
+    ) ?? null
+  );
+}
+
+export function snapshotExecutorCapabilities(
+  executor,
+  { catalog = [], model = null, discovery = null } = {},
+) {
+  const endpoint = executor?.kind === "model-endpoint";
+  const modelEntry = modelEntryFor(catalog, model);
+  const modelCapabilities = modelEntry?.capabilities ?? null;
+  const adapter = executor?.capabilities ?? {};
+  return {
+    executor: executor?.id ?? null,
+    kind: endpoint ? "model-endpoint" : "cli",
+    model: model ?? null,
+    available: discovery?.available ?? executor?.ready ?? null,
+    persistent_threads: adapter.persistentThreads ?? null,
+    token_usage: adapter.tokenUsage ?? null,
+    hard_interrupt: adapter.hardInterrupt ?? null,
+    subagents: adapter.subagents ?? null,
+    filesystem: endpoint ? true : true,
+    shell: endpoint ? true : true,
+    git: endpoint ? true : true,
+    chat: modelCapabilities?.chat ?? null,
+    responses: modelCapabilities?.responses ?? null,
+    tools: endpoint ? modelCapabilities?.tools ?? null : true,
+    reasoning: modelCapabilities?.reasoning ?? null,
+    vision: modelCapabilities?.vision ?? null,
+    context_tokens:
+      modelEntry?.context != null && Number.isFinite(Number(modelEntry.context))
+        ? Number(modelEntry.context)
+        : null,
+    source: modelCapabilities ? "model_catalog" : endpoint ? "unknown" : "cli",
+  };
+}
+
+export function evaluateExecutorCompatibility(
+  requirements = {},
+  capabilities = {},
+) {
+  const reasons = [];
+  const warnings = [];
+  if (capabilities.available === false) reasons.push("executor_unavailable");
+  if (requirements.tools_required && capabilities.tools !== true) {
+    reasons.push(
+      capabilities.tools === false ? "tools_unsupported" : "tools_unverified",
+    );
+  }
+  if (requirements.vision_required && capabilities.vision !== true) {
+    reasons.push(
+      capabilities.vision === false
+        ? "vision_unsupported"
+        : "vision_unverified",
+    );
+  }
+  const minimumContext = Number(requirements.minimum_context_tokens ?? 0);
+  const context = capabilities.context_tokens;
+  if (minimumContext > 0) {
+    if (context == null) warnings.push("context_unknown");
+    else if (Number(context) < minimumContext) reasons.push("context_insufficient");
+  }
+  if (
+    ["high", "ultra"].includes(requirements.reasoning_level) &&
+    capabilities.reasoning === false
+  ) {
+    reasons.push("reasoning_unsupported");
+  } else if (
+    ["high", "ultra"].includes(requirements.reasoning_level) &&
+    capabilities.reasoning == null
+  ) {
+    warnings.push("reasoning_unknown");
+  }
+  for (const protocol of requirements.required_protocols ?? []) {
+    if (capabilities[protocol] === false) {
+      reasons.push(`protocol_unsupported:${protocol}`);
+    } else if (capabilities[protocol] == null) {
+      warnings.push(`protocol_unknown:${protocol}`);
+    }
+  }
+  return {
+    compatible: reasons.length === 0,
+    reasons: [...new Set(reasons)],
+    warnings: [...new Set(warnings)],
+  };
+}

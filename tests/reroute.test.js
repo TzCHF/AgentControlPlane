@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   classifyExecutorFailure,
+  evaluateExecutorCompatibility,
   resolveRerouteConfig,
+  snapshotExecutorCapabilities,
 } from "../src/core/reroute.js";
 
 test("classifies only allowed infrastructure failures for reroute", () => {
@@ -59,5 +61,88 @@ test("reroute config is disabled by default and validates its guardrails", () =>
   assert.throws(
     () => resolveRerouteConfig({ allowed_reasons: ["test_failure"] }),
     /unsupported reason/,
+  );
+});
+
+test("capability snapshots distinguish CLI tooling from model endpoints", () => {
+  const cli = snapshotExecutorCapabilities({
+    id: "opencode",
+    kind: "cli",
+    ready: true,
+    capabilities: { persistentThreads: true },
+  });
+  assert.equal(cli.tools, true);
+  assert.equal(cli.filesystem, true);
+  assert.equal(cli.source, "cli");
+
+  const endpoint = snapshotExecutorCapabilities(
+    {
+      id: "relay",
+      kind: "model-endpoint",
+      capabilities: { tokenUsage: true },
+    },
+    {
+      model: "model-a",
+      catalog: [
+        {
+          id: "model-a",
+          context: 128000,
+          capabilities: { tools: true, vision: false, reasoning: true },
+        },
+      ],
+      discovery: { available: true },
+    },
+  );
+  assert.equal(endpoint.tools, true);
+  assert.equal(endpoint.vision, false);
+  assert.equal(endpoint.context_tokens, 128000);
+  assert.equal(endpoint.source, "model_catalog");
+});
+
+test("capability gate enforces verified tools and vision while allowing unknown context", () => {
+  const requirements = {
+    tools_required: true,
+    vision_required: false,
+    reasoning_level: "high",
+    minimum_context_tokens: 64000,
+    required_protocols: [],
+  };
+  const compatible = evaluateExecutorCompatibility(requirements, {
+    available: true,
+    tools: true,
+    reasoning: true,
+    context_tokens: null,
+  });
+  assert.equal(compatible.compatible, true);
+  assert.ok(compatible.warnings.includes("context_unknown"));
+
+  assert.deepEqual(
+    evaluateExecutorCompatibility(requirements, {
+      available: true,
+      tools: null,
+      reasoning: true,
+      context_tokens: 128000,
+    }).reasons,
+    ["tools_unverified"],
+  );
+  assert.ok(
+    evaluateExecutorCompatibility(
+      { ...requirements, vision_required: true },
+      {
+        available: true,
+        tools: true,
+        vision: false,
+        reasoning: true,
+        context_tokens: 128000,
+      },
+    ).reasons.includes("vision_unsupported"),
+  );
+  assert.ok(
+    evaluateExecutorCompatibility(requirements, {
+      available: true,
+      tools: true,
+      reasoning: true,
+      context_tokens: 32000,
+    }).reasons.includes("context_insufficient"),
   );
 });

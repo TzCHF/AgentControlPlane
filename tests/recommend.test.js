@@ -400,4 +400,7 @@ test("dispatch records the recommendation snapshot and the resolved model", () =
   assert.ok(stored.recommendation.catalog_hash.length > 0);
   assert.ok(Array.isArray(stored.recommendation.ranked));
   assert.ok(Array.isArray(stored.recommendation.excluded));
+  assert.equal(stored.capability_requirements.tools_required, true);
+  assert.equal(stored.executor_capabilities.executor, "relay-x");
+  assert.equal(stored.executor_capabilities.kind, "model-endpoint");
 });
