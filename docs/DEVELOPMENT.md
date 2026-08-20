@@ -33,6 +33,7 @@ Every executor uses the same commands:
 | `npm run check` | syntax check plus browser-companion consistency check |
 | `npm run verify` | `npm test && npm run check` — the single pre-handoff gate |
 | `npm run doctor` | list discovered executors and the automatic default |
+| `npm run check:relay` | run the live relay connectivity check; requires relay keys in the environment |
 | `npm start` | run the local service on 127.0.0.1:4318 |
 
 `npm run verify` mirrors the CI pipeline (`npm ci`, `npm test`,

@@ -25,6 +25,7 @@
     "benchmark:recommend": "node scripts/benchmark-recommend.js",
     "verify:audit": "node scripts/verify-audit.js",
     "sandbox:setup": "node scripts/setup-windows-sandbox.js",
+    "check:relay": "node scripts/check-relay.js",
     "key:fingerprint": "node scripts/key-fingerprint.js"
   },
   "dependencies": {
