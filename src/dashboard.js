@@ -79,6 +79,9 @@ export const DASHBOARD_STRINGS = {
     colTask: "任务",
     colStatus: "状态",
     colExecutor: "执行器",
+    lineage: "谱系 {id}",
+    executorPath: "执行路径 {path}",
+    rerouteReason: "切换原因 {reason}",
     colModel: "模型",
     colProfile: "档位",
     colTimeUsed: "用时",
@@ -194,6 +197,9 @@ export const DASHBOARD_STRINGS = {
     colTask: "Task",
     colStatus: "Status",
     colExecutor: "Executor",
+    lineage: "Lineage {id}",
+    executorPath: "Executor path {path}",
+    rerouteReason: "Reroute reason {reason}",
     colModel: "Model",
     colProfile: "Profile",
     colTimeUsed: "Time used",
@@ -358,6 +364,7 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap
 td.mono { font-family: Consolas, monospace; font-size: 12.5px; }
 td.objective { max-width: 380px; }
 td.objective div { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.task-lineage { color: var(--muted); font-family: Consolas, monospace; font-size: 11px; margin-top: 3px; }
 .st-q { color: var(--muted); }
 .st-r { color: var(--accent); }
 .st-c { color: var(--ok); }
@@ -727,6 +734,27 @@ function renderTasks() {
       var objective = escapeHtml(
         (task.brief && task.brief.objective) || task.objective || task.id,
       );
+      var logicalId = task.logical_task_id || task.id;
+      var history = (task.executor_history || [])
+        .map(function (entry) { return entry.executor; })
+        .filter(Boolean);
+      var lineageParts = [];
+      if (logicalId !== task.id || history.length > 1) {
+        lineageParts.push(fmt(t("lineage"), { id: String(logicalId).slice(0, 8) }));
+      }
+      if (history.length > 1) {
+        lineageParts.push(fmt(t("executorPath"), { path: history.join(" → ") }));
+      }
+      if (task.reroute_reason) {
+        lineageParts.push(
+          fmt(t("rerouteReason"), { reason: task.reroute_reason }),
+        );
+      }
+      var lineage = lineageParts.length
+        ? '<div class="task-lineage">' +
+          escapeHtml(lineageParts.join(" · ")) +
+          "</div>"
+        : "";
       var usage = task.usage || {};
       var tokens = usage.total_tokens
         ? fmt(t("tokensTitle"), {
@@ -765,7 +793,7 @@ function renderTasks() {
       return (
         "<tr>" +
         '<td class="mono">' + clock(task.createdAt) + "</td>" +
-        '<td class="objective"><div title="' + objective + '">' + objective + "</div></td>" +
+        '<td class="objective"><div title="' + objective + '">' + objective + "</div>" + lineage + "</td>" +
         '<td class="' + statusClass(task.status) + '">' + statusKey(task.status) + "</td>" +
         '<td class="hide-sm">' + escapeHtml(task.executor || "") + "</td>" +
         '<td class="hide-sm mono">' + escapeHtml((task.policy && task.policy.model) || "") + "</td>" +

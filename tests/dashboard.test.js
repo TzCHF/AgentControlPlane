@@ -87,6 +87,11 @@ test("dashboardHtml embeds version and defaults to Chinese", () => {
   assert.match(html, /本地面板/);
   assert.match(html, /9\.9\.9-test/);
   assert.match(html, /local panel/);
+  assert.match(html, /谱系 \{id\}/);
+  assert.match(html, /Executor path \{path\}/);
+  assert.match(html, /task\.executor_history/);
+  assert.match(html, /task\.logical_task_id/);
+  assert.match(html, /task\.reroute_reason/);
   assert.ok(!html.includes("https://"), "page carries no external URLs");
   assert.ok(!html.includes("http://"), "page carries no external URLs");
 });
