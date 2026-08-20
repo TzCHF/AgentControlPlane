@@ -22,6 +22,48 @@ function emptyState() {
   };
 }
 
+function zeroExecutorUsage() {
+  return {
+    input_tokens: 0,
+    output_tokens: 0,
+    total_tokens: 0,
+  };
+}
+
+function defaultExecutorHistory(task) {
+  if (!task?.executor) return [];
+  return [
+    {
+      executor: task.executor,
+      started_at: task.createdAt ?? null,
+      ended_at: task.completedAt ?? null,
+      ended_reason: task.reroute_reason ?? null,
+      thread_id: task.threadId ?? null,
+      turn_id: task.turnId ?? null,
+      attempts: Math.max(1, Number(task.retries ?? 0) + 1),
+      usage: {
+        ...zeroExecutorUsage(),
+        ...(task.usage ?? {}),
+      },
+    },
+  ];
+}
+
+function normalizeTaskRecord(task) {
+  if (!task) return null;
+  return {
+    ...structuredClone(task),
+    logical_task_id: task.logical_task_id ?? task.id,
+    executor_history: Array.isArray(task.executor_history)
+      ? structuredClone(task.executor_history)
+      : defaultExecutorHistory(task),
+    continuation: task.continuation ?? null,
+    reroute_reason: task.reroute_reason ?? null,
+    capability_requirements: task.capability_requirements ?? null,
+    executor_capabilities: task.executor_capabilities ?? null,
+  };
+}
+
 export class TaskStore {
   constructor(
     stateDir,
@@ -276,11 +318,22 @@ export class TaskStore {
     estimatedMinutes = null,
     recommendation = null,
     kind = "production",
+    logicalTaskId = null,
+    executorHistory = null,
+    continuation = null,
+    rerouteReason = null,
+    capabilityRequirements = null,
+    executorCapabilities = null,
   }) {
     this.#pruneTasks();
     const id = crypto.randomUUID();
+    const createdAt = now();
+    const parent = parentTaskId ? this.state.tasks[parentTaskId] : null;
+    const logicalTaskIdValue =
+      logicalTaskId ?? parent?.logical_task_id ?? parent?.id ?? id;
     const task = {
       id,
+      logical_task_id: logicalTaskIdValue,
       parentTaskId,
       workspace,
       brief,
@@ -289,8 +342,8 @@ export class TaskStore {
       estimatedMinutes,
       kind: normalizeTaskKind(kind),
       status: "queued",
-      createdAt: now(),
-      updatedAt: now(),
+      createdAt,
+      updatedAt: createdAt,
       startedAt: null,
       completedAt: null,
       threadId: null,
@@ -305,6 +358,30 @@ export class TaskStore {
         ? structuredClone(recommendation)
         : null,
       retries: 0,
+      executor_history: Array.isArray(executorHistory)
+        ? structuredClone(executorHistory)
+        : executor
+          ? [
+              {
+                executor,
+                started_at: createdAt,
+                ended_at: null,
+                ended_reason: null,
+                thread_id: null,
+                turn_id: null,
+                attempts: 1,
+                usage: zeroExecutorUsage(),
+              },
+            ]
+          : [],
+      continuation: continuation ? structuredClone(continuation) : null,
+      reroute_reason: rerouteReason ?? null,
+      capability_requirements: capabilityRequirements
+        ? structuredClone(capabilityRequirements)
+        : null,
+      executor_capabilities: executorCapabilities
+        ? structuredClone(executorCapabilities)
+        : null,
     };
     this.state.tasks[id] = task;
     this.persist();
@@ -313,7 +390,7 @@ export class TaskStore {
       workspace,
       policy: policy.name,
     });
-    return structuredClone(task);
+    return normalizeTaskRecord(task);
   }
 
   updateTask(id, patch) {
@@ -321,7 +398,25 @@ export class TaskStore {
     if (!task) return null;
     Object.assign(task, patch, { updatedAt: now() });
     this.persist();
-    return structuredClone(task);
+    return normalizeTaskRecord(task);
+  }
+
+  appendExecutorHistory(id, entry) {
+    const task = this.state.tasks[id];
+    if (!task) return null;
+    const history = Array.isArray(task.executor_history)
+      ? task.executor_history
+      : defaultExecutorHistory(task);
+    history.push(structuredClone(entry));
+    task.executor_history = history;
+    task.updatedAt = now();
+    this.persist();
+    this.audit("task.executor_acquired", {
+      taskId: id,
+      logicalTaskId: task.logical_task_id ?? task.id,
+      executor: entry?.executor ?? null,
+    });
+    return normalizeTaskRecord(task);
   }
 
   addEvent(id, event) {
@@ -342,7 +437,7 @@ export class TaskStore {
   getTask(id, includeEvents = false) {
     const task = this.state.tasks[id];
     if (!task) return null;
-    const copy = structuredClone(task);
+    const copy = normalizeTaskRecord(task);
     if (!includeEvents) delete copy.events;
     return copy;
   }
@@ -352,7 +447,7 @@ export class TaskStore {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit)
       .map((task) => {
-        const copy = structuredClone(task);
+        const copy = normalizeTaskRecord(task);
         delete copy.events;
         return copy;
       });
@@ -384,7 +479,7 @@ export class TaskStore {
     });
     matches.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return matches.slice(0, Math.min(100, Math.max(1, Number(limit) || 20))).map((task) => {
-      const copy = structuredClone(task);
+      const copy = normalizeTaskRecord(task);
       delete copy.events;
       return copy;
     });
@@ -394,7 +489,16 @@ export class TaskStore {
     const wanted = new Set(statuses);
     return Object.values(this.state.tasks)
       .filter((task) => wanted.has(task.status))
-      .map((task) => structuredClone(task));
+      .map((task) => normalizeTaskRecord(task));
+  }
+
+  listByLogicalTask(logicalTaskId) {
+    return Object.values(this.state.tasks)
+      .filter(
+        (task) => (task.logical_task_id ?? task.id) === logicalTaskId,
+      )
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((task) => normalizeTaskRecord(task));
   }
 
   getProject(workspace) {
