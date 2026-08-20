@@ -20,7 +20,11 @@ import { extractTokenEstimate } from "./token-estimate.js";
 import { createUsageEvent } from "./usage-events.js";
 import { reconcileUsage } from "./usage-dimensions.js";
 import { reconcileClientFor } from "./reconcile-client.js";
-import { snapshotExecutorCapabilities } from "./reroute.js";
+import {
+  classifyExecutorFailure,
+  evaluateExecutorCompatibility,
+  snapshotExecutorCapabilities,
+} from "./reroute.js";
 
 function zeroUsage() {
   return {
@@ -71,6 +75,49 @@ function mapGoalUsage(goal, currentUsage = null) {
       totalTokens,
       Number(currentUsage?.total_tokens ?? 0),
     ),
+  };
+}
+
+function continuationTestEvidence(tests = []) {
+  return (Array.isArray(tests) ? tests : []).map((entry) => {
+    if (entry && typeof entry === "object") {
+      return {
+        command: String(entry.command ?? entry.name ?? "unknown"),
+        status: entry.status === "passed" ? "passed" : "failed",
+      };
+    }
+    const command = String(entry);
+    return {
+      command,
+      status: /\b(pass|passed|ok)\b/i.test(command) ? "passed" : "failed",
+    };
+  });
+}
+
+function buildContinuationPackage(task, rerouteReason, error = null) {
+  const result = task.result ?? {};
+  const errorPayload = error ? asErrorPayload(error) : task.error;
+  return {
+    version: 1,
+    logical_task_id: task.logical_task_id ?? task.id,
+    objective: task.brief?.objective ?? "",
+    current_state: ["partial", "blocked"].includes(task.status)
+      ? task.status
+      : "running",
+    completed_steps: Array.isArray(result.completed_steps)
+      ? structuredClone(result.completed_steps)
+      : [],
+    remaining_steps: Array.isArray(result.remaining_steps)
+      ? structuredClone(result.remaining_steps)
+      : structuredClone(task.brief?.acceptance_criteria ?? []),
+    changed_files: structuredClone(result.changed_files ?? []),
+    test_evidence: continuationTestEvidence(result.tests),
+    decisions: structuredClone(result.decisions ?? []),
+    constraints: structuredClone(task.brief?.constraints ?? []),
+    known_failures: errorPayload?.message ? [errorPayload.message] : [],
+    previous_executor: task.executor,
+    reroute_reason: rerouteReason,
+    next_action: result.next_action ?? null,
   };
 }
 
@@ -426,6 +473,195 @@ export class Orchestrator extends EventEmitter {
     return structuredClone(this.runtimeHealth);
   }
 
+  #policyForExecutor(task, executorId) {
+    const executor = this.executors.get(executorId);
+    const catalog = this.modelCatalogs.get(executorId) ?? [];
+    const policy = structuredClone(task.policy);
+    const currentModel = policy.model;
+    const currentSupported = catalog.some(
+      (entry) => (entry.model ?? entry.id) === currentModel,
+    );
+    if (executor?.kind === "model-endpoint") {
+      const defaultEntry =
+        catalog.find((entry) => entry.isDefault) ?? catalog[0] ?? null;
+      policy.model = currentSupported
+        ? currentModel
+        : defaultEntry?.model ?? defaultEntry?.id ?? executor.model ?? null;
+    } else if (executorId !== "codex") {
+      policy.model = null;
+    }
+    return policy;
+  }
+
+  #capabilitiesFor(executorId, policy) {
+    return snapshotExecutorCapabilities(this.executors.get(executorId), {
+      catalog: this.modelCatalogs.get(executorId) ?? [],
+      model: policy?.model ?? null,
+      discovery: this.executorDiscovery[executorId] ?? null,
+    });
+  }
+
+  #updateCurrentExecutorHistory(taskId, patch) {
+    const task = this.store.getTask(taskId);
+    if (!task) return null;
+    const history = structuredClone(task.executor_history ?? []);
+    if (history.length === 0) return task;
+    history[history.length - 1] = {
+      ...history[history.length - 1],
+      ...patch,
+    };
+    return this.store.updateTask(taskId, { executor_history: history });
+  }
+
+  #selectRerouteCandidate(task) {
+    const candidates = [];
+    for (const executorId of this.#orderedProviders(task.policy?.name)) {
+      if (executorId === task.executor || !this.executors.has(executorId)) {
+        continue;
+      }
+      const discovery = this.executorDiscovery[executorId];
+      if (discovery?.available === false) {
+        candidates.push({
+          executor: executorId,
+          compatible: false,
+          reasons: ["executor_unavailable"],
+          warnings: [],
+        });
+        continue;
+      }
+      const policy = this.#policyForExecutor(task, executorId);
+      const capabilities = this.#capabilitiesFor(executorId, policy);
+      const compatibility = evaluateExecutorCompatibility(
+        task.capability_requirements ?? {},
+        capabilities,
+      );
+      const candidate = {
+        executor: executorId,
+        policy,
+        capabilities,
+        ...compatibility,
+      };
+      candidates.push(candidate);
+      if (candidate.compatible) return { candidate, candidates };
+    }
+    return { candidate: null, candidates };
+  }
+
+  #attemptReroute(taskId, error, context = {}) {
+    const task = this.store.getTask(taskId, true);
+    const reroute = this.config.executor?.reroute;
+    if (!task || reroute?.enabled !== true) return false;
+    const reason = classifyExecutorFailure(error, context);
+    if (
+      reason === "task_failure" ||
+      !(reroute.allowed_reasons ?? []).includes(reason)
+    ) {
+      return false;
+    }
+
+    const history = structuredClone(task.executor_history ?? []);
+    const reroutesUsed = Math.max(0, history.length - 1);
+    const continuation = buildContinuationPackage(task, reason, error);
+    if (reroutesUsed >= Number(reroute.max_reroutes ?? 2)) {
+      this.store.updateTask(taskId, {
+        status: "blocked",
+        continuation,
+        reroute_reason: reason,
+        error: {
+          code: "reroute_limit_reached",
+          message: `The logical task reached its reroute limit of ${reroute.max_reroutes}.`,
+          details: { reason, reroutes_used: reroutesUsed },
+        },
+        completedAt: new Date().toISOString(),
+      });
+      this.store.addEvent(taskId, {
+        type: "task.reroute_blocked",
+        reason,
+        blocker: "reroute_limit_reached",
+      });
+      this.#finishActiveTask(taskId);
+      return true;
+    }
+
+    const { candidate, candidates } = this.#selectRerouteCandidate(task);
+    if (!candidate) {
+      this.store.updateTask(taskId, {
+        status: "blocked",
+        continuation,
+        reroute_reason: reason,
+        error: {
+          code: "no_compatible_executor",
+          message: "No compatible executor is available for continuation.",
+          details: {
+            reason,
+            candidates: candidates.map((entry) => ({
+              executor: entry.executor,
+              reasons: entry.reasons,
+              warnings: entry.warnings,
+            })),
+          },
+        },
+        completedAt: new Date().toISOString(),
+      });
+      this.store.addEvent(taskId, {
+        type: "task.reroute_blocked",
+        reason,
+        blocker: "no_compatible_executor",
+      });
+      this.#finishActiveTask(taskId);
+      return true;
+    }
+
+    const changedAt = new Date().toISOString();
+    if (history.length > 0) {
+      history[history.length - 1] = {
+        ...history[history.length - 1],
+        ended_at: changedAt,
+        ended_reason: reason,
+        thread_id: task.threadId ?? history.at(-1)?.thread_id ?? null,
+        turn_id: task.turnId ?? history.at(-1)?.turn_id ?? null,
+        usage: structuredClone(task.usage ?? history.at(-1)?.usage ?? zeroUsage()),
+      };
+    }
+    history.push({
+      executor: candidate.executor,
+      started_at: changedAt,
+      ended_at: null,
+      ended_reason: null,
+      thread_id: null,
+      turn_id: null,
+      attempts: 1,
+      usage: zeroUsage(),
+    });
+    this.store.updateTask(taskId, {
+      status: "queued",
+      executor: candidate.executor,
+      policy: candidate.policy,
+      executor_history: history,
+      continuation,
+      reroute_reason: reason,
+      executor_capabilities: candidate.capabilities,
+      threadId: null,
+      turnId: null,
+      executorSessionId: null,
+      startedAt: null,
+      completedAt: null,
+      result: null,
+      error: null,
+      usage: null,
+    });
+    this.store.addEvent(taskId, {
+      type: "task.rerouted",
+      from: task.executor,
+      to: candidate.executor,
+      reason,
+      warnings: candidate.warnings,
+    });
+    this.queue.push({ taskId, followUp: true, rerouted: true });
+    this.#finishActiveTask(taskId);
+    return true;
+  }
+
   dispatch(request) {
     this.#assertQueueCapacity();
     const workspace = resolveWorkspace(
@@ -517,7 +753,14 @@ export class Orchestrator extends EventEmitter {
     if (!parent) {
       throw new ControlPlaneError("task_not_found", `Unknown task: ${taskId}`);
     }
-    if (!parent.threadId) {
+    const requestedExecutor =
+      request.executor ?? parent.executor ?? this.defaultProvider;
+    const { id: provider } = this.#executorEntry({
+      executor: requestedExecutor,
+      profile: request.profile ?? parent.policy.name,
+    });
+    const executorChanged = provider !== parent.executor;
+    if (!parent.threadId && !executorChanged) {
       throw new ControlPlaneError(
         "task_not_started",
         "The original task has no active executor session yet",
@@ -533,14 +776,18 @@ export class Orchestrator extends EventEmitter {
       },
       this.config.limits.maxBriefCharacters,
     );
-    const policy = resolveProfile(this.config, {
-      profile: request.profile ?? parent.policy.name,
-      model: request.model,
-      reasoning_effort: request.reasoning_effort,
-      max_subagents: request.max_subagents,
-      token_budget: request.token_budget,
-    }, this.modelCatalogs.get(parent.executor) ?? []);
-    if (parent.executor !== "codex" && !request.model) policy.model = null;
+    const policy = resolveProfile(
+      this.config,
+      {
+        profile: request.profile ?? parent.policy.name,
+        model: request.model,
+        reasoning_effort: request.reasoning_effort,
+        max_subagents: request.max_subagents,
+        token_budget: request.token_budget,
+      },
+      this.modelCatalogs.get(provider) ?? [],
+    );
+    if (provider !== "codex" && !request.model) policy.model = null;
     const capabilityRequirements = extractTaskRequirements(
       {
         objective: brief.objective,
@@ -550,22 +797,73 @@ export class Orchestrator extends EventEmitter {
       },
       this.config,
     );
-    const parentExecutor = this.executors.get(parent.executor);
-    const executorCapabilities = snapshotExecutorCapabilities(parentExecutor, {
-      catalog: this.modelCatalogs.get(parent.executor) ?? [],
+    const selectedExecutor = this.executors.get(provider);
+    const executorCapabilities = snapshotExecutorCapabilities(selectedExecutor, {
+      catalog: this.modelCatalogs.get(provider) ?? [],
       model: policy.model ?? null,
-      discovery: this.executorDiscovery[parent.executor] ?? null,
+      discovery: this.executorDiscovery[provider] ?? null,
     });
+    const compatibility = evaluateExecutorCompatibility(
+      capabilityRequirements,
+      executorCapabilities,
+    );
+    if (executorChanged && !compatibility.compatible) {
+      throw new ControlPlaneError(
+        "incompatible_executor",
+        `Executor ${provider} cannot continue this task`,
+        {
+          executor: provider,
+          reasons: compatibility.reasons,
+          warnings: compatibility.warnings,
+        },
+      );
+    }
+    const rerouteReason = executorChanged
+      ? parent.reroute_reason ?? null
+      : null;
+    const continuation = executorChanged
+      ? buildContinuationPackage(parent, rerouteReason, parent.error)
+      : null;
+    const history = structuredClone(parent.executor_history ?? []);
+    if (executorChanged) {
+      const changedAt = new Date().toISOString();
+      if (history.length > 0 && history.at(-1).ended_at == null) {
+        history[history.length - 1] = {
+          ...history.at(-1),
+          ended_at: changedAt,
+          ended_reason: rerouteReason,
+          thread_id: parent.threadId ?? history.at(-1).thread_id ?? null,
+          turn_id: parent.turnId ?? history.at(-1).turn_id ?? null,
+          usage: structuredClone(parent.usage ?? history.at(-1).usage ?? zeroUsage()),
+        };
+      }
+      history.push({
+        executor: provider,
+        started_at: changedAt,
+        ended_at: null,
+        ended_reason: null,
+        thread_id: null,
+        turn_id: null,
+        attempts: 1,
+        usage: zeroUsage(),
+      });
+    }
     const task = this.store.createTask({
       workspace: parent.workspace,
       brief,
       policy,
       parentTaskId: parent.id,
-      executor: parent.executor ?? this.defaultProvider,
+      executor: provider,
+      logicalTaskId: parent.logical_task_id ?? parent.id,
+      executorHistory: history,
+      continuation,
+      rerouteReason,
       capabilityRequirements,
       executorCapabilities,
     });
-    this.store.updateTask(task.id, { threadId: parent.threadId });
+    if (!executorChanged) {
+      this.store.updateTask(task.id, { threadId: parent.threadId });
+    }
     this.queue.push({ taskId: task.id, followUp: true });
     queueMicrotask(() => this.#drain());
     return this.store.getTask(task.id);
@@ -663,7 +961,12 @@ export class Orchestrator extends EventEmitter {
         }
       }
       const project = this.store.getProject(task.workspace);
-      let threadId = task.threadId ?? project?.threadId ?? null;
+      const reusableProjectThread =
+        !task.continuation &&
+        (!project?.executor || project.executor === task.executor)
+          ? project?.threadId ?? null
+          : null;
+      let threadId = task.threadId ?? reusableProjectThread;
 
       if (threadId) {
         try {
@@ -703,10 +1006,14 @@ export class Orchestrator extends EventEmitter {
           },
         });
         threadId = started.thread.id;
-        this.store.setProject(workspace, { threadId });
+        this.store.setProject(workspace, {
+          threadId,
+          executor: task.executor,
+        });
       }
 
       this.store.updateTask(taskId, { threadId });
+      this.#updateCurrentExecutorHistory(taskId, { thread_id: threadId });
       await executor.setGoal({
         threadId,
         objective: task.brief.objective,
@@ -719,7 +1026,11 @@ export class Orchestrator extends EventEmitter {
         input: [
           {
             type: "text",
-            text: buildEngineeringPrompt(task.brief, task.policy, followUp),
+            text:
+              buildEngineeringPrompt(task.brief, task.policy, followUp) +
+              (task.continuation
+                ? `\n\nContinuation package (structured):\n${JSON.stringify(task.continuation)}`
+                : ""),
           },
         ],
         model: task.policy.model,
@@ -772,6 +1083,7 @@ export class Orchestrator extends EventEmitter {
         active.pendingUsage = null;
       }
       this.store.updateTask(taskId, { turnId });
+      this.#updateCurrentExecutorHistory(taskId, { turn_id: turnId });
       this.store.addEvent(taskId, {
         method: "turn/started",
         threadId,
@@ -780,6 +1092,7 @@ export class Orchestrator extends EventEmitter {
       this.#startBudgetMonitor(taskId);
       await this.#waitForTerminalNotification(taskId);
     } catch (error) {
+      if (this.#attemptReroute(taskId, error)) return;
       this.store.updateTask(taskId, {
         status: "failed",
         error: asErrorPayload(error),
@@ -1236,6 +1549,12 @@ export class Orchestrator extends EventEmitter {
             },
           }
         : params.turn.error ?? null;
+    if (
+      ["failed", "blocked"].includes(finalStatus) &&
+      this.#attemptReroute(taskId, error ?? report, { result: report })
+    ) {
+      return;
+    }
     if (budgetInterrupted && turnFinished && report.status) {
       this.store.addEvent(taskId, {
         type: "task.budget_exceeded_after_completion",
@@ -1253,6 +1572,15 @@ export class Orchestrator extends EventEmitter {
       ...(params.executorSessionId
         ? { executorSessionId: params.executorSessionId }
         : {}),
+    });
+    const completedTask = this.store.getTask(taskId);
+    this.#updateCurrentExecutorHistory(taskId, {
+      ended_at: completedTask.completedAt,
+      ended_reason: error?.code ?? finalStatus,
+      thread_id: completedTask.threadId,
+      turn_id: completedTask.turnId,
+      attempts: Math.max(1, Number(params.turn.retries ?? 0) + 1),
+      usage: structuredClone(completedTask.usage ?? zeroUsage()),
     });
     this.store.audit("task.completed", {
       taskId,
