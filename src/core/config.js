@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ControlPlaneError } from "./errors.js";
+import { resolveRerouteConfig } from "./reroute.js";
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(moduleDir, "..", "..");
@@ -288,6 +289,7 @@ export function loadConfig(configPath = process.env.AGENT_CONTROL_CONFIG) {
       "executor.routing.order must be an array of executor ids",
     );
   }
+  config.executor.reroute = resolveRerouteConfig(config.executor.reroute);
   if (!Array.isArray(config.workspaceRoots) || config.workspaceRoots.length === 0) {
     config.workspaceRoots = [path.dirname(projectRoot)];
   }
