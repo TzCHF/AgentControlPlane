@@ -4,6 +4,13 @@
 
 ### Added
 
+- `npm run demo` runs one confirmed live MCP dispatch against a ready local
+  executor, verifies the generated marker file, and preserves the workspace for
+  inspection.
+- Public repository onboarding now includes a focused README hero, reproducible
+  social preview source, contribution guidance, conduct policy, issue forms,
+  pull request checks, and a GitHub launch checklist.
+
 - Native cross-executor continuation with stable logical task ids,
   append-only executor history, compact continuation packages, deterministic
   failure classification, and capability-gated reroute execution.

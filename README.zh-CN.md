@@ -7,164 +7,199 @@
 [![Node](https://img.shields.io/badge/node-%3E%3D22-3c873a)](https://nodejs.org)
 [![license](https://img.shields.io/badge/license-AGPL--3.0-d22128)](LICENSE)
 
+<img src="docs/assets/social-preview.svg" width="100%" alt="AgentControlPlane 把网页 AI 简报发送给本地编码执行器，并返回持久化执行证据。" />
+
+**把网页 AI 对话转成经过验证的本地工程任务。**
+
+AgentControlPlane 将精简简报发送给 OpenCode、Codex、Claude Code 或
+OpenAI-compatible 执行器，再返回状态、变更文件、测试证据、用量和延续状态。
+
+[运行真实 Demo](#运行真实-demo) · [连接网页 AI](#连接网页-ai) ·
+[架构](docs/ARCHITECTURE.zh-CN.md) · [English](README.md)
+
 </div>
 
-> 面向单用户评估的实验性、本地优先软件。
->
-> 当前认证版本：**v0.8.4**（邀请制付费 Beta 基线；安装与升级步骤见下文）。
->
-> [English](README.md)
+> 本地优先、面向单用户的预览版本。当前认证版本：**v0.8.4**。
 
-## 目录
+## 运行真实 Demo
 
-- [为什么存在](#为什么存在)
-- [支持范围](#支持范围)
-- [快速开始](#快速开始)
-- [派发示例](#派发示例)
-- [配置档与用量](#配置档与用量)
-- [模型供应商](#模型供应商)
-- [MCP 工具](#mcp-工具)
-- [安全默认值](#安全默认值)
-- [文档](#文档)
-
-AgentControlPlane 把支持 MCP 的网页 AI 与用户电脑上可互换的工程执行器连接起来。网页对话只澄清一次意图；控制平面发送精简的结构化简报，保存任务状态，返回证据，并支持后续跟进，无需人工复制粘贴。
-
-AgentControlPlane 的源码按 [GNU Affero General Public License 3.0](LICENSE) 提供。已发布版本 v0.1.0 至 v0.4.2 继续按 Apache License 2.0 提供，原文存档于 [docs/LEGACY-LICENSE-APACHE-2.0.md](docs/LEGACY-LICENSE-APACHE-2.0.md)。将 AgentControlPlane 作为商业服务运营需要与版权方另行签署书面协议；"AgentControlPlane"名称与标志为商标，授权不包含商标使用权。见 [docs/COMMERCIALIZATION.zh-CN.md](docs/COMMERCIALIZATION.zh-CN.md)。
-
-## 为什么存在
-
-网页 AI 与编码执行器之间的人工交接会重复上下文并产生转述错误。AgentControlPlane 让这条反馈回路保持机器可读：
-
-```text
-网页 AI -> 精简简报 -> AgentControlPlane -> 本地执行器
-网页 AI <- 结果/证据/状态 <- 任务存储 <- 本地执行器
-```
-
-它不把聊天额度转换成工程额度，也不绕过供应商的限制。每个被选中的执行器仍然使用自己的账户、订阅或 API 配置。
-
-## 支持范围
-
-北向接口是标准 MCP，不绑定单一模型。ChatGPT 自定义应用是当前已完整记录的连接方式；其他支持 MCP 的网页 AI 客户端可以使用同一组工具。
-
-对于不提供自定义 MCP 连接入口的账户或网页 AI 产品，v0.4 浏览器伴侣提供本地、供应商中立的桥接。它内置 ChatGPT、DeepSeek 和 Claude 的适配器，以及可选的通用 HTTPS 聊天适配器。见 [浏览器伴侣](docs/BROWSER-COMPANION.zh-CN.md)。
-
-本地执行器层当前包括：
-
-| 执行器 | 接口 | 可用性 |
-|---|---|---|
-| OpenCode | CLI | 自带配置好的默认模型 |
-| Codex | App Server | workspace-write 执行，网络禁用 |
-| Claude Code | CLI | 可选；需要 Claude Pro/Max 登录或 Anthropic API 密钥 |
-| OpenCodex | 模型端点（ACP agent 循环） | 本地 OpenAI-compatible 端点，模型 `deepseek/deepseek-v4-pro` |
-| DeepSeek Harness | 模型端点（ACP agent 循环） | 直连 DeepSeek 官方 API，模型 `deepseek-chat` |
-
-以上五类均为执行器：前三类是第三方 agent 执行器，后两类是模型端点执行器——由 ACP 自己的 agent 循环对接可更换的模型后端。
-
-Claude Code 是可选的。仅安装其 CLI 不够：只有完成 Claude Pro/Max 账号登录、或为 CLI 配置 Anthropic API 密钥后，适配器才可用。否则发现结果报告 `not_authenticated`，自动路由会跳过它。
-
-启动时，`executor.provider: "auto"` 发现已安装/已配置的后端，并从 `executor.routing.order` 中选择第一个可用项。任务可以用 `executor: "opencode"`、`"codex"`、`"claude"`、`"openai-compatible"` 或 `"deepseek"` 覆盖该决定。
-
-## 快速开始
-
-前置条件：Node.js 22 或更新版本，以及至少一个受支持的本地执行器。
+前置条件：Node.js 22 或更新版本，以及一个已配置的执行器。OpenCode 就绪时，
+Demo 默认选择 OpenCode。
 
 ```powershell
 git clone https://github.com/Ya-KARAS/AgentControlPlane.git
 cd AgentControlPlane
-npm.cmd install
-npm.cmd test
+npm.cmd ci
 npm.cmd run doctor
-npm.cmd start
+npm.cmd run demo
 ```
 
-服务绑定在 `http://127.0.0.1:4318`。`npm.cmd run doctor` 列出每个被发现的执行器和自动默认项。检测到已安装的 CLI 或已配置的本地端点时，无需手动选择执行器。在浏览器打开 `http://127.0.0.1:4318/` 可查看本地只读面板：执行器就绪状态、各执行器模型目录、近期任务与令牌用量汇总。
-
-对于没有自带 MCP 连接器的网页 AI，把 [`browser-companion`](browser-companion) 作为未打包的 Manifest V3 扩展加载，在网页 AI 页面上打开 ACP 面板，并批准一次性本地配对码。该扩展永远不需要控制平面的主 bearer 令牌。
-
-连接 ChatGPT 请按 [docs/CHATGPT-CONNECTION.zh-CN.md](docs/CHATGPT-CONNECTION.zh-CN.md) 操作。网页供应商可能仍要求一次性的连接器、权限或隧道设置；这类账户级设置无法由本地服务代完成。
-
-## 派发示例
-
-对已连接的网页 AI 说：
+`npm run demo` 启动隔离的回环服务，询问一次确认，并通过 MCP 发送一个小型
+工程任务。所选执行器可能消耗账户、订阅或 API 额度。成功运行会创建并读回
+`hello.txt`、保存任务，然后输出以下证据：
 
 ```text
-Use the balanced profile and automatic executor selection. Inspect the project,
-implement a tested GET /hello endpoint, verify it, and return changed files plus
-test evidence. If execution reports a blocker or misunderstanding, correct the
-brief and continue the same project.
+AgentControlPlane live demo
+executor: opencode
+task: <task-id>
+status: completed
+file: <workspace>\hello.txt
+verified: true
+DEMO PASS: MCP dispatch, local execution, file verification, and result persistence completed.
 ```
 
-对话会调用 `dispatch_project`，轮询 `task_status`，并在结构化结果需要修正时使用 `continue_project`。
+执行 `npm run demo -- --help` 可以查看执行器、模型、超时和无人值守参数。Demo
+工作区会保留在磁盘上，供用户检查。
+
+## 项目功能
+
+```text
+网页 AI -> 精简简报 -> AgentControlPlane -> 本地执行器
+网页 AI <- 结果/证据 <- 持久化任务      <- 本地执行器
+```
+
+- **结构化委派：**网页对话生成目标、约束、验收标准、配置档、执行器和可选模型。
+- **执行器路由：**自动发现会选择就绪执行器；每项任务也可以指定 OpenCode、
+  Codex、Claude Code 或已配置的模型端点。
+- **持久化结果：**任务记录状态、变更文件、测试证据、Token 用量、执行器历史和
+  延续包。
+- **跨执行器延续：**显式跟进可以选择兼容执行器，并保留逻辑任务链路。基础设施
+  故障的自动改道采用显式启用策略，发行版默认关闭。
+- **本地控制：**回环绑定、工作区允许列表、速率限制、可选 bearer 鉴权和只追加
+  审计记录约束控制平面边界。
+
+## 连接网页 AI
+
+MCP 接口向每个兼容客户端提供同一组工具。ChatGPT 自定义应用连接步骤见
+[docs/CHATGPT-CONNECTION.zh-CN.md](docs/CHATGPT-CONNECTION.zh-CN.md)。
+
+[浏览器伴侣](docs/BROWSER-COMPANION.zh-CN.md)为 ChatGPT、DeepSeek、Claude
+和一个可选的通用 HTTPS 聊天站点添加本地面板。面板把所选工作区保留在本机，
+与 ACP 完成一次配对，并派发网页对话生成的结构化任务封装。
+
+```text
+ChatGPT / DeepSeek / Claude
+              |
+       MCP 或浏览器伴侣
+              |
+      AgentControlPlane :4318
+              |
+ OpenCode / Codex / Claude Code / 模型端点
+```
+
+## 支持的执行器
+
+| 执行器 | 接口 | 就绪条件 |
+|---|---|---|
+| OpenCode | CLI | 已安装 CLI，并配置可用模型 |
+| Codex | App Server | 已安装客户端、账户额度和 Windows 沙箱就绪 |
+| Claude Code | CLI | Claude Pro/Max 登录或 Anthropic API 密钥 |
+| OpenCodex | OpenAI-compatible 端点 | 端点可访问、模型已配置、工具能力已验证 |
+| DeepSeek Harness | OpenAI-compatible 端点 | DeepSeek API 已配置、工具能力已验证 |
+
+运行 `npm run doctor` 可查看发现状态和自动默认项。任务可以设置
+`executor: "opencode"`、`"codex"`、`"claude"`、
+`"openai-compatible"` 或 `"deepseek"`。
+
+## 从网页 AI 派发
+
+向已连接的网页 AI 发送：
+
+```text
+使用 balanced 配置档和自动执行器选择。检查项目，实现带测试的 GET /hello
+接口，完成验证，并返回变更文件和测试证据。如果执行器报告阻塞或理解偏差，
+修正简报并继续同一个项目。
+```
+
+客户端调用 `dispatch_project`，轮询 `task_status`，并通过
+`continue_project` 发送修正或后续任务。
 
 ## 配置档与用量
 
-| 配置档 | 用途 | 投入 | 子代理 | 预算 |
-|---|---|---:|---:|
+| 配置档 | 任务范围 | 投入 | 子代理 | Token 预算 |
+|---|---|---|---:|---:|
 | economy | 小范围、明确的修改 | low | 0 | 30k |
-| balanced | 常规功能与修复工作 | high | 最多 2 | 90k |
-| deep | 架构与大规模重构 | ultra | 最多 4 | 220k |
+| balanced | 功能与修复工作 | high | 最多 2 | 90k |
+| deep | 架构与大范围重构 | ultra | 最多 4 | 220k |
 
-配置档是策略默认值。模型、投入、子代理和预算的显式覆盖仍然可用。模型字段只在所选执行器有意义时才传递；否则 OpenCode 与 Claude 使用各自配置的默认模型。用量精度取决于执行器的遥测。
+配置档提供策略默认值。派发请求可以覆盖模型、投入、子代理和预算。请求省略
+`model` 时，OpenCode 和 Claude 使用各自配置的默认模型。用量精度取决于所选
+执行器报告的遥测数据。
 
-直接执行与受控执行的 token 对照实验见 [docs/BENCHMARKING.zh-CN.md](docs/BENCHMARKING.zh-CN.md)。
-
-## 模型供应商
-
-### 自带供应商（Bring your own provider）
-
-任何 OpenAI 兼容的中转站或模型端点都可以作为模型端点使用。ACP 独立运行，
-不依赖 AsterRoute。
-
-### AsterRoute —— 官方可选集成
-
-AsterRoute 自带 provider preset（`baseUrl: https://asterroute.com/v1`），
-分步骤教程见 [docs/PROVIDER-ASTERROUTE.zh-CN.md](docs/PROVIDER-ASTERROUTE.zh-CN.md)。
-它是一个精选多模型 API，通过一把供应商 Key 完成鉴权、转发、计量与计费。
-集成包含 OpenAI 兼容模型流量、请求归因与请求/用量关联（`x-acp-*` 头）、
-只读用量对账。
-
-AsterRoute 当前采用邀请制。审核通过的账户将获得对应的 API 凭据、模型权限
-和使用限额。符合条件的账户获得 ACP × AsterRoute Verified 认证与 Founding
-Program 资格；项目条款发布在
-[AsterRoute 集成指南](https://asterroute.com/integrations/agentcontrolplane)。
+仓库内的基准流程记录直接任务与受控任务的耗时、成功状态、输入、缓存输入、
+输出、推理和总 Token。详见
+[docs/BENCHMARKING.zh-CN.md](docs/BENCHMARKING.zh-CN.md)和
+[`benchmark/`](benchmark)中的原始文件。
 
 ## MCP 工具
 
 | 工具 | 用途 |
 |---|---|
-| `dispatch_project` | 排队一份简报，支持自动或显式执行器路由 |
-| `dispatch_opencode` | OpenCode 兼容性快捷方式 |
-| `task_status` | 读取状态、结果、证据、用量和可选事件 |
-| `continue_project` | 向同一项目发送修正或后续指令 |
-| `cancel_task` | 停止排队中或执行中的工作 |
-| `list_tasks` | 列出最近任务 |
-| `list_executors` | 列出发现结果、就绪状态、能力和默认路由 |
+| `dispatch_project` | 使用自动或显式执行器路由，将简报加入队列 |
+| `dispatch_opencode` | 通过 OpenCode 兼容快捷入口派发 |
+| `task_status` | 读取状态、结果、证据、用量、链路和可选事件 |
+| `continue_project` | 向同一逻辑项目发送修正或后续任务 |
+| `cancel_task` | 停止排队中或执行中的任务 |
+| `list_tasks` | 列出近期任务 |
+| `list_executors` | 列出发现、就绪、能力和默认路由 |
 | `list_profiles` | 列出执行策略 |
-| `list_models` | 列出某执行器的缓存模型目录 |
+| `list_models` | 列出执行器缓存的模型目录 |
 | `usage_report` | 汇总已测量的工程用量 |
 
-## 安全默认值
+## 供应商配置
 
-- 工作区必须位于配置的允许列表根目录之内。
-- HTTP 服务拒绝非回环绑定。
-- Codex 使用 workspace-write 且网络禁用，并在执行前验证 Windows 沙箱就绪状态。
-- 其他 CLI 与 OpenAI-compatible 适配器以本地用户权限运行；只在可信工作区上使用它们。
-- 可选 bearer 认证可通过 `AGENT_CONTROL_TOKEN` 启用。
-- 状态与只追加审计日志保存在项目工作区之外。
+任何 OpenAI-compatible 中转站或模型端点都可以作为模型端点执行器。供应商
+专用 preset 以注册表数据保存，并保持可选。
 
-不要把本地服务器直接暴露到公网。使用经认证的私有隧道或单独加固的中继。
+[AsterRoute](docs/PROVIDER-ASTERROUTE.zh-CN.md)是一个可选 preset，支持请求
+归因和只读用量对账。AsterRoute 的访问和计费由该服务独立运营。
+
+## 安全与限制
+
+- 工作区解析到配置的允许列表根目录内。
+- HTTP 服务只接受回环地址绑定。
+- Codex 使用 workspace-write、关闭网络访问，并在执行前检查 Windows 沙箱。
+- 其他 CLI 和模型端点适配器以本地用户权限运行；请使用可信工作区。
+- `AGENT_CONTROL_TOKEN` 可以启用 bearer 鉴权。
+- 状态和只追加审计记录保存在项目工作区之外。
+- 每个执行器使用自己的账户、订阅、API 配置和供应商限制。AgentControlPlane
+  不会把聊天额度转换成工程额度。
+
+远程访问需要经认证的私有隧道或独立加固的中继。预览版支持范围不包含直接
+公网暴露。
+
+## 参与贡献
+
+[CONTRIBUTING.md](CONTRIBUTING.md)记录环境设置、PR 检查和执行器适配要求。
+使用问题与早期设计提案可以发布到
+[GitHub Discussions](https://github.com/Ya-KARAS/AgentControlPlane/discussions)，
+可复现问题和范围明确的修改可以发布到
+[GitHub Issues](https://github.com/Ya-KARAS/AgentControlPlane/issues)。
+
+## 许可与商业使用
+
+当前源码按 [GNU Affero General Public License 3.0](LICENSE)提供。v0.1.0
+至 v0.4.2 版本继续按 Apache License 2.0 提供，记录见
+[docs/LEGACY-LICENSE-APACHE-2.0.md](docs/LEGACY-LICENSE-APACHE-2.0.md)。
+
+将 AgentControlPlane 作为商业服务运营需要与版权方另行签署书面协议。
+`AgentControlPlane` 名称和标志属于商标，源码许可不包含商标授权。详见
+[docs/COMMERCIALIZATION.zh-CN.md](docs/COMMERCIALIZATION.zh-CN.md)。
 
 ## 文档
 
-- [docs/ARCHITECTURE.zh-CN.md](docs/ARCHITECTURE.zh-CN.md)（架构）
-- [docs/PROTOCOL.zh-CN.md](docs/PROTOCOL.zh-CN.md)（协议）
-- [docs/CHATGPT-CONNECTION.zh-CN.md](docs/CHATGPT-CONNECTION.zh-CN.md)（ChatGPT 连接）
-- [docs/BENCHMARKING.zh-CN.md](docs/BENCHMARKING.zh-CN.md)（基准测试）
-- [docs/SECURITY-REVIEW.zh-CN.md](docs/SECURITY-REVIEW.zh-CN.md)（安全审查）
-- [docs/COMMERCIALIZATION.zh-CN.md](docs/COMMERCIALIZATION.zh-CN.md)（商业化）
-- [docs/AI-RELAY-INTEGRATION.zh-CN.md](docs/AI-RELAY-INTEGRATION.zh-CN.md)（AI 中转站集成）
-- [docs/PROVIDER-ASTERROUTE.zh-CN.md](docs/PROVIDER-ASTERROUTE.zh-CN.md)（AsterRoute 供应商）
-- [SECURITY.zh-CN.md](SECURITY.zh-CN.md)（安全）
-- [CHANGELOG.md](CHANGELOG.md)（变更记录）
+- [架构](docs/ARCHITECTURE.zh-CN.md)
+- [协议](docs/PROTOCOL.zh-CN.md)
+- [浏览器伴侣](docs/BROWSER-COMPANION.zh-CN.md)
+- [ChatGPT 连接](docs/CHATGPT-CONNECTION.zh-CN.md)
+- [基准测试](docs/BENCHMARKING.zh-CN.md)
+- [安全审查](docs/SECURITY-REVIEW.zh-CN.md)
+- [开发与交接](docs/DEVELOPMENT.md)
+- [路线图](docs/ROADMAP.zh-CN.md)
+- [发布检查](docs/RELEASE-CHECKLIST.md)
+- [GitHub 发布检查](docs/GITHUB-LAUNCH-CHECKLIST.md)
+- [安全策略](SECURITY.zh-CN.md)
+- [变更记录](CHANGELOG.md)
 
-默认工作区允许列表是此仓库的父目录。用 `AGENT_CONTROL_CONFIG` 做机器特定的覆盖，且不要把本地路径或凭据提交进仓库。
+机器专用路径和凭据应写入 `config/local.json` 或环境变量。
+`config/local.json` 已被 Git 排除。

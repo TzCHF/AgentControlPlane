@@ -156,7 +156,22 @@ export async function createApplication(overrides = {}) {
     : null;
   let executors;
   let defaultProvider;
-  if (overrides.executor || overrides.codex) {
+  if (overrides.executors) {
+    executors = overrides.executors;
+    if (!(executors instanceof Map) || executors.size === 0) {
+      throw new TypeError("createApplication executors must be a non-empty Map");
+    }
+    defaultProvider = overrides.defaultProvider ?? executors.keys().next().value;
+    if (!executors.has(defaultProvider)) {
+      throw new TypeError(
+        `createApplication defaultProvider is not registered: ${defaultProvider}`,
+      );
+    }
+    for (const executor of executors.values()) {
+      assertExecutor(executor, { execution: overrides.startCodex !== false });
+      assertLifecycle(executor);
+    }
+  } else if (overrides.executor || overrides.codex) {
     const codex = assertExecutor(
       overrides.executor ?? overrides.codex,
       { execution: overrides.startCodex !== false },

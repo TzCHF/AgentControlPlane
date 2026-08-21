@@ -1,0 +1,58 @@
+name: Executor adapter request
+description: Propose a coding executor or model-endpoint adapter
+title: "[Executor]: "
+labels:
+  - executor
+  - enhancement
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Executor name and official URL
+      placeholder: Example Agent — https://example.com/docs
+    validations:
+      required: true
+  - type: dropdown
+    id: interface
+    attributes:
+      label: Interface
+      options:
+        - CLI with machine-readable output
+        - Local HTTP API
+        - OpenAI-compatible model endpoint
+        - MCP client or server
+    validations:
+      required: true
+  - type: textarea
+    id: invocation
+    attributes:
+      label: Minimal invocation
+      description: Show a sanitized command or request and its machine-readable result.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: authentication
+    attributes:
+      label: Authentication method
+      description: Name the account, environment variable, or local login flow. Do not include credentials.
+    validations:
+      required: true
+  - type: checkboxes
+    id: capabilities
+    attributes:
+      label: Verified capabilities
+      options:
+        - label: Reads workspace files
+        - label: Writes workspace files
+        - label: Runs project commands or tests
+        - label: Returns token usage
+        - label: Supports persistent sessions
+        - label: Supports cancellation
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Compatibility evidence
+      description: Include version output, documentation links, and a sanitized test result.
+    validations:
+      required: true
