@@ -113,6 +113,7 @@ test("server/discover is served statelessly without an MCP session", async () =>
     const dispatch = body.result.tools.find(
       (tool) => tool.name === "dispatch_project",
     );
+    assert.equal(dispatch.inputSchema.properties.idempotency_key.type, "string");
     assert.equal(typeof dispatch.inputSchema, "object");
     assert.equal(dispatch.inputSchema.type, "object");
     assert.equal(dispatch.inputSchema.properties.executor.type, "string");

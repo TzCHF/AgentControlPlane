@@ -117,6 +117,8 @@ test("old task records receive read-time continuation defaults", () => {
   assert.equal(task.logical_task_id, "legacy");
   assert.equal(task.continuation, null);
   assert.equal(task.reroute_reason, null);
+  assert.equal(task.idempotency_key, null);
+  assert.equal(task.request_fingerprint, null);
   assert.equal(task.capability_requirements, null);
   assert.equal(task.executor_capabilities, null);
   assert.equal(task.executor_history.length, 1);

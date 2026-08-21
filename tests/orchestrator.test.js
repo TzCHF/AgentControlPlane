@@ -178,11 +178,13 @@ test("dispatches a compact task and records measured usage", async () => {
   const orchestrator = new Orchestrator({ config, store, codex });
   await orchestrator.start();
 
-  const task = orchestrator.dispatch({
+  const request = {
     workspace,
     objective: "Create a file",
     profile: "economy",
-  });
+    idempotency_key: "test:dispatch:one",
+  };
+  const task = orchestrator.dispatch(request);
   await waitFor(() => store.getTask(task.id)?.status === "completed");
 
   const completed = store.getTask(task.id);
@@ -192,6 +194,16 @@ test("dispatches a compact task and records measured usage", async () => {
     codex.requests.find((entry) => entry.method === "thread/goal/set").params
       .tokenBudget,
     30000,
+  );
+  const replay = orchestrator.dispatch(request);
+  assert.equal(replay.id, task.id);
+  assert.equal(
+    codex.requests.filter((entry) => entry.method === "turn/start").length,
+    1,
+  );
+  assert.throws(
+    () => orchestrator.dispatch({ ...request, objective: "Different work" }),
+    (error) => error.code === "idempotency_conflict",
   );
 });
 

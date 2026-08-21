@@ -115,8 +115,11 @@ export function normalizeDispatch(envelope, settings = {}) {
 export function formatTaskResult(task) {
   const payload = {
     task_id: task.id,
+    logical_task_id: task.logical_task_id ?? task.id,
     status: task.status,
     executor: task.executor,
+    executor_history: task.executor_history ?? [],
+    reroute_reason: task.reroute_reason ?? null,
     executor_session_id: task.executor_session_id ?? null,
     result: task.result ?? null,
     error: task.error ?? null,

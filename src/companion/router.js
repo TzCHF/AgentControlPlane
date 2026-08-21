@@ -75,11 +75,15 @@ function publicTask(task) {
   }
   return {
     id: task.id,
+    logical_task_id: task.logical_task_id ?? task.id,
     parent_task_id: task.parentTaskId ?? null,
     status: task.status,
     terminal: TERMINAL_STATUSES.has(task.status),
     workspace: task.workspace,
     executor: task.executor,
+    executor_history: task.executor_history ?? [],
+    reroute_reason: task.reroute_reason ?? null,
+    continuation: task.continuation ?? null,
     objective: task.brief?.objective ?? null,
     executor_session_id: task.executorSessionId ?? null,
     estimated_minutes: task.estimatedMinutes ?? null,

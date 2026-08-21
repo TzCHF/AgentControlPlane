@@ -61,6 +61,8 @@ function normalizeTaskRecord(task) {
     reroute_reason: task.reroute_reason ?? null,
     capability_requirements: task.capability_requirements ?? null,
     executor_capabilities: task.executor_capabilities ?? null,
+    idempotency_key: task.idempotency_key ?? null,
+    request_fingerprint: task.request_fingerprint ?? null,
   };
 }
 
@@ -324,6 +326,8 @@ export class TaskStore {
     rerouteReason = null,
     capabilityRequirements = null,
     executorCapabilities = null,
+    idempotencyKey = null,
+    requestFingerprint = null,
   }) {
     this.#pruneTasks();
     const id = crypto.randomUUID();
@@ -382,6 +386,8 @@ export class TaskStore {
       executor_capabilities: executorCapabilities
         ? structuredClone(executorCapabilities)
         : null,
+      idempotency_key: idempotencyKey ?? null,
+      request_fingerprint: requestFingerprint ?? null,
     };
     this.state.tasks[id] = task;
     this.persist();
@@ -499,6 +505,14 @@ export class TaskStore {
       )
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       .map((task) => normalizeTaskRecord(task));
+  }
+
+  findByIdempotencyKey(idempotencyKey) {
+    if (!idempotencyKey) return null;
+    const task = Object.values(this.state.tasks).find(
+      (entry) => entry.idempotency_key === idempotencyKey,
+    );
+    return normalizeTaskRecord(task ?? null);
   }
 
   getProject(workspace) {

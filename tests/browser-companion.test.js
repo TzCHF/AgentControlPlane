@@ -169,8 +169,11 @@ test("executor aliases resolve to registered ids", () => {
 test("formats terminal results and creates stable envelope identifiers", () => {
   const task = {
     id: "task-1",
+    logical_task_id: "logical-1",
     status: "completed",
     executor: "opencode",
+    executor_history: [{ executor: "codex" }, { executor: "opencode" }],
+    reroute_reason: "quota_exhausted",
     result: { summary: "Done" },
     error: null,
     usage: { total_tokens: 10 },
@@ -178,6 +181,9 @@ test("formats terminal results and creates stable envelope identifiers", () => {
   const result = formatTaskResult(task);
   assert.match(result, /<ACP_RESULT>/);
   assert.match(result, /"summary": "Done"/);
+  assert.match(result, /"logical_task_id": "logical-1"/);
+  assert.match(result, /"reroute_reason": "quota_exhausted"/);
+  assert.match(result, /"executor": "codex"/);
   assert.equal(
     stableEnvelopeId({ objective: "same" }),
     stableEnvelopeId({ objective: "same" }),

@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import { createHash } from "node:crypto";
 import {
   buildEngineeringPrompt,
   finalReportSchema,
@@ -76,6 +77,41 @@ function mapGoalUsage(goal, currentUsage = null) {
       Number(currentUsage?.total_tokens ?? 0),
     ),
   };
+}
+
+function normalizeIdempotencyKey(value) {
+  if (value == null || value === "") return null;
+  if (typeof value !== "string") {
+    throw new ControlPlaneError(
+      "invalid_idempotency_key",
+      "idempotency_key must be a string",
+    );
+  }
+  const key = value.trim();
+  if (key.length < 8 || key.length > 200 || !/^[A-Za-z0-9._:-]+$/.test(key)) {
+    throw new ControlPlaneError(
+      "invalid_idempotency_key",
+      "idempotency_key must contain 8-200 letters, digits, dots, underscores, colons, or hyphens",
+    );
+  }
+  return key;
+}
+
+function dispatchFingerprint(request, workspace, brief) {
+  const payload = {
+    workspace,
+    brief,
+    executor: request.executor ?? "auto",
+    profile: request.profile ?? "balanced",
+    model: request.model ?? null,
+    reasoning_effort: request.reasoning_effort ?? null,
+    max_subagents: request.max_subagents ?? null,
+    token_budget: request.token_budget ?? null,
+    time_limit_minutes: request.time_limit_minutes ?? null,
+    allowed_models: request.allowed_models ?? null,
+    kind: request.kind ?? "production",
+  };
+  return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
 }
 
 function continuationTestEvidence(tests = []) {
@@ -663,19 +699,36 @@ export class Orchestrator extends EventEmitter {
   }
 
   dispatch(request) {
-    this.#assertQueueCapacity();
     const workspace = resolveWorkspace(
       request.workspace,
       this.config.workspaceRoots,
     );
-    const { id: provider } = this.#executorEntry({
-      executor: request.executor ?? this.defaultProvider,
-      profile: request.profile,
-    });
     const brief = normalizeBrief(
       request,
       this.config.limits.maxBriefCharacters,
     );
+    const idempotencyKey = normalizeIdempotencyKey(request.idempotency_key);
+    const requestFingerprint = idempotencyKey
+      ? dispatchFingerprint(request, workspace, brief)
+      : null;
+    if (idempotencyKey) {
+      const existing = this.store.findByIdempotencyKey(idempotencyKey);
+      if (existing) {
+        if (existing.request_fingerprint !== requestFingerprint) {
+          throw new ControlPlaneError(
+            "idempotency_conflict",
+            "The idempotency key is already associated with a different dispatch request",
+            { task_id: existing.id },
+          );
+        }
+        return existing;
+      }
+    }
+    this.#assertQueueCapacity();
+    const { id: provider } = this.#executorEntry({
+      executor: request.executor ?? this.defaultProvider,
+      profile: request.profile,
+    });
     const catalog = this.modelCatalogs.get(provider) ?? [];
     const policy = resolveProfile(this.config, request, catalog);
     if (provider !== "codex" && !request.model) policy.model = null;
@@ -741,6 +794,8 @@ export class Orchestrator extends EventEmitter {
       kind: request.kind ?? "production",
       capabilityRequirements,
       executorCapabilities,
+      idempotencyKey,
+      requestFingerprint,
     });
     this.queue.push({ taskId: task.id, followUp: false });
     queueMicrotask(() => this.#drain());

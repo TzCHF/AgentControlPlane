@@ -276,6 +276,9 @@
       currentState.options?.executors ?? [],
     );
     const request = protocol.normalizeDispatch(resolvedEnvelope, resolvedSettings);
+    request.idempotency_key =
+      "companion:" +
+      protocol.stableEnvelopeId({ page_url: location.href, request });
     const response = await message("ACP_DISPATCH", {
       request,
       pageUrl: location.href,

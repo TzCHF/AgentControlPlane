@@ -40,6 +40,13 @@ const SERVER_INSTRUCTIONS =
 const briefFields = {
   workspace: z.string().describe("Absolute project workspace path"),
   objective: z.string().min(1).describe("Compact engineering objective"),
+  idempotency_key: z
+    .string()
+    .min(8)
+    .max(200)
+    .regex(/^[A-Za-z0-9._:-]+$/)
+    .optional()
+    .describe("Stable retry key; an identical replay returns the original task"),
   executor: z
     .string()
     .default("auto")
