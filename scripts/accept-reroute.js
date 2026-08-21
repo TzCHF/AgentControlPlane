@@ -16,6 +16,7 @@ function usage() {
     "Options:",
     "  --to <id>               real executor that completes the task",
     "  --reason <reason>       injected infrastructure failure",
+    "  --model <id>            target executor model override",
     "  --timeout-minutes <n>   terminal wait limit (default: 10)",
     "  --config <path>         optional configuration override",
     "  --keep                  preserve the temporary workspace",
@@ -31,6 +32,7 @@ export function parseArgs(argv) {
     reason: "quota_exhausted",
     timeoutMinutes: 10,
     configPath: null,
+    model: null,
     keep: false,
     help: false,
   };
@@ -40,6 +42,7 @@ export function parseArgs(argv) {
     else if (arg === "--keep") options.keep = true;
     else if (arg === "--to") options.targetId = argv[++index] ?? null;
     else if (arg === "--reason") options.reason = argv[++index] ?? null;
+    else if (arg === "--model") options.model = argv[++index] ?? null;
     else if (arg === "--config") options.configPath = argv[++index] ?? null;
     else if (arg === "--timeout-minutes") {
       options.timeoutMinutes = Number(argv[++index]);
@@ -88,6 +91,7 @@ export async function main(argv = process.argv.slice(2)) {
       ].join(", ")}`,
     );
   }
+  if (options.model) targetExecutor.model = options.model;
   const root = fs.mkdtempSync(
     path.join(os.tmpdir(), "acp-reroute-acceptance-"),
   );

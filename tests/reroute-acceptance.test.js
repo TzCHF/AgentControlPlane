@@ -126,12 +126,18 @@ test("acceptance CLI validates executor, reason, and timeout", () => {
     reason: "quota_exhausted",
     timeoutMinutes: 10,
     configPath: null,
+    model: null,
     keep: false,
     help: false,
   });
   assert.throws(
     () => parseArgs(["--to", "opencode", "--reason", "task_failure"]),
     /Unsupported acceptance reason/,
+  );
+  assert.equal(
+    parseArgs(["--to", "opencode", "--model", "opencode/mimo-v2.5-free"])
+      .model,
+    "opencode/mimo-v2.5-free",
   );
   assert.throws(() => parseArgs([]), /--to is required/);
   assert.throws(

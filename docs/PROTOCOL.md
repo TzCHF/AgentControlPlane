@@ -7,6 +7,7 @@
 ```json
 {
   "workspace": "D:\\Projects\\example",
+  "idempotency_key": "web:conversation-123:task-4",
   "executor": "auto",
   "objective": "Add a tested GET /hello endpoint.",
   "constraints": ["Do not add a framework dependency."],
@@ -28,6 +29,12 @@
 `executor` may be `auto`, `opencode`, `codex`, `claude`,
 `openai-compatible`, or `deepseek`. `auto` resolves to an actual executor before
 the task is persisted, so status and audit records always show where work ran.
+
+`idempotency_key` is optional and accepts 8–200 letters, digits, dots,
+underscores, colons, or hyphens. A replay carrying the same key and normalized
+dispatch content returns the original task. Reusing the key with different
+content returns `idempotency_conflict`. The browser companion generates this
+key from the page URL and normalized request.
 
 ## Compact result
 
@@ -86,6 +93,11 @@ Automatic reroute is disabled by default. It is enabled only through
 implementation, and validation failures stay on the current executor. If no
 compatible executor exists, the task becomes `blocked`; it never silently runs
 on an incompatible backend.
+
+At startup, ACP examines persisted `queued` and `running` tasks. Queued
+continuations retain their follow-up prompt. A recovered terminal turn updates
+its executor history; an approved infrastructure failure can enter the same
+capability-gated reroute path.
 
 ## Token budgets
 

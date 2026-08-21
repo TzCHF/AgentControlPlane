@@ -210,7 +210,7 @@ export async function runRerouteAcceptance({
       workspace,
       executor: fault.id,
       profile: "economy",
-      kind: "acceptance",
+      kind: "smoke",
       objective:
         `Create ${markerName} in the workspace with the exact content ` +
         `${JSON.stringify(markerContent)}. Verify the file content before finishing.`,

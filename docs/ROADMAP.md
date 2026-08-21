@@ -146,3 +146,20 @@ Runtime constraints:
   never switch automatically.
 - Later phases (historical routing, cost-aware routing) build on the data this
   phase records.
+
+## Phase 5.1 — production acceptance and recovery (implemented)
+
+Status: implemented and verified on `main`.
+
+- Persisted running tasks can reroute after startup recovery classifies an
+  approved infrastructure failure.
+- Persisted queued continuations retain their continuation prompt after a
+  process restart.
+- Dispatch idempotency prevents duplicate engineering tasks across HTTP, MCP,
+  and browser-companion retries.
+- The local dashboard displays the logical task id, executor path, and reroute
+  reason.
+- `npm run accept:reroute` performs an isolated, real-executor acceptance test
+  with a controlled infrastructure failure and an exact marker assertion.
+- Dogfooding Round 04 verified `acceptance-fault → opencode` with the stable task
+  and logical id, `quota_exhausted`, and exact marker content.

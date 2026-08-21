@@ -34,12 +34,19 @@ Every executor uses the same commands:
 | `npm run verify` | `npm test && npm run check` — the single pre-handoff gate |
 | `npm run doctor` | list discovered executors and the automatic default |
 | `npm run check:relay` | run the live relay connectivity check; requires relay keys in the environment |
+| `npm run accept:reroute -- --to opencode --model <model>` | inject an isolated infrastructure failure and verify a real executor continuation |
 | `npm start` | run the local service on 127.0.0.1:4318 |
 
 `npm run verify` mirrors the CI pipeline (`npm ci`, `npm test`,
 `npm run check`). The grounded-copy lint (`copy_lint.py` from the
 operator's skills directory) is an additional operator/docs gate; it is
 not part of `verify`.
+
+The reroute acceptance command creates its workspace and state under the
+system temporary directory, injects one allowed failure, and verifies the task
+id, logical id, executor path, reroute reason, terminal status, and exact marker
+content. It removes the temporary directory at the end. Add `--keep` to retain
+the evidence directory for inspection.
 
 ## Development handoff contract
 

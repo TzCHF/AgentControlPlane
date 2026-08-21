@@ -9,6 +9,12 @@
   failure classification, and capability-gated reroute execution.
 - `continue_project` accepts an optional executor override while preserving the
   original same-executor behavior when omitted.
+- `npm run accept:reroute` injects one approved infrastructure failure in an
+  isolated temporary workspace and verifies continuation through a selected
+  real executor. `--model` selects a target executor model for acceptance.
+- Dispatch accepts an optional `idempotency_key`; identical retries return the
+  original task, and a key reused with different content returns
+  `idempotency_conflict`.
 
 - `npm run verify` runs the full suite and the syntax check
   (`npm test && npm run check`) as the single pre-handoff gate, mirroring
@@ -20,6 +26,10 @@
 ### Changed
 
 - `task_status` now exposes additive continuation and executor-history fields.
+- The local dashboard displays the logical task id, executor path, and reroute
+  reason for continued tasks.
+- Restart recovery can reroute a persisted running task whose recovered turn
+  ended with an approved infrastructure failure.
 - Automatic reroute is default-off, capped, and restricted to infrastructure
   failures; task implementation and validation failures never auto-switch.
 
