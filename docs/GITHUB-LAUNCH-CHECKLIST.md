@@ -20,10 +20,10 @@ testing and community feedback.
 - `npm run verify` passes from a clean clone.
 - `npm run demo` completes through a documented executor and preserves the demo
   workspace for inspection.
-- The Release contains a Windows source/install archive, browser companion ZIP,
-  SHA256 values, release notes, and known limits.
+- The Release contains a Windows source archive, browser companion ZIP,
+  90-second MP4, SHA256 values, release notes, and operating limits.
 - The 90-second recording shows the command, task id, executor, generated file,
-  terminal status, and verification result.
+  terminal status, verification result, and reported usage.
 - Benchmark claims link to committed input cases, raw results, and the report
   generator.
 

@@ -20,7 +20,7 @@ usage, and continuation state.
 
 </div>
 
-> Local-first, single-user preview. Current certified release: **v0.8.4**.
+> Local-first, single-user preview. Current certified release: **v0.9.0**.
 
 ## Run the live demo
 
@@ -52,6 +52,10 @@ DEMO PASS: MCP dispatch, local execution, file verification, and result persiste
 
 Use `npm run demo -- --help` for executor, model, timeout, and unattended-run
 options. The generated workspace remains available for inspection.
+
+Release assets include a Windows source archive, a load-unpacked browser
+companion ZIP, a 90-second verified demo video, and `SHA256SUMS`. Download them
+from the [v0.9.0 release](https://github.com/Ya-KARAS/AgentControlPlane/releases/tag/v0.9.0).
 
 ## What it does
 
