@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.9.0 — 2026-08-21
+
 ### Added
 
 - `npm run demo` runs one confirmed live MCP dispatch against a ready local
@@ -10,6 +12,12 @@
 - Public repository onboarding now includes a focused README hero, reproducible
   social preview source, contribution guidance, conduct policy, issue forms,
   pull request checks, and a GitHub launch checklist.
+- `npm run release:package` creates deterministic Windows source and browser
+  companion ZIP files from explicit tracked inputs.
+- `npm run release:sha256` creates a stable SHA256 manifest for explicit asset
+  paths and rejects missing files and directories.
+- The release includes a 90-second video walkthrough built from the verified
+  OpenCode demo task and its persisted evidence.
 
 - Native cross-executor continuation with stable logical task ids,
   append-only executor history, compact continuation packages, deterministic
@@ -47,6 +55,14 @@
   core runtime milestone.
 - The generic continuation path reports a missing session using
   executor-neutral wording.
+
+### Verified
+
+- 215 tests pass locally, including deterministic ZIP contents and SHA256
+  manifest validation.
+- The OpenCode demo task `c3aaa988-95a0-44ae-a646-090cd60ab105` completed,
+  created `hello.txt`, matched the marker, and reported 10,148 tokens.
+- Release archives are rebuilt twice and compared byte-for-byte before upload.
 
 ## v0.8.4 — 2026-08-16
 

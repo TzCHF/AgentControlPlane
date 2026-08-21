@@ -19,7 +19,7 @@ OpenAI-compatible 执行器，再返回状态、变更文件、测试证据、�
 
 </div>
 
-> 本地优先、面向单用户的预览版本。当前认证版本：**v0.8.4**。
+> 本地优先、面向单用户的预览版本。当前认证版本：**v0.9.0**。
 
 ## 运行真实 Demo
 
@@ -50,6 +50,9 @@ DEMO PASS: MCP dispatch, local execution, file verification, and result persiste
 
 执行 `npm run demo -- --help` 可以查看执行器、模型、超时和无人值守参数。Demo
 工作区会保留在磁盘上，供用户检查。
+
+发布资产包括 Windows 源码包、可直接加载的浏览器 Companion ZIP、90 秒验证
+演示视频和 `SHA256SUMS`。下载地址：[v0.9.0 Release](https://github.com/Ya-KARAS/AgentControlPlane/releases/tag/v0.9.0)。
 
 ## 项目功能
 

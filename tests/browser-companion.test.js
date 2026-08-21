@@ -256,7 +256,10 @@ test("manifest grants only known AI sites by default", () => {
     ),
   );
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, "0.8.4");
+  const packageVersion = JSON.parse(
+    fs.readFileSync(path.resolve("package.json"), "utf8"),
+  ).version;
+  assert.equal(manifest.version, packageVersion);
   assert.ok(manifest.host_permissions.includes("https://chatgpt.com/*"));
   assert.ok(manifest.host_permissions.includes("https://chat.deepseek.com/*"));
   assert.ok(manifest.optional_host_permissions.includes("https://*/*"));
