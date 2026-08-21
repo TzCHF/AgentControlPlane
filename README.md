@@ -7,122 +7,110 @@
 [![Node](https://img.shields.io/badge/node-%3E%3D22-3c873a)](https://nodejs.org)
 [![license](https://img.shields.io/badge/license-AGPL--3.0-d22128)](LICENSE)
 
+<img src="docs/assets/social-preview.svg" width="100%" alt="AgentControlPlane sends web AI briefs through a local control plane to coding executors and returns persisted evidence." />
+
+**Turn a web-AI conversation into a verified local coding task.**
+
+AgentControlPlane sends a compact brief to OpenCode, Codex, Claude Code, or an
+OpenAI-compatible executor, then returns status, changed files, test evidence,
+usage, and continuation state.
+
+[Run the live demo](#run-the-live-demo) · [Connect a web AI](#connect-a-web-ai) ·
+[Architecture](docs/ARCHITECTURE.md) · [中文文档](README.zh-CN.md)
+
 </div>
 
-> Experimental, local-first software for single-user evaluation.
->
-> Current certified release: **v0.8.4** (invite-only paid beta baseline;
-> install and upgrade instructions below).
->
-> [中文文档](README.zh-CN.md)
+> Local-first, single-user preview. Current certified release: **v0.8.4**.
 
-## Contents
+## Run the live demo
 
-- [Why it exists](#why-it-exists)
-- [Supported surfaces](#supported-surfaces)
-- [Quickstart](#quickstart)
-- [Dispatch example](#dispatch-example)
-- [Profiles and usage](#profiles-and-usage)
-- [Model providers](#model-providers)
-- [MCP tools](#mcp-tools)
-- [Safety defaults](#safety-defaults)
-- [Documentation](#documentation)
-
-AgentControlPlane connects an MCP-capable web AI to interchangeable engineering
-agents on the user's computer. The web conversation clarifies intent once; the
-control plane sends a compact structured brief, preserves task state, returns
-evidence, and supports follow-up without manual copy-and-paste loops.
-
-The AgentControlPlane source is offered under the
-[GNU Affero General Public License 3.0](LICENSE). Released versions v0.1.0
-through v0.4.2 remain available under the Apache License 2.0, archived in
-[docs/LEGACY-LICENSE-APACHE-2.0.md](docs/LEGACY-LICENSE-APACHE-2.0.md).
-Operating AgentControlPlane as part of a commercial service requires a
-separate written agreement with the copyright holder; the "AgentControlPlane"
-name and logo are trademarks and carry no license. See
-[docs/COMMERCIALIZATION.md](docs/COMMERCIALIZATION.md).
-
-## Why it exists
-
-Manual hand-off between a web AI and a coding agent repeats context and creates
-translation errors. AgentControlPlane keeps that feedback loop machine-readable:
-
-```text
-web AI -> compact brief -> AgentControlPlane -> local executor
-web AI <- result/evidence/status <- task store <- local executor
-```
-
-It does not convert chat allowance into engineering quota or bypass provider
-limits. Each selected executor still uses its own account, subscription, or API
-configuration.
-
-## Supported surfaces
-
-The northbound interface is standard MCP and is not tied to one model. ChatGPT
-custom apps are the currently documented connection; other MCP-capable web AI
-clients can use the same tools.
-
-For accounts or web AI products that do not expose custom MCP connections, the
-v0.4 browser companion provides a local, provider-neutral bridge. It includes
-built-in adapters for ChatGPT, DeepSeek, and Claude, plus an optional generic
-HTTPS chat adapter. See [Browser companion](docs/BROWSER-COMPANION.md).
-
-The local executor layer currently includes:
-
-| Executor | Interface | Availability |
-|---|---|---|
-| OpenCode | CLI | ships with its own configured default model |
-| Codex | App Server | workspace-write execution with network disabled |
-| Claude Code | CLI | optional; needs a Claude Pro/Max login or an Anthropic API key |
-| OpenCodex | model endpoint (ACP agent loop) | local OpenAI-compatible endpoint, model `deepseek/deepseek-v4-pro` |
-| DeepSeek Harness | model endpoint (ACP agent loop) | direct DeepSeek API, model `deepseek-chat` |
-
-All five entries are executors. The first three are third-party agent
-executors; the last two are model-endpoint executors that run the ACP agent
-loop against a swappable model backend.
-
-Claude Code is optional. Installing its CLI is not sufficient by itself: the
-adapter becomes available only after a Claude Pro/Max account login or when the
-CLI is configured with an Anthropic API key. Otherwise discovery reports
-`not_authenticated` and automatic routing skips it.
-
-At startup, `executor.provider: "auto"` discovers installed/configured backends
-and selects the first available entry from `executor.routing.order`. A task may
-override that decision with `executor: "opencode"`, `"codex"`, `"claude"`,
-`"openai-compatible"`, or `"deepseek"`.
-
-## Quickstart
-
-Prerequisites: Node.js 22 or newer and at least one supported local executor.
+Requirements: Node.js 22 or newer and one configured executor. OpenCode is the
+default demo choice when it is ready.
 
 ```powershell
 git clone https://github.com/Ya-KARAS/AgentControlPlane.git
 cd AgentControlPlane
-npm.cmd install
-npm.cmd test
+npm.cmd ci
 npm.cmd run doctor
-npm.cmd start
+npm.cmd run demo
 ```
 
-The service binds to `http://127.0.0.1:4318`. `npm.cmd run doctor` lists every
-discovered executor and the automatic default. No executor selection is needed
-when an installed CLI or configured local endpoint is detected. Opening
-`http://127.0.0.1:4318/` in a browser shows the local read-only panel with
-executor readiness, model catalogs, recent tasks, and the token usage report.
+`npm run demo` starts an isolated loopback service, asks for confirmation, and
+sends one small task through MCP. The selected executor may use account,
+subscription, or API quota. A successful run creates `hello.txt`, reads it back,
+persists the task, and prints evidence like this:
 
-To use a web AI without its own MCP connector, load
-[`browser-companion`](browser-companion) as an unpacked Manifest V3 extension,
-open the ACP panel on the web AI page, and approve the one-time local pairing
-code. The extension never needs the main control-plane bearer token.
+```text
+AgentControlPlane live demo
+executor: opencode
+task: <task-id>
+status: completed
+file: <workspace>\hello.txt
+verified: true
+DEMO PASS: MCP dispatch, local execution, file verification, and result persistence completed.
+```
 
-To connect ChatGPT, follow
-[docs/CHATGPT-CONNECTION.md](docs/CHATGPT-CONNECTION.md). A web provider may
-still require a one-time connector, permission, or tunnel setup; that account
-level setup cannot be performed by the local service.
+Use `npm run demo -- --help` for executor, model, timeout, and unattended-run
+options. The generated workspace remains available for inspection.
 
-## Dispatch example
+## What it does
 
-Ask the connected web AI:
+```text
+web AI  -> compact brief -> AgentControlPlane -> local executor
+web AI <- result/evidence <- persisted task  <- local executor
+```
+
+- **Structured delegation:** the web conversation produces an objective,
+  constraints, acceptance criteria, profile, executor, and optional model.
+- **Executor routing:** automatic discovery selects a ready executor; each task
+  can select OpenCode, Codex, Claude Code, or a configured model endpoint.
+- **Persistent results:** tasks record status, changed files, test evidence,
+  token usage, executor history, and continuation packages.
+- **Cross-executor continuation:** an explicit follow-up can select a compatible
+  executor while preserving the logical task lineage. Automatic infrastructure
+  rerouting is available as an opt-in policy and ships disabled.
+- **Local controls:** loopback binding, workspace allowlists, rate limits,
+  optional bearer authentication, and append-only audit records constrain the
+  control-plane boundary.
+
+## Connect a web AI
+
+The MCP interface exposes the same tools to every compatible client. ChatGPT
+custom apps are documented in
+[docs/CHATGPT-CONNECTION.md](docs/CHATGPT-CONNECTION.md).
+
+The [browser companion](docs/BROWSER-COMPANION.md) adds a local panel to
+ChatGPT, DeepSeek, Claude, and an optional generic HTTPS chat site. The panel
+keeps the selected workspace on the local machine, pairs once with ACP, and
+dispatches the structured envelope produced by the web conversation.
+
+```text
+ChatGPT / DeepSeek / Claude
+              |
+     MCP or browser companion
+              |
+      AgentControlPlane :4318
+              |
+ OpenCode / Codex / Claude Code / model endpoint
+```
+
+## Supported executors
+
+| Executor | Interface | Readiness requirement |
+|---|---|---|
+| OpenCode | CLI | installed CLI with a configured model |
+| Codex | App Server | installed client, account quota, and Windows sandbox readiness |
+| Claude Code | CLI | Claude Pro/Max login or an Anthropic API key |
+| OpenCodex | OpenAI-compatible endpoint | reachable endpoint, configured model, and verified tool capability |
+| DeepSeek Harness | OpenAI-compatible endpoint | DeepSeek API configuration and verified tool capability |
+
+Run `npm run doctor` to list discovery status and the automatic default. A task
+can set `executor: "opencode"`, `"codex"`, `"claude"`,
+`"openai-compatible"`, or `"deepseek"`.
+
+## Dispatch from a connected web AI
+
+Ask the connected conversation:
 
 ```text
 Use the balanced profile and automatic executor selection. Inspect the project,
@@ -131,90 +119,103 @@ test evidence. If execution reports a blocker or misunderstanding, correct the
 brief and continue the same project.
 ```
 
-The conversation calls `dispatch_project`, polls `task_status`, and uses
-`continue_project` when the structured result requires correction.
+The client calls `dispatch_project`, polls `task_status`, and calls
+`continue_project` for a correction or follow-up.
 
 ## Profiles and usage
 
-| Profile | Use | Effort | Subagents | Budget |
+| Profile | Task scope | Effort | Subagents | Token budget |
 |---|---|---|---:|---:|
-| economy | Small, well-defined edits | low | 0 | 30k |
-| balanced | Normal feature and fix work | high | up to 2 | 90k |
+| economy | Small, defined edits | low | 0 | 30k |
+| balanced | Feature and fix work | high | up to 2 | 90k |
 | deep | Architecture and broad refactors | ultra | up to 4 | 220k |
 
-Profiles are policy defaults. Explicit model, effort, subagent, and budget
-overrides remain available. Model fields are passed only when meaningful for
-the selected executor; OpenCode and Claude otherwise use their own configured
-default model. Usage precision depends on the executor's telemetry.
+Profiles supply policy defaults. A dispatch can set model, effort, subagent,
+and budget overrides. OpenCode and Claude use their configured default model
+when a dispatch omits `model`. Usage precision follows the telemetry reported
+by the selected executor.
 
-For controlled-versus-direct token experiments, see
-[docs/BENCHMARKING.md](docs/BENCHMARKING.md).
-
-## Model providers
-
-### Bring your own provider
-
-Any OpenAI-compatible relay or model endpoint works as a model endpoint.
-ACP works independently and does not require AsterRoute.
-
-### AsterRoute — official optional integration
-
-AsterRoute ships as a provider preset (`baseUrl: https://asterroute.com/v1`)
-and is covered step by step in
-[docs/PROVIDER-ASTERROUTE.md](docs/PROVIDER-ASTERROUTE.md). It is a curated
-multi-model API that authenticates, relays, meters, and bills requests
-through one provider key. The integration covers OpenAI-compatible model
-traffic, request attribution and request/usage correlation (`x-acp-*`
-headers), and read-only usage reconciliation.
-
-AsterRoute access is currently invite-only. Approved accounts receive the
-API credentials, model access and usage limits assigned to them. Eligible
-accounts receive the ACP × AsterRoute Verified designation and Founding
-Program eligibility; program terms are published on the
-[AsterRoute integration guide](https://asterroute.com/integrations/agentcontrolplane).
+The committed benchmark workflow records direct and controlled task duration,
+success, input, cached input, output, reasoning, and total tokens. See
+[docs/BENCHMARKING.md](docs/BENCHMARKING.md) and the raw files in
+[`benchmark/`](benchmark).
 
 ## MCP tools
 
 | Tool | Purpose |
 |---|---|
-| `dispatch_project` | queue a brief with automatic or explicit executor routing |
-| `dispatch_opencode` | compatibility shortcut for OpenCode |
-| `task_status` | read state, result, evidence, usage, and optional events |
-| `continue_project` | send a correction or follow-up to the same project |
-| `cancel_task` | stop queued or active work |
-| `list_tasks` | list recent tasks |
-| `list_executors` | list discovery, readiness, capabilities, and default route |
-| `list_profiles` | list execution policies |
-| `list_models` | list the cached catalog for an executor |
-| `usage_report` | aggregate measured engineering usage |
+| `dispatch_project` | Queue a brief with automatic or explicit executor routing |
+| `dispatch_opencode` | Dispatch through the OpenCode compatibility shortcut |
+| `task_status` | Read state, result, evidence, usage, lineage, and optional events |
+| `continue_project` | Send a correction or follow-up to the same logical project |
+| `cancel_task` | Stop queued or active work |
+| `list_tasks` | List recent tasks |
+| `list_executors` | List discovery, readiness, capabilities, and default route |
+| `list_profiles` | List execution policies |
+| `list_models` | List an executor's cached model catalog |
+| `usage_report` | Aggregate measured engineering usage |
 
-## Safety defaults
+## Provider configuration
 
-- Workspaces must be inside configured allowlisted roots.
-- The HTTP service refuses non-loopback binding.
-- Codex uses workspace-write with network disabled and verifies Windows sandbox
-  readiness before execution.
-- Other CLI and OpenAI-compatible adapters run with the local user's privileges;
-  use them only on trusted workspaces.
-- Optional bearer authentication is available through `AGENT_CONTROL_TOKEN`.
-- State and append-only audit logs remain outside project workspaces.
+AgentControlPlane accepts any OpenAI-compatible relay or model endpoint as a
+model-endpoint executor. Provider-specific presets are registry data and remain
+optional.
 
-Do not expose the local server directly to the public Internet. Use an
-authenticated private tunnel or a separately hardened relay.
+[AsterRoute](docs/PROVIDER-ASTERROUTE.md) is an optional preset with request
+attribution and read-only usage reconciliation. AsterRoute access and billing
+are operated separately from this repository.
+
+## Safety and limits
+
+- Workspaces resolve inside configured allowlisted roots.
+- The HTTP service accepts loopback binding only.
+- Codex uses workspace-write with network access disabled and checks Windows
+  sandbox readiness before execution.
+- Other CLI and model-endpoint adapters run with the local user's privileges;
+  use trusted workspaces.
+- `AGENT_CONTROL_TOKEN` enables bearer authentication.
+- State and append-only audit records remain outside project workspaces.
+- Each executor uses its own account, subscription, API configuration, and
+  provider limits. AgentControlPlane does not convert chat allowance into
+  engineering quota.
+
+Use an authenticated private tunnel or a separately hardened relay for remote
+access. Direct public-Internet exposure is outside the supported preview scope.
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, pull request checks, and
+executor adapter requirements. Usage questions and early design proposals
+belong in [GitHub Discussions](https://github.com/Ya-KARAS/AgentControlPlane/discussions).
+Reproducible bugs and scoped changes belong in
+[GitHub Issues](https://github.com/Ya-KARAS/AgentControlPlane/issues).
+
+## License and commercial use
+
+The current source is available under the
+[GNU Affero General Public License 3.0](LICENSE). Releases v0.1.0 through v0.4.2
+remain available under Apache License 2.0 as recorded in
+[docs/LEGACY-LICENSE-APACHE-2.0.md](docs/LEGACY-LICENSE-APACHE-2.0.md).
+
+Operating AgentControlPlane as part of a commercial service requires a separate
+written agreement with the copyright holder. The `AgentControlPlane` name and
+logo are trademarks and carry no license. See
+[docs/COMMERCIALIZATION.md](docs/COMMERCIALIZATION.md).
 
 ## Documentation
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ([中文](docs/ARCHITECTURE.zh-CN.md))
-- [docs/PROTOCOL.md](docs/PROTOCOL.md) ([中文](docs/PROTOCOL.zh-CN.md))
-- [docs/CHATGPT-CONNECTION.md](docs/CHATGPT-CONNECTION.md) ([中文](docs/CHATGPT-CONNECTION.zh-CN.md))
-- [docs/BENCHMARKING.md](docs/BENCHMARKING.md) ([中文](docs/BENCHMARKING.zh-CN.md))
-- [docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md) ([中文](docs/SECURITY-REVIEW.zh-CN.md))
-- [docs/COMMERCIALIZATION.md](docs/COMMERCIALIZATION.md) ([中文](docs/COMMERCIALIZATION.zh-CN.md))
-- [docs/AI-RELAY-INTEGRATION.md](docs/AI-RELAY-INTEGRATION.md) ([中文](docs/AI-RELAY-INTEGRATION.zh-CN.md))
-- [docs/PROVIDER-ASTERROUTE.md](docs/PROVIDER-ASTERROUTE.md) ([中文](docs/PROVIDER-ASTERROUTE.zh-CN.md))
-- [SECURITY.md](SECURITY.md) ([中文](SECURITY.zh-CN.md))
-- [CHANGELOG.md](CHANGELOG.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Protocol](docs/PROTOCOL.md)
+- [Browser companion](docs/BROWSER-COMPANION.md)
+- [ChatGPT connection](docs/CHATGPT-CONNECTION.md)
+- [Benchmarking](docs/BENCHMARKING.md)
+- [Security review](docs/SECURITY-REVIEW.md)
+- [Development and handoffs](docs/DEVELOPMENT.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Release checklist](docs/RELEASE-CHECKLIST.md)
+- [GitHub launch checklist](docs/GITHUB-LAUNCH-CHECKLIST.md)
+- [Security policy](SECURITY.md)
+- [Changelog](CHANGELOG.md)
 
-The default workspace allowlist is the parent directory of this repository.
-Use `AGENT_CONTROL_CONFIG` for machine-specific overrides and never commit local
-paths or credentials.
+Machine-specific paths and credentials belong in `config/local.json` or
+environment variables. `config/local.json` is excluded from Git.

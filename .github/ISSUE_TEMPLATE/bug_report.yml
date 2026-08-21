@@ -1,0 +1,68 @@
+name: Bug report
+description: Report reproducible AgentControlPlane behavior
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Remove credentials, account tokens, private paths, and sensitive logs before submitting.
+  - type: input
+    id: version
+    attributes:
+      label: AgentControlPlane version
+      placeholder: v0.8.4 or commit SHA
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Node.js version, and installation method
+      placeholder: Windows 11, Node.js 22.18.0, source checkout
+    validations:
+      required: true
+  - type: input
+    id: executor
+    attributes:
+      label: Executor
+      description: Executor id, version, and model when relevant
+      placeholder: opencode 1.18.18, configured default model
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: List the smallest sequence that produces the behavior.
+      placeholder: |
+        1. Run npm run doctor
+        2. Start ACP
+        3. Dispatch the attached sanitized brief
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and sanitized evidence
+      description: Include status, error code, and relevant output. Remove secrets and private paths.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched existing issues for the same behavior.
+          required: true
+        - label: I removed credentials, tokens, and private data.
+          required: true
+        - label: I can answer follow-up questions about this reproduction.
+          required: true

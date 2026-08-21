@@ -9,6 +9,7 @@ docs/app-server-schema/
 .live-smoke-state*/
 .smoke-workspace*/
 .benchmark-*/
+.acp-demo/
 config/local.json
 acp-*.txt
 scripts/random-smoke.py
