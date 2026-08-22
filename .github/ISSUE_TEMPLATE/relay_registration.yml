@@ -1,0 +1,55 @@
+name: Relay registration
+description: Register an email for relay access, testing notices, or onboarding follow-up
+title: "[Registration]: "
+labels:
+  - registration
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This form is for voluntary registration only. Do not submit passwords, API keys,
+        access tokens, private logs, or other secrets. Your email will be visible to the
+        repository maintainers and may be used only for relay onboarding, access notices,
+        and project-related follow-up.
+  - type: input
+    id: email
+    attributes:
+      label: Email address
+      description: Use an address where we can reach you about relay registration.
+      placeholder: name@example.com
+    validations:
+      required: true
+  - type: input
+    id: username
+    attributes:
+      label: GitHub username or preferred name
+      description: Optional. This helps us match the registration to your project feedback.
+      placeholder: octocat
+  - type: dropdown
+    id: purpose
+    attributes:
+      label: Registration purpose
+      options:
+        - Request relay onboarding
+        - Join the public test group
+        - Receive release and compatibility notices
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Optional. Tell us which executor or route you want to test.
+      placeholder: OpenCode on Windows, DeepSeek route, or browser companion.
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Consent and safety
+      options:
+        - label: I voluntarily provide this email for the registration purpose selected above.
+          required: true
+        - label: I understand that this GitHub issue is public and my email may be visible to others.
+          required: true
+        - label: I have not included passwords, API keys, access tokens, or private logs.
+          required: true

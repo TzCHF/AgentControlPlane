@@ -1,0 +1,50 @@
+name: Feature request
+description: Propose a concrete capability or improvement
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For early design exploration, use GitHub Discussions first. Use this form
+        when the expected behavior and acceptance criteria are concrete.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What is difficult or impossible today? Who is affected?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the user-facing workflow and a small example.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List observable conditions that would make this feature complete.
+      placeholder: |
+        - Given ...
+        - When ...
+        - Then ...
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and additional context
+      description: Mention current workarounds, related issues, or executor constraints.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched existing Discussions and Issues for a duplicate request.
+          required: true
+        - label: I removed credentials, tokens, and private data.
+          required: true

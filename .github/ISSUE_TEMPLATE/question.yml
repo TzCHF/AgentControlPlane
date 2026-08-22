@@ -1,0 +1,32 @@
+name: Question
+description: Ask how to use AgentControlPlane or report an unclear workflow
+title: "[Question]: "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search existing Discussions and Issues first. Remove credentials,
+        account tokens, private paths, and sensitive logs before posting.
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: Describe what you want to achieve and where you are blocked.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Include ACP version, operating system, executor, and the relevant sanitized command or output.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched existing Discussions and Issues for the same question.
+          required: true
+        - label: I removed credentials, tokens, and private data.
+          required: true
