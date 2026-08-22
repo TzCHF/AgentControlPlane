@@ -29,6 +29,7 @@ OpenAI-compatible 执行器，再返回状态、变更文件、测试证据、�
 - [登记中转站邮箱和测试需求](https://github.com/Ya-KARAS/AgentControlPlane/issues/new?template=relay_registration.yml)
 - [提交 Bug](https://github.com/Ya-KARAS/AgentControlPlane/issues/new?template=bug_report.yml)
 - [提交功能建议](https://github.com/Ya-KARAS/AgentControlPlane/issues/new?template=feature_request.yml)
+- [查看公开的跨设备路线图](docs/CROSS-DEVICE-ROADMAP.zh-CN.md)
 
 请不要在公开 Issue 或 Discussion 中发布密码、API Key、访问 Token、私有日志或其他敏感信息。
 邮箱登记 Issue 默认公开；如果不希望公开邮箱，请联系维护者使用私有方式登记。
@@ -213,6 +214,7 @@ ChatGPT / DeepSeek / Claude
 - [路线图](docs/ROADMAP.zh-CN.md)
 - [发布检查](docs/RELEASE-CHECKLIST.md)
 - [GitHub 发布检查](docs/GITHUB-LAUNCH-CHECKLIST.md)
+- [跨设备路线图](docs/CROSS-DEVICE-ROADMAP.zh-CN.md)
 - [安全策略](SECURITY.zh-CN.md)
 - [变更记录](CHANGELOG.md)
 

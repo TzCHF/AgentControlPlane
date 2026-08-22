@@ -30,6 +30,7 @@ Join the public test and send feedback:
 - [Register a relay email and testing needs](https://github.com/Ya-KARAS/AgentControlPlane/issues/new?template=relay_registration.yml)
 - [Report a bug](https://github.com/Ya-KARAS/AgentControlPlane/issues/new?template=bug_report.yml)
 - [Request a feature](https://github.com/Ya-KARAS/AgentControlPlane/issues/new?template=feature_request.yml)
+- [Read the public cross-device roadmap](docs/CROSS-DEVICE-ROADMAP.md)
 
 Do not post passwords, API keys, access tokens, private logs, or other sensitive data
 in public Issues or Discussions. Email-registration Issues are public by default;
@@ -231,6 +232,7 @@ logo are trademarks and carry no license. See
 - [Roadmap](docs/ROADMAP.md)
 - [Release checklist](docs/RELEASE-CHECKLIST.md)
 - [GitHub launch checklist](docs/GITHUB-LAUNCH-CHECKLIST.md)
+- [Cross-device roadmap](docs/CROSS-DEVICE-ROADMAP.md)
 - [Security policy](SECURITY.md)
 - [Changelog](CHANGELOG.md)
 
