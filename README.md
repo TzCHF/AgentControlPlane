@@ -22,6 +22,19 @@ usage, and continuation state.
 
 > Local-first, single-user preview. Current certified release: **v0.9.0**.
 
+## Feedback and registration
+
+Join the public test and send feedback:
+
+- [Discuss questions, workflows, and ideas in GitHub Discussions](https://github.com/Ya-KARAS/AgentControlPlane/discussions)
+- [Register a relay email and testing needs](https://github.com/Ya-KARAS/AgentControlPlane/issues/new?template=relay_registration.yml)
+- [Report a bug](https://github.com/Ya-KARAS/AgentControlPlane/issues/new?template=bug_report.yml)
+- [Request a feature](https://github.com/Ya-KARAS/AgentControlPlane/issues/new?template=feature_request.yml)
+
+Do not post passwords, API keys, access tokens, private logs, or other sensitive data
+in public Issues or Discussions. Email-registration Issues are public by default;
+contact the maintainer if you need private registration.
+
 ## Run the live demo
 
 Requirements: Node.js 22 or newer and one configured executor. OpenCode is the

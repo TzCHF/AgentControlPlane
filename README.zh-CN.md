@@ -21,6 +21,18 @@ OpenAI-compatible 执行器，再返回状态、变更文件、测试证据、�
 
 > 本地优先、面向单用户的预览版本。当前认证版本：**v0.9.0**。
 
+## 用户反馈与登记
+
+欢迎参与测试和反馈：
+
+- [进入 GitHub Discussions 讨论疑问、使用方法和想法](https://github.com/Ya-KARAS/AgentControlPlane/discussions)
+- [登记中转站邮箱和测试需求](https://github.com/Ya-KARAS/AgentControlPlane/issues/new?template=relay_registration.yml)
+- [提交 Bug](https://github.com/Ya-KARAS/AgentControlPlane/issues/new?template=bug_report.yml)
+- [提交功能建议](https://github.com/Ya-KARAS/AgentControlPlane/issues/new?template=feature_request.yml)
+
+请不要在公开 Issue 或 Discussion 中发布密码、API Key、访问 Token、私有日志或其他敏感信息。
+邮箱登记 Issue 默认公开；如果不希望公开邮箱，请联系维护者使用私有方式登记。
+
 ## 运行真实 Demo
 
 前置条件：Node.js 22 或更新版本，以及一个已配置的执行器。OpenCode 就绪时，
