@@ -22,6 +22,9 @@ work may also provide a userscript-based web bridge for people who prefer a
 lightweight installation and for faster experiments with supported web AI
 sites.
 
+The public safety and product contract for the first desktop local-review
+slice is in [Userscript local-dispatch design](USERSCRIPT-LOCAL-DISPATCH-DESIGN.md).
+
 ### Phone web bridge
 
 The intended phone experience is to prepare and approve a task on a supported
