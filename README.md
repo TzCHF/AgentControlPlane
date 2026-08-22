@@ -9,7 +9,7 @@
 
 <img src="docs/assets/social-preview.svg" width="100%" alt="AgentControlPlane sends web AI briefs through a local control plane to coding executors and returns persisted evidence." />
 
-**Turn a web-AI conversation into a verified local coding task.**
+Turn a web-AI conversation into a verified local coding task.
 
 AgentControlPlane sends a compact brief to OpenCode, Codex, Claude Code, or an
 OpenAI-compatible executor, then returns status, changed files, test evidence,
@@ -20,7 +20,7 @@ usage, and continuation state.
 
 </div>
 
-> Local-first, single-user preview. Current certified release: **v0.9.0**.
+> Local-first, single-user preview. Current certified release: v0.9.0.
 
 ## Feedback and registration
 
@@ -77,16 +77,16 @@ web AI  -> compact brief -> AgentControlPlane -> local executor
 web AI <- result/evidence <- persisted task  <- local executor
 ```
 
-- **Structured delegation:** the web conversation produces an objective,
+- Structured delegation: the web conversation produces an objective,
   constraints, acceptance criteria, profile, executor, and optional model.
-- **Executor routing:** automatic discovery selects a ready executor; each task
+- Executor routing: automatic discovery selects a ready executor; each task
   can select OpenCode, Codex, Claude Code, or a configured model endpoint.
-- **Persistent results:** tasks record status, changed files, test evidence,
+- Persistent results: tasks record status, changed files, test evidence,
   token usage, executor history, and continuation packages.
-- **Cross-executor continuation:** an explicit follow-up can select a compatible
+- Cross-executor continuation: an explicit follow-up can select a compatible
   executor while preserving the logical task lineage. Automatic infrastructure
   rerouting is available as an opt-in policy and ships disabled.
-- **Local controls:** loopback binding, workspace allowlists, rate limits,
+- Local controls: loopback binding, workspace allowlists, rate limits,
   optional bearer authentication, and append-only audit records constrain the
   control-plane boundary.
 
